@@ -1,0 +1,62 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  rust:
+    name: Rust (fmt + clippy + check + deny)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.97.0"
+          components: rustfmt, clippy
+      - name: Install system deps (Kubuntu 24.04)
+        run: |
+          sudo apt update
+          sudo apt install -y \
+            build-essential pkg-config \
+            libdbus-1-dev libglib2.0-dev libpolkit-gobject-1-dev \
+            libpulse-dev libpipewire-0.3-dev \
+            libnetworkmanager-dev libnm0 libbluetooth-dev \
+            libupower-glib-dev libudev-dev libinput-dev \
+            libimage-dev libssl-dev
+      - uses: Swatinem/rust-cache@v2
+      - name: cargo fmt
+        run: cargo fmt --all --check
+      - name: cargo clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+      - name: cargo check
+        run: cargo check --workspace --target x86_64-unknown-linux-gnu
+      - name: Install cargo-deny
+        uses: taiki-e/install-action@cargo-deny
+      - name: cargo deny
+        run: cargo deny check
+
+  frontend:
+    name: Frontend (typecheck + lint)
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.18.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24.18.0"
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm -r typecheck
+      - run: pnpm -r lint

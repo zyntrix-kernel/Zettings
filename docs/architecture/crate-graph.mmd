@@ -1,0 +1,71 @@
+%% Zettings crate graph (Phase 1).
+%% Render: `mmdc -i crate-graph.mmd -o crate-graph.svg`
+
+flowchart TD
+    subgraph Shell
+        APP[apps/zettings<br/>Tauri shell<br/>tauri-build]
+    end
+
+    subgraph "Core crates"
+        CORE[zettings-core<br/>loader + registry]
+        IPC[zettings-ipc<br/>Tauri commands<br/>ts-rs export]
+        BUS[zettings-bus<br/>tokio message bus]
+        POLKIT[zettings-polkit<br/>per-action auth]
+        SDK[zettings-plugin-sdk<br/>capability ACL]
+        PAL[zettings-palette<br/>wallpaper accent extract]
+        SEARCH[zettings-search<br/>tantivy + fuzzy]
+    end
+
+    subgraph "Domain crates (Phase 5+)"
+        DISPLAY[zettings-display<br/>KScreen]
+        AUDIO[zettings-audio<br/>PulseAudio / PipeWire]
+        NET[zettings-network<br/>NetworkManager]
+        BT[zettings-bluetooth<br/>BlueZ]
+        PWR[zettings-power<br/>UPower / power-profiles-daemon]
+        ACC[zettings-accounts<br/>AccountsService]
+    end
+
+    subgraph "Frontend"
+        WEB[apps/zettings/web<br/>React 19 + Tailwind v4]
+        TSBIND[packages/ts-bindings<br/>generated types]
+    end
+
+    APP --> IPC
+    APP --> CORE
+    APP --> BUS
+    APP --> POLKIT
+    APP --> PAL
+    APP --> SEARCH
+    APP --> SDK
+
+    CORE --> BUS
+    CORE --> SDK
+    CORE --> SEARCH
+
+    IPC --> CORE
+    IPC --> TSBIND: ts-rs export
+
+    POLKIT --> BUS
+
+    DISPLAY --> BUS
+    AUDIO --> BUS
+    NET --> BUS
+    BT --> BUS
+    PWR --> BUS
+    ACC --> BUS
+    DISPLAY --> SDK
+    AUDIO --> SDK
+    NET --> SDK
+    BT --> SDK
+    PWR --> SDK
+    ACC --> SDK
+
+    WEB --> TSBIND: typed invoke
+    WEB -.HTTP/IPC.-> APP
+
+    classDef rust fill:#0c0a09,color:#fafaf9,stroke:#58aebc,stroke-width:1px
+    classDef frontend fill:#1c1917,color:#fafaf9,stroke:#7f62cf,stroke-width:1px
+    classDef ts fill:#3a2e5c,color:#fafaf9,stroke:#7f62cf,stroke-width:1px
+    class APP,CORE,IPC,BUS,POLKIT,SDK,PAL,SEARCH,DISPLAY,AUDIO,NET,BT,PWR,ACC rust
+    class WEB frontend
+    class TSBIND ts

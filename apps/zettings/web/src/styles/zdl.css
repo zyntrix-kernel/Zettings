@@ -1,0 +1,391 @@
+/* ZDL — Zyntrix Design Language.
+   Full 3-tier token cascade: primitive -> semantic -> component.
+   Theme variants via [data-theme="..."]: light (default) | dark | oled | hc.
+   Tailwind v4 @theme block maps primitives into utility classes. */
+@import "tailwindcss";
+
+/* ============================================================================
+   Tailwind v4 @theme — maps ZDL primitives into Tailwind's design system.
+   Enables utilities like bg-surface, text-muted, border-border, shadow-1,
+   font-sans, etc. (DESIGN.md section 5). */
+@theme {
+  /* Surfaces (semantic -> Tailwind color utilities) */
+  --color-surface: var(--surface);
+  --color-surface-elevated: var(--surface-elevated);
+  --color-surface-muted: var(--surface-muted);
+
+  /* Text */
+  --color-default: var(--text);
+  --color-muted: var(--text-muted);
+  --color-subtle: var(--text-subtle);
+
+  /* Border & ring */
+  --color-border: var(--border);
+  --color-ring: var(--ring);
+
+  /* Accent (aurora teal-violet) */
+  --color-accent: var(--accent);
+  --color-accent-on: var(--accent-on);
+  --color-accent-secondary: var(--accent-secondary);
+
+  /* Shadows (elevation) */
+  --shadow-1: var(--shadow-1);
+  --shadow-2: var(--shadow-2);
+  --shadow-3: var(--shadow-3);
+  --shadow-4: var(--shadow-4);
+
+  /* Typography */
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+
+  /* Radii (squircle-friendly fallbacks for minor elements only) */
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
+
+  /* Spacing scale */
+  --spacing-1: var(--space-1);
+  --spacing-2: var(--space-2);
+  --spacing-3: var(--space-3);
+  --spacing-4: var(--space-4);
+  --spacing-6: var(--space-6);
+  --spacing-8: var(--space-8);
+  --spacing-12: var(--space-12);
+  --spacing-16: var(--space-16);
+}
+
+/* ============================================================================
+   Tier 1: Primitive Tokens — raw values, theme-agnostic.
+   Stone neutrals, aurora accents, spacing, radii, typography, glass, shadows. */
+:root {
+  /* --- Neutrals (stone palette) --- */
+  --zdl-base-50: #fafaf9;
+  --zdl-base-100: #f5f5f4;
+  --zdl-base-200: #e7e5e4;
+  --zdl-base-300: #d6d3d1;
+  --zdl-base-400: #a8a29e;
+  --zdl-base-500: #78716c;
+  --zdl-base-600: #57534e;
+  --zdl-base-700: #44403c;
+  --zdl-base-800: #292524;
+  --zdl-base-900: #1c1917;
+  --zdl-base-950: #0c0a09;
+
+  /* --- Aurora teal-violet accent (first-run default; palette crate overrides) --- */
+  --accent: #58aebc;
+  --accent-on: #0c0a09;
+  --accent-secondary: #7f62cf;
+
+  /* --- Spacing (4/8 rhythm) --- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* --- Radii (minor elements only; major surfaces use squircle clip-paths) --- */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+
+  /* --- Typography --- */
+  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", "Helvetica Neue", sans-serif;
+  --font-mono: "JetBrains Mono", "SF Mono", "Cascadia Code", "Consolas", monospace;
+
+  --text-xs: 12px;
+  --text-xs-lh: 16px;
+  --text-sm: 14px;
+  --text-sm-lh: 20px;
+  --text-base: 16px;
+  --text-base-lh: 24px;
+  --text-lg: 18px;
+  --text-lg-lh: 26px;
+  --text-xl: 20px;
+  --text-xl-lh: 28px;
+  --text-2xl: 24px;
+  --text-2xl-lh: 32px;
+
+  /* --- Glass material (DESIGN.md section 2) --- */
+  --glass-blur: 24px;
+  --glass-saturate: 180%;
+  --glass-tint: rgba(255, 255, 255, 0.45); /* light default */
+  --glass-specular: rgba(255, 255, 255, 0.12);
+
+  /* --- Elevation shadows (DESIGN.md section 2 table) --- */
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-2: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --shadow-3: 0 8px 24px rgba(0, 0, 0, 0.12);
+  --shadow-4: 0 16px 48px rgba(0, 0, 0, 0.16);
+
+  /* --- Motion tokens (ms; Phase 3 overrides via motion engine) --- */
+  --motion-duration-fast: 100ms;
+  --motion-duration-base: 200ms;
+  --motion-duration-slow: 300ms;
+  --motion-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --motion-ease-in: cubic-bezier(0.64, 0, 0.78, 0);
+  --motion-ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+
+  font-family: var(--font-sans);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ============================================================================
+   Tier 2: Semantic Tokens — theme-aware aliases referencing primitives.
+   Light theme is the :root default. */
+
+:root, /* light default */
+[data-theme="light"] {
+  --surface: var(--zdl-base-50);
+  --surface-elevated: #ffffff;
+  --surface-muted: var(--zdl-base-100);
+  --border: var(--zdl-base-200);
+  --text: var(--zdl-base-950);
+  --text-muted: var(--zdl-base-500);
+  --text-subtle: var(--zdl-base-700);
+  --ring: var(--accent);
+
+  /* Glass tint for light theme */
+  --glass-tint: rgba(255, 255, 255, 0.45);
+  --glass-specular: rgba(255, 255, 255, 0.12);
+}
+
+[data-theme="dark"] {
+  --surface: var(--zdl-base-950);
+  --surface-elevated: var(--zdl-base-900);
+  --surface-muted: var(--zdl-base-900);
+  --border: #2a2724;
+  --text: #fafaf9;
+  --text-muted: #a8a29e;
+  --text-subtle: #d6d3d1;
+  --ring: var(--accent);
+
+  /* Glass tint for dark theme (DESIGN.md section 2) */
+  --glass-tint: rgba(28, 25, 23, 0.65);
+  --glass-specular: rgba(255, 255, 255, 0.12);
+
+  /* Deeper shadows on dark for visible depth */
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.20);
+  --shadow-2: 0 2px 8px rgba(0, 0, 0, 0.32);
+  --shadow-3: 0 8px 24px rgba(0, 0, 0, 0.40);
+  --shadow-4: 0 16px 48px rgba(0, 0, 0, 0.48);
+}
+
+[data-theme="oled"] {
+  /* True black OLED — pure #000000 backgrounds (DESIGN.md section 3) */
+  --surface: #000000;
+  --surface-elevated: #0a0a0a;
+  --surface-muted: #050505;
+  --border: #1f1d1b;
+  --text: #ffffff;
+  --text-muted: #b8b3ae;
+  --text-subtle: #d6d3d1;
+  --ring: var(--accent);
+
+  /* Glass tint tuned for true-black backdrop */
+  --glass-tint: rgba(10, 10, 10, 0.72);
+  --glass-specular: rgba(255, 255, 255, 0.10);
+
+  /* Strongest shadows for OLED depth perception */
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.40);
+  --shadow-2: 0 2px 8px rgba(0, 0, 0, 0.50);
+  --shadow-3: 0 8px 24px rgba(0, 0, 0, 0.60);
+  --shadow-4: 0 16px 48px rgba(0, 0, 0, 0.70);
+}
+
+[data-theme="hc"] {
+  /* High contrast — WCAG AAA, boosted borders/text (DESIGN.md section 3) */
+  --surface: #ffffff;
+  --surface-elevated: #ffffff;
+  --surface-muted: #f5f5f4;
+  --border: #000000;
+  --text: #000000;
+  --text-muted: #1c1917;
+  --text-subtle: #292524;
+  --ring: #0033cc;
+
+  /* HC: opaque glass tint, no translucency (legibility first) */
+  --glass-tint: rgba(255, 255, 255, 0.92);
+  --glass-specular: rgba(0, 0, 0, 0.40);
+
+  /* HC: visible but flat shadows */
+  --shadow-1: 0 0 0 1px rgba(0, 0, 0, 0.50);
+  --shadow-2: 0 0 0 2px rgba(0, 0, 0, 0.60);
+  --shadow-3: 0 4px 12px rgba(0, 0, 0, 0.40), 0 0 0 2px rgba(0, 0, 0, 0.60);
+  --shadow-4: 0 8px 24px rgba(0, 0, 0, 0.50), 0 0 0 2px rgba(0, 0, 0, 0.70);
+}
+
+/* ============================================================================
+   Tier 3: Component Tokens — component-specific compositions.
+   Reference semantic tokens so they adapt with themes automatically. */
+:root {
+  /* Sidebar */
+  --sidebar-bg: var(--surface-muted);
+  --sidebar-border: var(--border);
+
+  /* Content area */
+  --content-bg: var(--surface);
+  --content-bar-border: var(--border);
+
+  /* Glass panel (multi-layered liquid glass) */
+  --glass-panel-bg: var(--glass-tint);
+  --glass-panel-blur: var(--glass-blur);
+  --glass-panel-saturate: var(--glass-saturate);
+  --glass-panel-border: var(--glass-specular);
+}
+
+/* ============================================================================
+   Reduced motion fallback (DESIGN.md section 4).
+   All spring animations collapse to 0ms opacity cross-fades. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-duration-fast: 0ms;
+    --motion-duration-base: 0ms;
+    --motion-duration-slow: 0ms;
+  }
+}
+
+/* ============================================================================
+   Base element styling */
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--surface);
+  color: var(--text);
+}
+
+/* ============================================================================
+   Shell layout (used by ShellFrame + Sidebar + ContentArea components).
+   These are layout-only classes; visual material comes from GlassPanel. */
+.zettings-shell {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  /* Now nested inside <ShellFrame>; fills the remaining viewport height
+     below the 32px title bar instead of claiming the full 100vh itself. */
+  height: calc(100vh - 32px);
+  background: var(--surface);
+  color: var(--text);
+}
+
+.sidebar {
+  background: var(--sidebar-bg);
+  border-right: 1px solid var(--sidebar-border);
+  padding: var(--space-6) var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.sidebar-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.sidebar-title h1 {
+  font-size: var(--text-lg);
+  line-height: var(--text-lg-lh);
+  font-weight: 600;
+  margin: 0;
+}
+
+.brand-glyph {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-secondary) 100%);
+  display: inline-block;
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  background: var(--content-bg);
+}
+
+.content-bar {
+  padding: var(--space-6) var(--space-8);
+  border-bottom: 1px solid var(--content-bar-border);
+}
+
+.content-bar h2 {
+  font-size: var(--text-2xl);
+  line-height: var(--text-2xl-lh);
+  font-weight: 600;
+  margin: 0;
+}
+
+.content-body {
+  padding: var(--space-8);
+  color: var(--text-subtle);
+}
+
+/* ============================================================================
+   ShellFrame — custom Tauri title bar (tauri-plugin-decorum protocol).
+   The titlebar is a fixed 32px transparent strip; decorum's controls.js
+   injects native minimize/maximize/close buttons into the right side of
+   .shell-titlebar at runtime. The drag-region element lets the user move
+   the window. The window's content fills the rest of the viewport below. */
+.shell-frame {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: var(--surface);
+  color: var(--text);
+}
+
+.shell-titlebar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 32px;
+  flex: 0 0 32px;
+  background: transparent;
+  /* App-level title bar is transparent so the transparent window background
+     (set in tauri.conf.json) shows through; the glass material effect is
+     realized only on content panels via GlassPanel, not on the title bar. */
+  user-select: none;
+}
+
+.shell-titlebar-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding-left: var(--space-3);
+  z-index: 1; /* above the drag region */
+  flex: 0 0 auto;
+}
+
+.shell-titlebar-title {
+  font-size: var(--text-sm);
+  line-height: var(--text-sm-lh);
+  font-weight: 600;
+  color: var(--text);
+}
+
+/* The drag region fills the empty middle of the bar between the brand label
+   and the window controls decorum appends on the right. */
+.shell-titlebar-drag {
+  flex: 1 1 auto;
+  height: 100%;
+}
+
+/* Make sure decorum's injected .decorum-tb-btn buttons stay visible against
+   any underlying ZDL surface. These styles do not override decorum's
+   inline-injected styles (those win via specificity) but ensure the bar
+   container does not clip them. */
+.shell-titlebar .decorum-tb-btn {
+  z-index: 1;
+}

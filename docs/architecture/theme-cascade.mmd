@@ -1,0 +1,63 @@
+%% ZDL theme token cascade.
+%% Render: `mmdc -i theme-cascade.mmd -o theme-cascade.svg`
+
+flowchart TD
+    subgraph Primitive["Primitive layer (fixed in :root)"]
+        NEUTRAL[Stone neutrals 50..950]
+        HUE[Aurora teal<br/>+ violet<br/>+ gold<br/>+ cyan presets]
+        SPACE[4/8 spacing scale]
+        RADII[radius scale]
+        MOTION[motion duration tokens]
+    end
+
+    subgraph Semantic["Semantic layer (theme-driven)"]
+        SURFACE[--surface<br/>--surface-elevated<br/>--surface-muted]
+        TEXT[--text<br/>--text-muted<br/>--text-subtle]
+        BORDER[--border]
+        ACCENT[--accent<br/>--accent-on<br/>--accent-secondary]
+        RING[--ring]
+    end
+
+    subgraph Override["User override layer"]
+        WALL[Wallpaper-derived<br/>accent via zettings-palette]
+        PRESET[Accent preset:<br/>Aurora | Graphite+Gold | Neon Cyan]
+        TOML[~/.config/zyntrix/<br/>zettings/appearance.toml]
+        DIALS[Settings dials:<br/>roundedness<br/>transparency<br/>motion intensity<br/>density mode]
+    end
+
+    subgraph Component["Component layer (Tailwind v4 @theme)"]
+        BTN[Button tokens]
+        CARD[Card tokens]
+        TOGGLE[Toggle tokens]
+        SLIDER[Slider tokens]
+        DIALOG[Dialog tokens]
+    end
+
+    NEUTRAL --> SURFACE
+    NEUTRAL --> TEXT
+    NEUTRAL --> BORDER
+    HUE --> ACCENT
+    HUE --> RING
+    SPACE --> Component
+    RADII --> Component
+    MOTION --> Component
+
+    WALL --> ACCENT
+    PRESET --> ACCENT
+    TOML --> DIALS
+    DIALS --> Component
+
+    SURFACE --> Component
+    TEXT --> Component
+    BORDER --> Component
+    ACCENT --> Component
+    RING --> Component
+
+    classDef prim fill:#1c1917,color:#fafaf9,stroke:#58aebc
+    classDef sem fill:#0c0a09,color:#fafaf9,stroke:#7f62cf
+    classDef over fill:#3a2e5c,color:#fafaf9,stroke:#a16207
+    classDef comp fill:#44403c,color:#fafaf9,stroke:#d6d3d1
+    class NEUTRAL,HUE,SPACE,RADII,MOTION prim
+    class SURFACE,TEXT,BORDER,ACCENT,RING sem
+    class WALL,PRESET,TOML,DIALS over
+    class BTN,CARD,TOGGLE,SLIDER,DIALOG comp

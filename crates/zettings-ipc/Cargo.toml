@@ -1,0 +1,40 @@
+[package]
+name = "zettings-ipc"
+description = "Tauri v2 command surface for Zettings + ts-rs binding export"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+publish.workspace = true
+
+[lib]
+path = "src/lib.rs"
+
+[features]
+default = []
+# When enabled, `cargo test` regenerates TypeScript bindings into
+# `packages/ts-bindings/src/generated/`. Used by docs and CI.
+# ts-rs 12 exposes the `TS::export_all(&cfg)` API; this feature flag gates
+# our bindings-export test (see `src/lib.rs`). The test computes the
+# absolute workspace path from `CARGO_MANIFEST_DIR` — no env vars needed.
+export-bindings = []
+# Mock backend for the Windows frontend dev loop. Forwards to the mock
+# authorizer in `zettings-polkit` and the mock state machine in `zettings-core`.
+zettings-mock = [
+    "zettings-polkit/zettings-mock",
+    "zettings-core/zettings-mock",
+]
+
+[dependencies]
+zettings-core = { workspace = true }
+zettings-polkit = { workspace = true }
+tauri = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+ts-rs = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+
+[lints]
+workspace = true

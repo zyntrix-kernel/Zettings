@@ -1,0 +1,158 @@
+[workspace]
+resolver = "2"
+members = [
+    "apps/zettings",
+    "crates/zettings-bus",
+    "crates/zettings-core",
+    "crates/zettings-ipc",
+    "crates/zettings-palette",
+    "crates/zettings-plugin-sdk",
+    "crates/zettings-polkit",
+    "crates/zettings-search",
+]
+default-members = ["apps/zettings"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.97.0"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/zyntrix-os/zettings"
+authors = ["Zyntrix OS contributors"]
+publish = false
+
+[workspace.lints.rust]
+future_incompatible = { level = "warn", priority = -1 }
+missing_docs = { level = "warn", priority = -1 }
+
+[workspace.lints.clippy]
+pedantic = { level = "deny", priority = -1 }
+cargo = { level = "warn", priority = -1 }
+# Allow common ergonomic patterns; everything else from pedantic is denied.
+module_name_repetitions = { level = "allow", priority = 1 }
+must_use_candidate = { level = "allow", priority = 1 }
+missing_errors_doc = { level = "allow", priority = 1 }
+missing_panics_doc = { level = "allow", priority = 1 }
+missing_fields_in_debug = { level = "allow", priority = 1 }
+# Tauri v2 pulls in multiple transitive versions of `getrandom` and `r-efi`
+# across its dependency tree; we cannot deduplicate them without forking Tauri.
+# Allow the duplicate-version cargo lint rather than pinning the entire graph.
+multiple_crate_versions = { level = "allow", priority = 1 }
+
+# ---------------------------------------------------------------------------
+# Shared dependency versions — pinned for reproducible builds.
+# Crates reference these via `[dependencies] foo.workspace = true`.
+# Bump via `cargo update -p <crate>` only; never hand-edit Cargo.lock.
+# ---------------------------------------------------------------------------
+
+[workspace.dependencies]
+# Async runtime / concurrency
+tokio = { version = "1.47", features = ["full"] }
+tokio-util = { version = "0.7", features = ["rt"] }
+tokio-stream = { version = "0.1", features = ["sync"] }
+futures = "0.3"
+async-trait = "0.1"
+parking_lot = "0.12"
+dashmap = "6"
+
+# Serialization / IPC types
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde_repr = "0.1"
+toml = "0.8"
+postcard = "1.0"
+
+# ts-rs: generates TypeScript bindings from Rust types consumed by the frontend.
+ts-rs = { version = "12.0", features = ["chrono-impl", "no-serde-warnings"] }
+
+# Error handling
+thiserror = "2.0"
+anyhow = "1.0"
+
+# Logging / diagnostics
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt", "json"] }
+tracing-journald = "0.3"
+
+# Time
+chrono = { version = "0.4", features = ["serde", "clock"], default-features = false }
+time = { version = "0.3", features = ["serde", "formatting", "parsing"] }
+
+# Linux system integration (real impls; gated by `zettings-mock` absence).
+# These are optional and gated by per-crate features; workspace deps cannot
+# themselves be optional, so do NOT mark them optional here.
+zbus = { version = "5.18", default-features = false, features = ["tokio"] }
+pipewire = "0.10"
+libpulse-binding = "2.30"
+libpulse-tokio = "2.30"
+
+# Search index
+tantivy = "0.26"
+strsim = "0.11"
+
+# Wallpaper palette extraction (Median-cut quantization) + image decode
+image = { version = "0.25", default-features = false, features = ["jpeg", "png", "webp"] }
+palette = "0.7"
+
+# Crypto: ed25519 plugin signature verification
+ring = "0.17"
+base64 = "0.22"
+hex = "0.4"
+
+# Native helpers
+once_cell = "1.20"
+itertools = "0.13"
+indexmap = { version = "2.10", features = ["serde"] }
+ahash = "0.8"
+smallvec = { version = "1.15", features = ["serde"] }
+bytes = "1.10"
+
+# Tauri v2 — the shell
+tauri = { version = "2.11", features = ["unstable"] }
+tauri-build = { version = "2.0", features = [] }
+tauri-plugin-decorum = "1.0"
+tauri-plugin-deep-link = "2.0"
+tauri-plugin-shell = "2.0"
+tauri-plugin-window-state = "2.0"
+tauri-plugin-log = "2.0"
+
+# Testing
+proptest = "1.5"
+insta = { version = "1.40", features = ["json"] }
+loom = "0.7"
+
+# Internal workspace crates — referenced by path; version synced via [workspace.package].
+zettings-core = { path = "crates/zettings-core" }
+zettings-bus = { path = "crates/zettings-bus" }
+zettings-ipc = { path = "crates/zettings-ipc" }
+zettings-polkit = { path = "crates/zettings-polkit" }
+zettings-plugin-sdk = { path = "crates/zettings-plugin-sdk" }
+zettings-palette = { path = "crates/zettings-palette" }
+zettings-search = { path = "crates/zettings-search" }
+
+# ---------------------------------------------------------------------------
+# Profile tuning — small release binary, fast dev cycle.
+# ---------------------------------------------------------------------------
+[profile.dev]
+opt-level = 1
+debug = "line-tables-only"
+incremental = true
+panic = "unwind"
+
+[profile.release]
+opt-level = "s"
+lto = "thin"
+codegen-units = 1
+panic = "abort"
+strip = "symbols"
+debug = false
+
+[profile.bench]
+opt-level = 3
+debug = "line-tables-only"
+lto = "thin"
+codegen-units = 1
+
+# Speed up dep builds in dev workspace-wide.
+[profile.dev.package."*"]
+opt-level = 3
