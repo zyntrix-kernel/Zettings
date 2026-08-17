@@ -22,6 +22,7 @@ serde = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
 tokio = { workspace = true }
+ts-rs = { workspace = true }
 
 [lints]
 workspace = true

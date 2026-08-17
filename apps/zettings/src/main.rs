@@ -8,7 +8,11 @@
 use tauri::Manager;
 use tauri_plugin_decorum::WebviewWindowExt;
 use tracing_subscriber::EnvFilter;
-use zettings_ipc::{Health, ModuleInfo};
+use zettings_ipc::{
+    Health, ModuleInfo, SearchQueryRequest, SearchRegisterEntriesRequest,
+    SearchRegisterEntriesResult,
+};
+use zettings_search::SearchHit;
 
 /// `zettings_health` — frontend ping that returns backend version + mock flag.
 #[tauri::command]
@@ -23,6 +27,31 @@ fn zettings_health() -> Health {
 #[tauri::command]
 fn zettings_modules() -> Vec<ModuleInfo> {
     Vec::new()
+}
+
+/// `zettings_search_register` — bulk-upserts settings entries into the global
+/// in-process Tantivy index. Modules call this once on mount so their
+/// sub-pages, sub-menus, and toggle controls become discoverable from the
+/// Spotlight modal (Phase 6.3). The search index is feature-flag-free — it
+/// touches no system resources — so this command is safe to invoke on the
+/// Windows dev loop and on real Linux targets without `PolicyKit` authorization.
+#[tauri::command]
+fn zettings_search_register(
+    request: SearchRegisterEntriesRequest,
+) -> Result<SearchRegisterEntriesResult, zettings_ipc::IpcError> {
+    zettings_ipc::search_register_entries(request)
+}
+
+/// `zettings_search_query` — fuzzy + typo-tolerant search over the Spotlight
+/// index. The frontend Spotlight modal debounces the user input and invokes
+/// this command via `@tauri-apps/api/core`'s `invoke`; `keepPreviousData`
+/// keeps stale hits visible during the IPC round-trip to preserve the
+/// <5ms perceived-latency budget (see `apps/zettings/web` Spotlight modal).
+#[tauri::command]
+fn zettings_search_query(
+    request: SearchQueryRequest,
+) -> Result<Vec<SearchHit>, zettings_ipc::IpcError> {
+    zettings_ipc::search_query(request)
 }
 
 /// Zettings application entry point.
@@ -42,7 +71,12 @@ fn main() {
         .plugin(tauri_plugin_window_state::Builder::default().build())
         .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_decorum::init())
-        .invoke_handler(tauri::generate_handler![zettings_health, zettings_modules])
+        .invoke_handler(tauri::generate_handler![
+            zettings_health,
+            zettings_modules,
+            zettings_search_register,
+            zettings_search_query
+        ])
         .setup(|app| {
             let window = app.get_webview_window("main").expect("main window");
             // Install the decorum titlebar overlay: removes the native frame

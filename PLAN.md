@@ -77,10 +77,10 @@ Every phase must pass all four gate commands before landing the phase commit[cit
 ---
 
 ## Phase 6: Frontend Shell, Spotlight Search & Navigation Graph
-- [ ] **In-Memory Tantivy Index (`zsettings-search`):** Build schema-driven search index for settings options, sub-menus, keywords, and aliases[cite: 1, 2].
-- [ ] **Sub-5ms Fuzzy Search:** Combine Tantivy with `strsim` Levenshtein distance for typo-tolerant query results over IPC[cite: 1, 2].
-- [ ] **Spotlight Modal Component:** Build Apple-inspired centered glass search overlay triggered by global shortcut (`Super+I` / `Ctrl+Space`)[cite: 1, 2].
-- [ ] **Breadcrumbs & Settings Graph Navigation:** Implement deep-linking router capability that highlights target controls upon navigation[cite: 1, 2].
+- [x] **In-Memory Tantivy Index (`zsettings-search`):** Build schema-driven search index for settings options, sub-menus, keywords, and aliases[cite: 1, 2].
+- [x] **Sub-5ms Fuzzy Search:** Combine Tantivy with `strsim` Levenshtein distance for typo-tolerant query results over IPC[cite: 1, 2].
+- [x] **Spotlight Modal Component:** Build Apple-inspired centered glass search overlay triggered by global shortcut (`Super+I` / `Ctrl+Space`)[cite: 1, 2].
+- [x] **Breadcrumbs & Settings Graph Navigation:** Implement deep-linking router capability that highlights target controls upon navigation[cite: 1, 2].
 
 **Gate Commit:** `git commit -m "phase(6): build frontend shell, deep search engine, and navigation graph"`[cite: 1]
 

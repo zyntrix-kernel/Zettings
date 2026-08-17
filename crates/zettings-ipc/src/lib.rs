@@ -24,6 +24,11 @@ use zettings_audio::AudioError;
 use zettings_display::DisplayError;
 use zettings_network::{AccessPoint, NetworkError};
 use zettings_power::{PowerError, Profile};
+// Search types are always available (the Tantivy in-memory index builds on
+// every Tauri target — no `zbus` dependency). The DTO shapes come from the
+// domain crate directly so the frontend `@zettings/bindings` barrel imports
+// the same `search_settings_entry` / `search_hit` files regenerated here.
+use zettings_search::{SearchError, SearchHit, SettingsEntry};
 // Backend trait impls are gated by the zettings-mock feature on the Windows
 // dev loop (mock state machines) and by `target_os = "linux"` on real targets.
 #[cfg(feature = "zettings-mock")]
@@ -139,6 +144,20 @@ impl From<PowerError> for IpcError {
                 Self::InvalidPayload(format!("power profile not available: {p:?}"))
             }
             PowerError::ServiceUnavailable(msg) => Self::ServiceUnavailable(msg),
+        }
+    }
+}
+
+impl From<SearchError> for IpcError {
+    fn from(e: SearchError) -> Self {
+        match e {
+            SearchError::Query(msg) => {
+                Self::InvalidPayload(format!("search query parse error: {msg}"))
+            }
+            // The Tantivy RAMDirectory cannot actually fail to open, but we
+            // surface any underlying error as a generic service-unavailable so
+            // the frontend has a deterministic error variant to render.
+            SearchError::Open(msg) => Self::ServiceUnavailable(msg),
         }
     }
 }
@@ -283,6 +302,43 @@ pub struct PowerSetProfileRequest {
 pub struct PowerSetProfileResult {
     /// Whether the profile was successfully applied.
     pub applied: bool,
+}
+
+/// Request payload for batch-registering settings entries with the search
+/// index. Each module emits one of these on mount so its settings surface in
+/// the global Spotlight modal.
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "search_register_entries_request.ts")]
+pub struct SearchRegisterEntriesRequest {
+    /// Entries to upsert. Idempotent on `SettingsEntry::id` so re-registration
+    /// by hot-reloading modules never duplicates documents.
+    pub entries: Vec<SettingsEntry>,
+}
+
+/// Response payload for a batch registration.
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "search_register_entries_result.ts")]
+pub struct SearchRegisterEntriesResult {
+    /// Number of entries actually written to the index.
+    pub registered: usize,
+}
+
+/// Request payload for a Spotlight search query.
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "search_query_request.ts")]
+pub struct SearchQueryRequest {
+    /// Free-form user query. Tantivy tokenizes and fuzzy-matches.
+    pub query: String,
+}
+
+/// Process-wide [`zettings_search::Index`] instance. Constructed lazily on
+/// first access from any Tauri command surface (register or query). We use
+/// `once_cell::sync::OnceCell` rather than `Lazy` so initialization stays
+/// explicit and the lockguard lives in `std`.
+fn search_index() -> &'static zettings_search::Index {
+    static INDEX: once_cell::sync::OnceCell<zettings_search::Index> =
+        once_cell::sync::OnceCell::new();
+    INDEX.get_or_init(zettings_search::Index::new)
 }
 
 /// Sets the system hostname after verifying `PolicyKit` authorization.
@@ -601,6 +657,58 @@ fn power_set_profile_with_authorizer(
     ))
 }
 
+/// Batch-registers settings entries in the global Spotlight search index.
+/// Modules call this once on mount.
+///
+/// Unlike the `zbus`-backed command surfaces, the Tantivy in-memory index is
+/// purely in-process — it touches no system resources (no `DBus`, no `PipeWire`,
+/// no `UPower`), so no `PolicyKit` authorization is required. The search IPC
+/// commands are therefore feature-flag-free and behave identically on the
+/// Windows dev loop and on the real WSL2/Linux target.
+///
+/// # Errors
+/// - [`IpcError::ServiceUnavailable`] when the underlying Tantivy writer fails
+///   (theoretically impossible for a `RAMDirectory` but surfaced for safety).
+#[allow(clippy::needless_pass_by_value)]
+pub fn search_register_entries(
+    request: SearchRegisterEntriesRequest,
+) -> Result<SearchRegisterEntriesResult, IpcError> {
+    search_register_entries_impl(&request)
+}
+
+fn search_register_entries_impl(
+    request: &SearchRegisterEntriesRequest,
+) -> Result<SearchRegisterEntriesResult, IpcError> {
+    let count = request.entries.len();
+    search_index()
+        .insert_many(&request.entries)
+        .map_err(IpcError::from)?;
+    Ok(SearchRegisterEntriesResult { registered: count })
+}
+
+/// Queries the Spotlight search index.
+///
+/// Returns up to 20 ranked [`SearchHit`] entries. The frontend Spotlight modal
+/// also stages client-side fuzzy results while the IPC round-trip is in flight
+/// to keep the <5ms perceived latency budget (see `apps/zettings/web`). Like
+/// [`search_register_entries`], the query path touches no system resources and
+/// so requires no `PolicyKit` authorization.
+///
+/// # Errors
+/// - [`IpcError::InvalidPayload`] when the query cannot be parsed.
+/// - [`IpcError::ServiceUnavailable`] when the underlying Tantivy reader or
+///   document fetch fails.
+#[allow(clippy::needless_pass_by_value)]
+pub fn search_query(request: SearchQueryRequest) -> Result<Vec<SearchHit>, IpcError> {
+    search_query_impl(&request)
+}
+
+fn search_query_impl(request: &SearchQueryRequest) -> Result<Vec<SearchHit>, IpcError> {
+    search_index()
+        .search(&request.query)
+        .map_err(IpcError::from)
+}
+
 #[cfg(test)]
 mod tests {
     //! Cross-target correctness checks for the IPC command surface.
@@ -712,6 +820,82 @@ mod tests {
         .expect("mock power set");
         assert!(result.applied);
     }
+
+    #[test]
+    fn search_register_then_query_roundtrips() {
+        // The global Index is shared across all tests (and across the Tauri
+        // app's lifetime), so we register an entry with a unique id + label
+        // and query a unique keyword that only this test inserts. That keeps
+        // the assertion robust to test execution order. Note: Tantivy's
+        // default tokenizer splits on hyphens, so we use an underscore-free
+        // camelPascal keyword to avoid spurious token boundary effects.
+        let entry = SettingsEntry {
+            id: "org.zyntrix.zettings.display:phasesixroundtrip".into(),
+            module_id: "org.zyntrix.zettings.display".into(),
+            label: "PhaseSix Roundtrip".into(),
+            category: "Display".into(),
+            route: "/display/phase-six-roundtrip".into(),
+            keywords: vec!["phasesixroundtrip".into()],
+        };
+        let reg = search_register_entries(SearchRegisterEntriesRequest {
+            entries: vec![entry.clone()],
+        })
+        .expect("mock search register");
+        assert_eq!(reg.registered, 1);
+        let hits = search_query(SearchQueryRequest {
+            query: "phasesixroundtrip".into(),
+        })
+        .expect("mock search query");
+        assert_eq!(hits.len(), 1);
+        assert_eq!(hits[0].entry.route, "/display/phase-six-roundtrip");
+    }
+
+    #[test]
+    fn search_query_tolerates_typos() {
+        // Register and query with a near-miss typo ("nite"); the fuzzy-prefix
+        // Tantivy query + strsim re-rank should still surface the entry.
+        search_register_entries(SearchRegisterEntriesRequest {
+            entries: vec![SettingsEntry {
+                id: "display:night-light".into(),
+                module_id: "display".into(),
+                label: "Night Light".into(),
+                category: "Display".into(),
+                route: "/display/night-light".into(),
+                keywords: vec!["night".into()],
+            }],
+        })
+        .expect("register");
+        let hits = search_query(SearchQueryRequest {
+            query: "nite".into(),
+        })
+        .expect("query");
+        assert_eq!(hits.len(), 1);
+    }
+
+    #[test]
+    fn search_register_is_idempotent_on_id() {
+        let entry = SettingsEntry {
+            id: "audio:volume".into(),
+            module_id: "audio".into(),
+            label: "Master Volume".into(),
+            category: "Audio".into(),
+            route: "/audio/volume".into(),
+            keywords: vec!["loudness".into()],
+        };
+        search_register_entries(SearchRegisterEntriesRequest {
+            entries: vec![entry.clone()],
+        })
+        .expect("first register");
+        search_register_entries(SearchRegisterEntriesRequest {
+            entries: vec![entry],
+        })
+        .expect("second register");
+        let hits = search_query(SearchQueryRequest {
+            query: "volume".into(),
+        })
+        .expect("query");
+        assert_eq!(hits.len(), 1, "re-registering must not duplicate entries");
+    }
 }
 
 #[cfg(test)]
@@ -773,5 +957,15 @@ mod bindings_export {
         PowerProfileDto::export_all(&cfg).expect("export PowerProfileDto bindings");
         PowerSetProfileRequest::export_all(&cfg).expect("export PowerSetProfileRequest bindings");
         PowerSetProfileResult::export_all(&cfg).expect("export PowerSetProfileResult bindings");
+        SearchRegisterEntriesRequest::export_all(&cfg)
+            .expect("export SearchRegisterEntriesRequest bindings");
+        SearchRegisterEntriesResult::export_all(&cfg)
+            .expect("export SearchRegisterEntriesResult bindings");
+        SearchQueryRequest::export_all(&cfg).expect("export SearchQueryRequest bindings");
+        // The SearchHit / SettingsEntry derives live in the `zettings-search`
+        // crate; export them from there via the search crate's own test mod so
+        // they land in this same `generated/` directory.
+        SettingsEntry::export_all(&cfg).expect("export SettingsEntry bindings");
+        SearchHit::export_all(&cfg).expect("export SearchHit bindings");
     }
 }

@@ -19,3 +19,8 @@ export type { NetworkScanWifiResult } from "./generated/network_scan_wifi_result
 export type { PowerProfileDto } from "./generated/power_profile";
 export type { PowerSetProfileRequest } from "./generated/power_set_profile_request";
 export type { PowerSetProfileResult } from "./generated/power_set_profile_result";
+export type { SettingsEntry } from "./generated/search_settings_entry";
+export type { SearchHit } from "./generated/search_hit";
+export type { SearchRegisterEntriesRequest } from "./generated/search_register_entries_request";
+export type { SearchRegisterEntriesResult } from "./generated/search_register_entries_result";
+export type { SearchQueryRequest } from "./generated/search_query_request";

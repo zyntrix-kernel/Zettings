@@ -41,6 +41,7 @@ src-tauri/.cargo/
 # ts-rs generated bindings are committed only when deterministic and used in CI.
 # Ignored here per module-local convention; central bindings ARE committed.
 apps/*/src-tauri/bindings/
+crates/*/bindings/
 !packages/ts-bindings/
 
 # -----------------------------

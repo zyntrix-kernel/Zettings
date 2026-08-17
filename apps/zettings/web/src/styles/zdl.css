@@ -389,3 +389,340 @@ body {
 .shell-titlebar .decorum-tb-btn {
   z-index: 1;
 }
+
+/* ============================================================================
+   Spotlight modal (DESIGN.md §1 G3 continuity, §2 elevation 4).
+   Centered glass search overlay triggered by global shortcut Super+I /
+   Ctrl+Space. Visual material comes from GlassPanel (order=6, elevation=4).
+   No `border-radius` here — the G3 squircle clip-path is the only rounding
+   mechanism per AGENTS.md CSS rule. */
+.spotlight-root {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  pointer-events: none; /* let the backdrop + modal re-enable individually */
+}
+
+.spotlight-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(12, 10, 9, 0.40); /* 40% scrim — ui-ux-pro-max modal legibility */
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  pointer-events: auto;
+}
+
+.spotlight-modal-wrapper {
+  position: fixed;
+  top: 38%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: auto;
+  /* Allow the squircle clip to read as G3 even when the inner GlassPanel
+     has not finished measuring; the wrapper does not show its own bg. */
+  outline: none;
+}
+
+.spotlight-panel {
+  /* GlassPanel injects the elevation-4 shadow + glass material + G3 clip.
+     Here we only constrain heights/overflow for the dropdown list. */
+  display: flex;
+  flex-direction: column;
+  max-height: 480px;
+  overflow: hidden;
+}
+
+/* Allow the inner content padding to be tighter for the overlay chrome —
+   override GlassPanel's default --space-6 padding via inline content style
+   declared here on the inner block-level wrapper. The component does not
+   expose a `style` passthrough for the inner block so we target descendants. */
+.spotlight-panel > div {
+  padding: 0;
+}
+
+.spotlight-input-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-6);
+  border-bottom: 1px solid var(--border);
+  flex: 0 0 auto;
+}
+
+.spotlight-search-icon {
+  color: var(--text-muted);
+  flex: 0 0 auto;
+}
+
+.spotlight-input {
+  flex: 1 1 auto;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: var(--text-base);
+  line-height: var(--text-base-lh);
+  padding: var(--space-2) 0;
+}
+
+.spotlight-input::placeholder {
+  color: var(--text-muted);
+}
+
+/* Visible focus ring (ui-ux-pro-max High: Focus States — never remove outline
+   without replacement). The ring sits inside the input row rather than on the
+   input itself so it does not jitter on text entry. */
+.spotlight-input-row:focus-within {
+  box-shadow: inset 0 0 0 2px var(--ring);
+  border-radius: 0; /* never use border-radius on the panel itself */
+}
+
+.spotlight-close-btn {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  min-height: 32px; /* 32px ≥ 44pt? No — so we add hit area via padding below */
+  padding: var(--space-2);
+  margin: calc(-1 * var(--space-2));
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color var(--motion-duration-fast) var(--motion-ease-out);
+  border-radius: 50%; /* minor circular icon button — not a major panel */
+}
+
+.spotlight-close-btn:hover,
+.spotlight-close-btn:focus-visible {
+  color: var(--text);
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.spotlight-results {
+  list-style: none;
+  margin: 0;
+  padding: var(--space-2);
+  overflow-y: auto;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  scrollbar-width: thin;
+}
+
+.spotlight-result {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-4);
+  cursor: pointer;
+  border-radius: 0; /* rows inside the G3 squircle — no rounding themselves */
+  position: relative;
+  min-height: 36px;
+  transition: background var(--motion-duration-fast) var(--motion-ease-out);
+}
+
+.spotlight-result:hover,
+.spotlight-result.spotlight-result-active {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+/* Keyboard focus ring on result rows (ui-ux-pro-max High: Focus States). */
+.spotlight-result:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: -2px;
+}
+
+.spotlight-result-label {
+  color: var(--text);
+  font-size: var(--text-sm);
+  line-height: var(--text-sm-lh);
+  font-weight: 500;
+  flex: 0 1 auto;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.spotlight-result-meta {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  line-height: var(--text-xs-lh);
+  flex: 1 1 auto;
+  text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.spotlight-result-affordance {
+  color: var(--text-muted);
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+}
+
+.spotlight-status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-6);
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  line-height: var(--text-sm-lh);
+}
+
+.spotlight-status-empty {
+  align-items: flex-start;
+}
+
+.spotlight-status-title {
+  color: var(--text);
+  font-weight: 600;
+  margin: 0;
+}
+
+.spotlight-status-hint {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  line-height: var(--text-xs-lh);
+  margin: 0;
+}
+
+.spotlight-status-error {
+  color: var(--text);
+}
+
+.spotlight-hint {
+  padding: var(--space-4) var(--space-6);
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  line-height: var(--text-sm-lh);
+}
+
+/* ============================================================================
+   Reduced motion: collapse the modal spring to an opacity cross-fade.
+   The motion engine respects prefers-reduced-motion natively (the spring
+   snaps to target with zero velocity), but we add a defensive transition
+   collapse for backdrop-filter / opacity CSS transitions. */
+@media (prefers-reduced-motion: reduce) {
+  .spotlight-backdrop,
+  .spotlight-modal-wrapper,
+  .spotlight-close-btn,
+  .spotlight-result {
+    transition: none;
+  }
+}
+
+/* ============================================================================
+   Breadcrumbs — Phase 6.4 deep-link navigation trail.
+   No border-radius here: this is panel chrome (a horizontal nav strip), and
+   the design language only allows circular iconography on minor icon
+   affordances. The chevron between segments is a lucide glyph, not a pill. */
+
+.breadcrumbs {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.breadcrumb-list {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  min-width: 0;
+}
+
+.breadcrumb-item {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.breadcrumb-chevron {
+  color: var(--text-subtle);
+  flex: 0 0 auto;
+  margin: 0 var(--space-1);
+}
+
+.breadcrumb-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  line-height: var(--text-sm-lh);
+  text-decoration: none;
+  border-radius: 0;
+  transition: color var(--motion-duration-fast) var(--motion-ease-out),
+    background-color var(--motion-duration-fast) var(--motion-ease-out);
+  min-width: 0;
+}
+
+.breadcrumb-link:hover {
+  color: var(--text);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.breadcrumb-link:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+  color: var(--text);
+}
+
+.breadcrumb-root .breadcrumb-link {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.breadcrumb-root-label {
+  /* The "Overview" text is shown next to the Home glyph on pointer devices.
+     On very narrow widths it stays visible because the root affordance is the
+     highest-priority navigation target. */
+  white-space: nowrap;
+}
+
+.breadcrumb-current {
+  color: var(--text);
+  font-size: var(--text-sm);
+  line-height: var(--text-sm-lh);
+  font-weight: 600;
+}
+
+.breadcrumb-current-label {
+  padding: var(--space-1) var(--space-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ============================================================================
+   Target-highlight boundary — Phase 6.4 deep-link target-control highlight.
+   `data-target-route="/display/night-light"` lands on the wrapper; descendant
+   controls read `[data-target-active="true"]` to opt into the ring. */
+
+.target-highlight-boundary {
+  display: contents;
+}
+
+.target-highlight-boundary
+  [data-target-active="true"][data-target-route="/"] {
+  /* The active root has no per-control visual change — kept here as a hook so
+     Phase 7 can scope a glow without re-rendering each boundary. */
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .breadcrumb-link,
+  .breadcrumb-chevron {
+    transition: none;
+  }
+}

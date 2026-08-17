@@ -6553,6 +6553,7 @@ dependencies = [
 name = "zettings-ipc"
 version = "0.1.0"
 dependencies = [
+ "once_cell",
  "serde",
  "serde_json",
  "tauri",
@@ -6566,6 +6567,7 @@ dependencies = [
  "zettings-network",
  "zettings-polkit",
  "zettings-power",
+ "zettings-search",
 ]
 
 [[package]]
@@ -6636,6 +6638,7 @@ dependencies = [
  "thiserror 2.0.19",
  "tokio",
  "tracing",
+ "ts-rs",
 ]
 
 [[package]]
