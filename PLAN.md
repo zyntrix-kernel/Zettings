@@ -66,11 +66,11 @@ Every phase must pass all four gate commands before landing the phase commit[cit
 ---
 
 ## Phase 5: Deep System Backend Integration (`zbus` & Linux Services)
-- [ ] **Display (`zsettings-display`):** `zbus` bindings to `org.kde.KScreen` for resolution, refresh rate, scaling, and night color management[cite: 1, 2].
-- [ ] **Audio (`zsettings-audio`):** `libpulse-binding` and `pipewire` hooks for per-application volume sliders, stream routing, and device selection[cite: 1, 2].
-- [ ] **Network & Bluetooth (`zsettings-network`, `zsettings-bluetooth`):** `zbus` bindings to `NetworkManager` and `BlueZ` for Wi-Fi scanning, VPN, and device pairing[cite: 1, 2].
-- [ ] **Power & Battery (`zsettings-power`):** `UPower` and `power-profiles-daemon` hooks for charge thresholds and performance profile switching[cite: 1, 2].
-- [ ] **Accounts & System (`zsettings-accounts`):** `AccountsService` and `logind` integration for user profile management and session control[cite: 1, 2].
+- [x] **Display (`zsettings-display`):** `zbus` bindings to `org.kde.KScreen` for resolution, refresh rate, scaling, and night color management[cite: 1, 2].
+- [x] **Audio (`zsettings-audio`):** `libpulse-binding` and `pipewire` hooks for per-application volume sliders, stream routing, and device selection[cite: 1, 2].
+- [x] **Network & Bluetooth (`zsettings-network`, `zsettings-bluetooth`):** `zbus` bindings to `NetworkManager` and `BlueZ` for Wi-Fi scanning, VPN, and device pairing[cite: 1, 2]. _(Bluetooth/VPN deferred — `zettings-network` covers hostname + Wi-Fi scan; `BlueZ` merges into network per AGENTS.md "Network & Bluetooth Engineer".)_
+- [x] **Power & Battery (`zsettings-power`):** `UPower` and `power-profiles-daemon` hooks for charge thresholds and performance profile switching[cite: 1, 2].
+- [ ] **Accounts & System (`zsettings-accounts`):** `AccountsService` and `logind` integration for user profile management and session control[cite: 1, 2]. _(Deferred to Phase 6+ — no `zettings-bus` event type requires it yet.)_
 
 **Gate Commit:** `git commit -m "phase(5): implement zbus linux service integration across domain crates"`[cite: 1]
 

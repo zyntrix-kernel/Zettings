@@ -20,15 +20,25 @@ default = []
 # absolute workspace path from `CARGO_MANIFEST_DIR` — no env vars needed.
 export-bindings = []
 # Mock backend for the Windows frontend dev loop. Forwards to the mock
-# authorizer in `zettings-polkit` and the mock state machine in `zettings-core`.
+# authorizer in `zettings-polkit` and the mock state machines in each domain
+# crate.
 zettings-mock = [
     "zettings-polkit/zettings-mock",
     "zettings-core/zettings-mock",
+    "zettings-display/zettings-mock",
+    "zettings-audio/zettings-mock",
+    "zettings-network/zettings-mock",
+    "zettings-power/zettings-mock",
 ]
 
 [dependencies]
 zettings-core = { workspace = true }
 zettings-polkit = { workspace = true }
+zettings-bus = { workspace = true }
+zettings-display = { workspace = true }
+zettings-audio = { workspace = true }
+zettings-network = { workspace = true }
+zettings-power = { workspace = true }
 tauri = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

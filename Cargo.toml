@@ -2,12 +2,16 @@
 resolver = "2"
 members = [
     "apps/zettings",
+    "crates/zettings-audio",
     "crates/zettings-bus",
     "crates/zettings-core",
+    "crates/zettings-display",
     "crates/zettings-ipc",
+    "crates/zettings-network",
     "crates/zettings-palette",
     "crates/zettings-plugin-sdk",
     "crates/zettings-polkit",
+    "crates/zettings-power",
     "crates/zettings-search",
 ]
 default-members = ["apps/zettings"]
@@ -84,7 +88,7 @@ time = { version = "0.3", features = ["serde", "formatting", "parsing"] }
 zbus = { version = "5.18", default-features = false, features = ["tokio"] }
 pipewire = "0.10"
 libpulse-binding = "2.30"
-libpulse-tokio = "2.30"
+libpulse-tokio = "0.1"
 
 # Search index
 tantivy = "0.26"
@@ -130,6 +134,10 @@ zettings-polkit = { path = "crates/zettings-polkit" }
 zettings-plugin-sdk = { path = "crates/zettings-plugin-sdk" }
 zettings-palette = { path = "crates/zettings-palette" }
 zettings-search = { path = "crates/zettings-search" }
+zettings-display = { path = "crates/zettings-display" }
+zettings-audio = { path = "crates/zettings-audio" }
+zettings-network = { path = "crates/zettings-network" }
+zettings-power = { path = "crates/zettings-power" }
 
 # ---------------------------------------------------------------------------
 # Profile tuning — small release binary, fast dev cycle.
