@@ -7,6 +7,8 @@
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
 
+pub mod events;
+
 use parking_lot::RwLock;
 use std::any::TypeId;
 use std::collections::HashMap;

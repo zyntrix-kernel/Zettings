@@ -92,6 +92,62 @@ impl Authorizer for LinuxAuthorizer {
     }
 }
 
+/// Recorded decision emitted by [`check_authorization_gateway`] for auditing
+/// and live UI streaming over [`zettings_bus::Bus`].
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct PolkitDecision {
+    /// Action id that was checked.
+    pub action: String,
+    /// Outcome of the check.
+    pub authorization: Authorization,
+    /// Epoch-microsecond timestamp for audit logs.
+    pub timestamp_us: i64,
+}
+
+/// Phase 4 authorization gateway. This is the single entry point the IPC
+/// layer calls before performing a privileged operation. It:
+/// 1. validates the action id is well-formed under the Zettings namespace,
+/// 2. delegates to the supplied [`Authorizer`] (which MAY block while the
+///    polkit agent shows a dialog),
+/// 3. emits a [`PolkitDecision`] over `bus` so audit/UI subscribers can
+///    observe every privileged operation in real time,
+/// 4. returns the structured [`Authorization`] outcome.
+///
+/// # Errors
+/// - [`PolkitError::UnknownAction`] when the action id does not start with
+///   the `org.zyntrix.zettings.` namespace.
+/// - Other errors from the underlying [`Authorizer`].
+pub fn check_authorization_gateway(
+    authorizer: &impl Authorizer,
+    bus: &zettings_bus::Bus,
+    action: &ActionId,
+) -> Result<Authorization, PolkitError> {
+    if !action.0.starts_with("org.zyntrix.zettings.") {
+        return Err(PolkitError::UnknownAction(action.0.clone()));
+    }
+    // The underlying authorizer MAY block on the polkit agent dialog.
+    // Phase 4 keeps the call inline; Phase 5 will route it through a
+    // dedicated blocking IPC pool via `tokio::task::spawn_blocking` once the
+    // Linux zbus authorizer lands its blocking DBus dispatch.
+    let outcome = authorizer.check_authorization(action)?;
+    let decision = PolkitDecision {
+        action: action.0.clone(),
+        authorization: outcome,
+        timestamp_us: chrono_us_now(),
+    };
+    let _ = bus.publish(decision);
+    Ok(outcome)
+}
+
+/// Cheap monotonically-ish epoch microseconds, computed without pulling the
+/// full `chrono` dependency into this crate. Uses `std::time::SystemTime`.
+fn chrono_us_now() -> i64 {
+    match std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH) {
+        Ok(d) => i64::try_from(d.as_micros()).unwrap_or(i64::MAX),
+        Err(_) => 0,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -13,8 +13,12 @@
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
 
+pub mod discovery;
 pub mod manifest;
 pub mod registry;
+pub mod signature;
 
+pub use discovery::{DiscoveredModule, DiscoveryError};
 pub use manifest::ModuleManifest;
 pub use registry::{Registry, RegistryError};
+pub use signature::{PublicKey, SignatureError};

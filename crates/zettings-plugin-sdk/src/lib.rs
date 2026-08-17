@@ -67,3 +67,102 @@ mod semver_hack {
 }
 
 pub use semver_hack::Version;
+
+/// Capability access-control list. A snapshot of the capabilities a module
+/// was granted at load time; the IPC boundary consults it before forwarding
+/// a request to the backend.
+///
+/// Constructed from a module manifest's declared `capabilities` field. The
+/// list is immutable for the lifetime of the module mount — capability
+/// amplification at runtime is forbidden by design.
+#[derive(Debug, Clone, Default)]
+pub struct Acl {
+    granted: std::collections::HashSet<Capability>,
+}
+
+impl Acl {
+    /// Construct an `Acl` granting exactly the listed capabilities.
+    #[must_use]
+    pub fn from_granted<I>(capabilities: I) -> Self
+    where
+        I: IntoIterator<Item = Capability>,
+    {
+        Self {
+            granted: capabilities.into_iter().collect(),
+        }
+    }
+
+    /// Construct an empty `Acl` (no capabilities granted — sandboxed module).
+    #[must_use]
+    pub fn empty() -> Self {
+        Self::default()
+    }
+
+    /// Returns `Ok(())` if `capability` was granted, otherwise an
+    /// [`SdkError::MissingCapability`] describing the denial.
+    ///
+    /// This is the single enforcement point every IPC handler must call before
+    /// touching a privileged backend service.
+    ///
+    /// # Errors
+    /// - [`SdkError::MissingCapability`] when the capability is not present.
+    pub fn enforce(&self, capability: Capability) -> Result<(), SdkError> {
+        if self.granted.contains(&capability) {
+            Ok(())
+        } else {
+            Err(SdkError::MissingCapability(capability))
+        }
+    }
+
+    /// Returns `true` when `capability` was granted. Read-only check; use
+    /// [`Acl::enforce`] at the IPC boundary so the denial is structured.
+    #[must_use]
+    pub fn has(&self, capability: Capability) -> bool {
+        self.granted.contains(&capability)
+    }
+
+    /// Iterator over the granted capabilities, in unspecified order.
+    pub fn iter(&self) -> impl Iterator<Item = Capability> + '_ {
+        self.granted.iter().copied()
+    }
+
+    /// Number of capabilities granted.
+    #[must_use]
+    pub fn len(&self) -> usize {
+        self.granted.len()
+    }
+
+    /// `true` when zero capabilities are granted.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.granted.is_empty()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn empty_acl_denies_everything() {
+        let acl = Acl::empty();
+        assert!(acl.is_empty());
+        let err = acl.enforce(Capability::ReadSystemConfig).unwrap_err();
+        assert!(matches!(
+            err,
+            SdkError::MissingCapability(Capability::ReadSystemConfig)
+        ));
+    }
+
+    #[test]
+    fn granted_capability_enforces_ok() {
+        let acl = Acl::from_granted([Capability::ReadSystemConfig, Capability::OpenDeepLink]);
+        assert_eq!(acl.len(), 2);
+        assert!(acl.has(Capability::ReadSystemConfig));
+        assert!(acl.has(Capability::OpenDeepLink));
+        assert!(!acl.has(Capability::WriteSystemConfig));
+        acl.enforce(Capability::ReadSystemConfig).expect("granted");
+        acl.enforce(Capability::OpenDeepLink).expect("granted");
+        assert!(acl.enforce(Capability::WriteSystemConfig).is_err());
+    }
+}

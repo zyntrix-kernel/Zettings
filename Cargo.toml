@@ -120,6 +120,7 @@ tauri-plugin-log = "2.0"
 proptest = "1.5"
 insta = { version = "1.40", features = ["json"] }
 loom = "0.7"
+tempfile = "3"
 
 # Internal workspace crates — referenced by path; version synced via [workspace.package].
 zettings-core = { path = "crates/zettings-core" }

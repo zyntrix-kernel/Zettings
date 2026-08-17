@@ -55,11 +55,11 @@ Every phase must pass all four gate commands before landing the phase commit[cit
 
 ---
 
-## Phase 4: Core Framework, Plugin SDK & Tokio Message Bus
-- [ ] **`zsettings-bus` Event Router:** Build async tokio broadcast channel for live system event streaming (e.g., link state, audio volume, display re-plug)[cite: 1, 2].
-- [ ] **`zsettings-core` Plugin Registry:** Implement dynamic plugin discovery, `ring` ed25519 signature verification, and manifest parsing[cite: 1, 2].
-- [ ] **`zsettings-plugin-sdk` Capability ACLs:** Enforce capability boundaries on external settings modules[cite: 1, 2].
-- [ ] **`zsettings-polkit` Auth Gateway:** Implement PolicyKit privilege check pipeline returning structured Authorization/Challenge/Denied responses[cite: 1, 2].
+## Phase 4: Core Framework, Plugin SDK & Tokio Message Bus `(COMPLETED)`
+- [x] **`zsettings-bus` Event Router:** Build async tokio broadcast channel for live system event streaming (e.g., link state, audio volume, display re-plug)[cite: 1, 2].
+- [x] **`zsettings-core` Plugin Registry:** Implement dynamic plugin discovery, `ring` ed25519 signature verification, and manifest parsing[cite: 1, 2].
+- [x] **`zsettings-plugin-sdk` Capability ACLs:** Enforce capability boundaries on external settings modules[cite: 1, 2].
+- [x] **`zsettings-polkit` Auth Gateway:** Implement PolicyKit privilege check pipeline returning structured Authorization/Challenge/Denied responses[cite: 1, 2].
 
 **Gate Commit:** `git commit -m "phase(4): build tokio message bus, plugin loader, and polkit authorization gateway"`[cite: 1]
 
