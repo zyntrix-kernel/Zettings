@@ -331,6 +331,184 @@ pub struct SearchQueryRequest {
     pub query: String,
 }
 
+// ===========================================================================
+// Phase 7 read-side DTOs — exposed so the domain panels can render live state
+// without bundling syscall-bound writes behind every render. Each panel reads
+// its data set on mount via `@tanstack/react-query` and refreshes on focus /
+// visibility change. The `zettings-mock` feature gates the backends that back
+// these reads on the Windows dev loop; the real `zbus`/`PipeWire`/`BlueZ`
+// paths land in Phase 5+ and surface `IpcError::ServiceUnavailable` until then.
+// ===========================================================================
+
+/// Display output descriptor returned by `display_list_outputs`. One entry
+/// per connected `KScreen` output plus the modes that output advertises.
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "display_output.ts")]
+pub struct DisplayOutputDto {
+    /// `KScreen` output id, e.g. `HDMI-A-1`.
+    pub output_id: String,
+    /// Modes advertised by this output (resolution + refresh).
+    pub modes: Vec<DisplayModeDto>,
+}
+
+/// Response payload for `display_list_outputs`.
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "display_list_outputs_result.ts")]
+pub struct DisplayListOutputsResult {
+    /// Connected outputs, in stable `KScreen` order.
+    pub outputs: Vec<DisplayOutputDto>,
+}
+
+/// Audio stream descriptor for the mixer panel. Combines identity, label,
+/// and live volume state so the panel renders one IPC round-trip.
+///
+/// `label_id` is a stable discriminator the frontend translates into a
+/// localized display string (kept Rust-side so the schema is explicit and
+/// unit-testable without bundling localizations here).
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, TS)]
+#[ts(export, export_to = "audio_stream.ts")]
+pub struct AudioStreamDto {
+    /// Application or sink id matching the audio backend registry.
+    pub stream_id: u32,
+    /// Stable label discriminator (0 = Master, 1 = Aurora, 2 = Voice Call).
+    pub label_id: u8,
+    /// Normalized volume in `[0.0, 1.0]`.
+    pub volume: f32,
+    /// `true` when the stream is muted.
+    pub muted: bool,
+}
+
+/// Response payload for `audio_list_streams`.
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "audio_list_streams_result.ts")]
+pub struct AudioListStreamsResult {
+    /// Active streams, sorted by `stream_id`.
+    pub streams: Vec<AudioStreamDto>,
+}
+
+/// Paired `BlueZ` device descriptor returned by `bluetooth_list_paired`.
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "paired_device.ts")]
+pub struct PairedDeviceDto {
+    /// `BlueZ` device address (object-path-leaf identifier).
+    pub address: String,
+    /// Human-readable device name.
+    pub name: String,
+    /// `true` when the device is currently connected (not just paired).
+    pub connected: bool,
+    /// Battery charge in `[0, 100]`. `None` when the device does not advertise
+    /// a Battery1 interface — the UI then hides the battery glyph rather than
+    /// showing a 0% "empty" affordance (ui-ux-pro-max Accessibility: never
+    /// imply low battery purely by an absent number).
+    pub battery_percent: Option<u8>,
+    /// Major device class (`Audio`, `Peripheral`, `Phone`, ...).
+    pub device_class: String,
+}
+
+impl From<zettings_network::PairedDevice> for PairedDeviceDto {
+    fn from(d: zettings_network::PairedDevice) -> Self {
+        Self {
+            address: d.address,
+            name: d.name,
+            connected: d.connected,
+            battery_percent: d.battery_percent,
+            device_class: d.device_class,
+        }
+    }
+}
+
+/// Response payload for `bluetooth_list_paired`.
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "bluetooth_list_paired_result.ts")]
+pub struct BluetoothListPairedResult {
+    /// Paired devices, in stable `BlueZ` enumeration order.
+    pub devices: Vec<PairedDeviceDto>,
+}
+
+/// Response payload for `power_active_profile`. The current power profile
+/// is a small discriminator; we wrap it in a result struct so frontend IPC
+/// callers can switch on a stable response shape rather than the bare enum.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "power_active_profile_result.ts")]
+pub struct PowerActiveProfileResult {
+    /// The currently-active `power-profiles-daemon` profile.
+    pub profile: PowerProfileDto,
+}
+
+/// Battery state descriptor mirroring [`zettings_power::BatteryState`].
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, TS)]
+#[ts(export, export_to = "battery_state.ts")]
+pub struct BatteryStateDto {
+    /// `UPower` device object-path index.
+    pub device_index: u32,
+    /// Charge percentage in `[0.0, 100.0]`.
+    pub percentage: f32,
+    /// `true` when the device is charging.
+    pub charging: bool,
+}
+
+impl From<zettings_power::BatteryState> for BatteryStateDto {
+    fn from(b: zettings_power::BatteryState) -> Self {
+        Self {
+            device_index: b.device_index,
+            percentage: b.percentage,
+            charging: b.charging,
+        }
+    }
+}
+
+/// Response payload for `power_batteries`.
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "power_batteries_result.ts")]
+pub struct PowerBatteriesResult {
+    /// `UPower` battery devices, ordered by `device_index`.
+    pub batteries: Vec<BatteryStateDto>,
+}
+
+/// Accent palette DTO mirroring [`zettings_palette::AccentPalette`] for the
+/// personalization panel's wallpaper-accent picker. Each component is `[f32; 3]`
+/// in `[0, 1]` so the frontend can drop the values directly into a CSS
+/// `rgb()` expression without further conversion.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, TS)]
+#[ts(export, export_to = "accent_palette.ts")]
+pub struct AccentPaletteDto {
+    /// Primary accent (`--accent`).
+    pub accent: [f32; 3],
+    /// High-contrast text/glyph color placed on `accent` (`--accent-on`).
+    pub on_accent: [f32; 3],
+    /// Secondary muted accent (`--accent-secondary`).
+    pub secondary: [f32; 3],
+}
+
+impl From<zettings_palette::AccentPalette> for AccentPaletteDto {
+    fn from(p: zettings_palette::AccentPalette) -> Self {
+        Self {
+            accent: p.accent.0,
+            on_accent: p.on_accent.0,
+            secondary: p.secondary.0,
+        }
+    }
+}
+
+/// Request payload for the palette accent-extraction command. The webview
+/// passes the wallpaper image bytes (PNG/JPEG/WebP); the backend decodes and
+/// quantizes them via `zettings-palette::extract`.
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "palette_extract_request.ts")]
+pub struct PaletteExtractRequest {
+    /// Raw image bytes (e.g. PNG, JPEG, WebP) from the webview file picker.
+    pub bytes: Vec<u8>,
+}
+
+/// Response payload for `palette_extract`.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "palette_extract_result.ts")]
+pub struct PaletteExtractResult {
+    /// The extracted accent palette, ready to drop into CSS `--accent-*`
+    /// custom properties.
+    pub palette: AccentPaletteDto,
+}
+
 /// Process-wide [`zettings_search::Index`] instance. Constructed lazily on
 /// first access from any Tauri command surface (register or query). We use
 /// `once_cell::sync::OnceCell` rather than `Lazy` so initialization stays
@@ -709,6 +887,236 @@ fn search_query_impl(request: &SearchQueryRequest) -> Result<Vec<SearchHit>, Ipc
         .map_err(IpcError::from)
 }
 
+// ===========================================================================
+// Phase 7 read-side surface — used by the domain feature panel modules on
+// mount. The mock backend (zettings-mock feature) returns deterministic state
+// so the panel render paths and react-query caches can be exercised on the
+// Windows dev loop. The real `zbus`/`PipeWire`/`BlueZ`/`UPower` paths land in
+// Phase 5+ and surface `IpcError::ServiceUnavailable` until then.
+// ===========================================================================
+
+/// Lists connected display outputs and their advertised modes.
+///
+/// Action ID: `org.zyntrix.zettings.display.list-outputs`. No `PolicyKit`
+/// authorization — read-only introspection of `KScreen` state (the
+/// apply-mode mutation is the privileged operation; reads are unprivileged
+/// so the panel can populate on mount without a polkit dialog).
+///
+/// # Errors
+/// - [`IpcError::ServiceUnavailable`] on the non-mock target until Phase 5+
+///   wires the real `zbus` integration.
+pub fn display_list_outputs() -> Result<DisplayListOutputsResult, IpcError> {
+    display_list_outputs_impl()
+}
+
+fn display_list_outputs_impl() -> Result<DisplayListOutputsResult, IpcError> {
+    let action = ActionId::zettings("display", "list-outputs");
+    display_list_outputs_with_authorizer(&action)
+}
+
+#[cfg(feature = "zettings-mock")]
+fn display_list_outputs_with_authorizer(
+    _action: &ActionId,
+) -> Result<DisplayListOutputsResult, IpcError> {
+    let backend = zettings_display::MockBackend::new();
+    let outputs = backend.list_outputs().map_err(IpcError::from)?;
+    let dtos = outputs
+        .into_iter()
+        .map(|(id, modes)| DisplayOutputDto {
+            output_id: id.0,
+            modes: modes
+                .into_iter()
+                .map(|m| DisplayModeDto {
+                    width: m.width,
+                    height: m.height,
+                    refresh_hz: m.refresh_hz,
+                })
+                .collect(),
+        })
+        .collect();
+    Ok(DisplayListOutputsResult { outputs: dtos })
+}
+
+#[cfg(not(feature = "zettings-mock"))]
+fn display_list_outputs_with_authorizer(
+    _action: &ActionId,
+) -> Result<DisplayListOutputsResult, IpcError> {
+    Err(IpcError::ServiceUnavailable(
+        "Real KScreen DBus integration lands in Phase 5".into(),
+    ))
+}
+
+/// Lists active audio streams with live volume state for the mixer panel.
+///
+/// Action ID: `org.zyntrix.zettings.audio.list-streams`. Read-only; no
+/// `PolicyKit` authorization (the set-volume mutation is privileged).
+///
+/// # Errors
+/// - [`IpcError::ServiceUnavailable`] on the non-mock target until Phase 5+.
+pub fn audio_list_streams() -> Result<AudioListStreamsResult, IpcError> {
+    audio_list_streams_impl()
+}
+
+fn audio_list_streams_impl() -> Result<AudioListStreamsResult, IpcError> {
+    let action = ActionId::zettings("audio", "list-streams");
+    audio_list_streams_with_authorizer(&action)
+}
+
+#[cfg(feature = "zettings-mock")]
+fn audio_list_streams_with_authorizer(
+    _action: &ActionId,
+) -> Result<AudioListStreamsResult, IpcError> {
+    let backend = zettings_audio::MockBackend::new();
+    let streams = backend.list_streams_detailed().map_err(IpcError::from)?;
+    let dtos = streams
+        .into_iter()
+        .map(|s| AudioStreamDto {
+            stream_id: s.stream_id,
+            label_id: s.label_id,
+            volume: s.volume,
+            muted: s.muted,
+        })
+        .collect();
+    Ok(AudioListStreamsResult { streams: dtos })
+}
+
+#[cfg(not(feature = "zettings-mock"))]
+fn audio_list_streams_with_authorizer(
+    _action: &ActionId,
+) -> Result<AudioListStreamsResult, IpcError> {
+    Err(IpcError::ServiceUnavailable(
+        "Real PipeWire/PulseAudio DBus integration lands in Phase 5".into(),
+    ))
+}
+
+/// Lists paired (and optionally connected) `BlueZ` peripherals.
+///
+/// Action ID: `org.zyntrix.zettings.bluetooth.list-paired`. Read-only, no
+/// `PolicyKit` authorization.
+///
+/// # Errors
+/// - [`IpcError::ServiceUnavailable`] on the non-mock target until Phase 5+.
+pub fn bluetooth_list_paired() -> Result<BluetoothListPairedResult, IpcError> {
+    bluetooth_list_paired_impl()
+}
+
+fn bluetooth_list_paired_impl() -> Result<BluetoothListPairedResult, IpcError> {
+    let action = ActionId::zettings("bluetooth", "list-paired");
+    bluetooth_list_paired_with_authorizer(&action)
+}
+
+#[cfg(feature = "zettings-mock")]
+fn bluetooth_list_paired_with_authorizer(
+    _action: &ActionId,
+) -> Result<BluetoothListPairedResult, IpcError> {
+    let backend = zettings_network::MockBackend::new();
+    let devices = backend.list_paired_devices().map_err(IpcError::from)?;
+    let dtos = devices.into_iter().map(PairedDeviceDto::from).collect();
+    Ok(BluetoothListPairedResult { devices: dtos })
+}
+
+#[cfg(not(feature = "zettings-mock"))]
+fn bluetooth_list_paired_with_authorizer(
+    _action: &ActionId,
+) -> Result<BluetoothListPairedResult, IpcError> {
+    Err(IpcError::ServiceUnavailable(
+        "Real BlueZ DBus integration lands in Phase 5".into(),
+    ))
+}
+
+/// Reads the currently-active power profile.
+///
+/// Action ID: `org.zyntrix.zettings.power.active-profile`. Read-only, no
+/// `PolicyKit` authorization (the set-profile mutation is privileged).
+///
+/// # Errors
+/// - [`IpcError::ServiceUnavailable`] on the non-mock target until Phase 5+.
+pub fn power_active_profile() -> Result<PowerActiveProfileResult, IpcError> {
+    power_active_profile_impl()
+}
+
+fn power_active_profile_impl() -> Result<PowerActiveProfileResult, IpcError> {
+    let action = ActionId::zettings("power", "active-profile");
+    power_active_profile_with_authorizer(&action)
+}
+
+#[cfg(feature = "zettings-mock")]
+fn power_active_profile_with_authorizer(
+    _action: &ActionId,
+) -> Result<PowerActiveProfileResult, IpcError> {
+    let backend = zettings_power::MockBackend::new();
+    let profile = backend.active_profile().map_err(IpcError::from)?;
+    Ok(PowerActiveProfileResult {
+        profile: match profile {
+            Profile::Balanced => PowerProfileDto::Balanced,
+            Profile::Performance => PowerProfileDto::Performance,
+            Profile::PowerSaver => PowerProfileDto::PowerSaver,
+        },
+    })
+}
+
+#[cfg(not(feature = "zettings-mock"))]
+fn power_active_profile_with_authorizer(
+    _action: &ActionId,
+) -> Result<PowerActiveProfileResult, IpcError> {
+    Err(IpcError::ServiceUnavailable(
+        "Real UPower/power-profiles-daemon DBus integration lands in Phase 5".into(),
+    ))
+}
+
+/// Reads battery state for all `UPower` devices.
+///
+/// Action ID: `org.zyntrix.zettings.power.batteries`. Read-only, no
+/// `PolicyKit` authorization.
+///
+/// # Errors
+/// - [`IpcError::ServiceUnavailable`] on the non-mock target until Phase 5+.
+pub fn power_batteries() -> Result<PowerBatteriesResult, IpcError> {
+    power_batteries_impl()
+}
+
+fn power_batteries_impl() -> Result<PowerBatteriesResult, IpcError> {
+    let action = ActionId::zettings("power", "batteries");
+    power_batteries_with_authorizer(&action)
+}
+
+#[cfg(feature = "zettings-mock")]
+fn power_batteries_with_authorizer(_action: &ActionId) -> Result<PowerBatteriesResult, IpcError> {
+    let backend = zettings_power::MockBackend::new();
+    let batteries = backend.batteries().map_err(IpcError::from)?;
+    let dtos = batteries.into_iter().map(BatteryStateDto::from).collect();
+    Ok(PowerBatteriesResult { batteries: dtos })
+}
+
+#[cfg(not(feature = "zettings-mock"))]
+fn power_batteries_with_authorizer(_action: &ActionId) -> Result<PowerBatteriesResult, IpcError> {
+    Err(IpcError::ServiceUnavailable(
+        "Real UPower DBus integration lands in Phase 5".into(),
+    ))
+}
+
+/// Extracts an accent palette from wallpaper image bytes via `zettings-palette`.
+///
+/// Feature-flag-FREE — touches no system resources (the `image` decoder + the
+/// in-process Median-cut quantizer live entirely in `zettings-palette`). No
+/// `PolicyKit` authorization needed, exactly like the search commands.
+///
+/// # Errors
+/// - [`IpcError::InvalidPayload`] when the bytes cannot be decoded or the
+///   image is too small to extract a palette.
+#[allow(clippy::needless_pass_by_value)]
+pub fn palette_extract(request: PaletteExtractRequest) -> Result<PaletteExtractResult, IpcError> {
+    palette_extract_impl(&request)
+}
+
+fn palette_extract_impl(request: &PaletteExtractRequest) -> Result<PaletteExtractResult, IpcError> {
+    let palette = zettings_palette::extract(&request.bytes)
+        .map_err(|e| IpcError::InvalidPayload(format!("palette extraction failed: {e}")))?;
+    Ok(PaletteExtractResult {
+        palette: AccentPaletteDto::from(palette),
+    })
+}
+
 #[cfg(test)]
 mod tests {
     //! Cross-target correctness checks for the IPC command surface.
@@ -967,5 +1375,21 @@ mod bindings_export {
         // they land in this same `generated/` directory.
         SettingsEntry::export_all(&cfg).expect("export SettingsEntry bindings");
         SearchHit::export_all(&cfg).expect("export SearchHit bindings");
+        // Phase 7 read-side DTOs
+        DisplayOutputDto::export_all(&cfg).expect("export DisplayOutputDto bindings");
+        DisplayListOutputsResult::export_all(&cfg)
+            .expect("export DisplayListOutputsResult bindings");
+        AudioStreamDto::export_all(&cfg).expect("export AudioStreamDto bindings");
+        AudioListStreamsResult::export_all(&cfg).expect("export AudioListStreamsResult bindings");
+        PairedDeviceDto::export_all(&cfg).expect("export PairedDeviceDto bindings");
+        BluetoothListPairedResult::export_all(&cfg)
+            .expect("export BluetoothListPairedResult bindings");
+        PowerActiveProfileResult::export_all(&cfg)
+            .expect("export PowerActiveProfileResult bindings");
+        BatteryStateDto::export_all(&cfg).expect("export BatteryStateDto bindings");
+        PowerBatteriesResult::export_all(&cfg).expect("export PowerBatteriesResult bindings");
+        AccentPaletteDto::export_all(&cfg).expect("export AccentPaletteDto bindings");
+        PaletteExtractRequest::export_all(&cfg).expect("export PaletteExtractRequest bindings");
+        PaletteExtractResult::export_all(&cfg).expect("export PaletteExtractResult bindings");
     }
 }

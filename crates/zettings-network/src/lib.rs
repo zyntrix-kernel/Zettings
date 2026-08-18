@@ -53,6 +53,27 @@ impl AccessPoint {
     }
 }
 
+/// A paired `BlueZ` peripheral. Surfaced to the frontend for the Bluetooth
+/// panel's paired-device list with battery level (when the device advertises
+/// the `org.bluez.Battery1` interface).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct PairedDevice {
+    /// `BlueZ` object-path-leaf identifier, stable across daemon restarts.
+    pub address: String,
+    /// Human-readable device name (model / manufacturer / friendly alias).
+    pub name: String,
+    /// `true` when the device is currently connected (not just paired).
+    pub connected: bool,
+    /// Battery charge in `[0, 100]`. `None` for devices without a Battery1
+    /// interface — the UI then hides the battery indicator rather than
+    /// showing a 0% "empty" glyph (ui-ux-pro-max/ Accessibility/Color-Only:
+    /// never imply low battery purely by an absent number).
+    pub battery_percent: Option<u8>,
+    /// Major device class as reported by `BlueZ` (`Audio`, `Peripheral`,
+    /// `Phone`, etc.).
+    pub device_class: String,
+}
+
 /// Errors surfaced by the network backend.
 #[derive(Debug, Error)]
 pub enum NetworkError {
@@ -87,6 +108,13 @@ pub trait Backend: Send + Sync {
     /// Returns [`NetworkError::ServiceUnavailable`] on the real target until
     /// the `zbus` Wi-Fi scan lands.
     fn scan_wifi(&self) -> Result<Vec<AccessPoint>, NetworkError>;
+
+    /// List paired (and optionally connected) `BlueZ` peripherals.
+    ///
+    /// # Errors
+    /// Returns [`NetworkError::ServiceUnavailable`] when `BlueZ` is
+    /// unreachable on the real target.
+    fn list_paired_devices(&self) -> Result<Vec<PairedDevice>, NetworkError>;
 }
 
 /// In-memory mock backend. Holds the current hostname and a fixed set of
@@ -135,6 +163,32 @@ impl Backend for MockBackend {
             AccessPoint::from_ssid(b"Hidden", -88, true),
         ])
     }
+
+    fn list_paired_devices(&self) -> Result<Vec<PairedDevice>, NetworkError> {
+        Ok(vec![
+            PairedDevice {
+                address: "AA:BB:CC:11:22:33".into(),
+                name: "Zyntrix Aurora Buds".into(),
+                connected: true,
+                battery_percent: Some(78),
+                device_class: "Audio".into(),
+            },
+            PairedDevice {
+                address: "DD:EE:FF:44:55:66".into(),
+                name: "Zyntrix Trackpad".into(),
+                connected: true,
+                battery_percent: Some(42),
+                device_class: "Peripheral".into(),
+            },
+            PairedDevice {
+                address: "11:22:33:AA:BB:CC".into(),
+                name: "Snowpeak Keyboard".into(),
+                connected: false,
+                battery_percent: None,
+                device_class: "Peripheral".into(),
+            },
+        ])
+    }
 }
 
 /// RFC 1123 hostname validity: 1-63 chars, `[A-Za-z0-9-]`, no leading/trailing
@@ -171,6 +225,12 @@ impl Backend for LinuxBackend {
     fn scan_wifi(&self) -> Result<Vec<AccessPoint>, NetworkError> {
         Err(NetworkError::ServiceUnavailable(
             "NetworkManager zbus integration pending".into(),
+        ))
+    }
+
+    fn list_paired_devices(&self) -> Result<Vec<PairedDevice>, NetworkError> {
+        Err(NetworkError::ServiceUnavailable(
+            "BlueZ zbus integration pending".into(),
         ))
     }
 }
@@ -219,5 +279,26 @@ mod tests {
         assert_eq!(aps.len(), 3);
         assert!(aps[0].secured);
         assert!(!aps[1].secured);
+    }
+
+    #[tokio::test]
+    async fn mock_paired_returns_three_devices() {
+        let b = MockBackend::new();
+        let devices = b.list_paired_devices().expect("paired");
+        assert_eq!(devices.len(), 3);
+        // The connected earbuds report a battery level; the disconnected
+        // keyboard (no Battery1 interface) yields `None`.
+        let buds = devices
+            .iter()
+            .find(|d| d.name == "Zyntrix Aurora Buds")
+            .expect("buds present");
+        assert!(buds.connected);
+        assert_eq!(buds.battery_percent, Some(78));
+        let kb = devices
+            .iter()
+            .find(|d| d.name == "Snowpeak Keyboard")
+            .expect("keyboard present");
+        assert!(!kb.connected);
+        assert_eq!(kb.battery_percent, None);
     }
 }

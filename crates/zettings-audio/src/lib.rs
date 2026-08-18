@@ -29,6 +29,45 @@ impl Volume {
     }
 }
 
+/// A named app/output stream with live volume state, for the mixer UI.
+/// The simpler [`StreamId`] only conveys identity; this DTO adds the human
+/// label, current volume and mute flag so the frontend mixer panel can render
+/// without a follow-up per-stream query.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
+pub struct AudioStream {
+    /// Application or sink id matching the [`StreamId`] registry.
+    pub stream_id: u32,
+    /// Human-readable label, e.g. "Master Output", "Zyntrix Aurora", "Voice Call".
+    pub label_id: u8,
+    /// Normalized volume in `[0.0, 1.0]`.
+    pub volume: f32,
+    /// `true` when the stream is muted.
+    pub muted: bool,
+}
+
+// Stable label table for mock streams; the frontend translates the `label_id`
+// index into a localized display string (kept Rust-side so the schema is
+// explicit and unit-testable without bundling string resources here).
+impl AudioStream {
+    /// Label id for the system master sink (index 0).
+    pub const LABEL_MASTER: u8 = 0;
+    /// Label id for the Zyntrix Aurora app sink (index 1).
+    pub const LABEL_AURORA: u8 = 1;
+    /// Label id for a voice/video call sink (index 2).
+    pub const LABEL_CALL: u8 = 2;
+
+    /// English fallback label — the frontend overrides with localized names.
+    #[must_use]
+    pub fn label_text(&self) -> &'static str {
+        match self.label_id {
+            Self::LABEL_MASTER => "Master Output",
+            Self::LABEL_AURORA => "Zyntrix Aurora",
+            Self::LABEL_CALL => "Voice Call",
+            _ => "Unknown Stream",
+        }
+    }
+}
+
 /// Errors surfaced by the audio backend.
 #[derive(Debug, Error)]
 pub enum AudioError {
@@ -49,6 +88,15 @@ pub trait Backend: Send + Sync {
     /// # Errors
     /// Returns [`AudioError::ServiceUnavailable`] when the daemon is down.
     fn list_streams(&self) -> Result<Vec<StreamId>, AudioError>;
+
+    /// List streams with their live volume state (label + volume + muted).
+    /// Drives the mixer panel. The mock returns the same stream set as
+    /// [`Backend::list_streams`] but enriched with current state from the
+    /// mock store so the frontend can render cards without a second round-trip.
+    ///
+    /// # Errors
+    /// Returns [`AudioError::ServiceUnavailable`] when the daemon is down.
+    fn list_streams_detailed(&self) -> Result<Vec<AudioStream>, AudioError>;
 
     /// Apply `volume` (and `muted`) to `stream`. Emits an [`AudioVolume`]
     /// event over `bus` reflecting the new state.
@@ -104,6 +152,28 @@ impl Backend for MockBackend {
         Ok(self.state.lock().keys().copied().map(StreamId).collect())
     }
 
+    fn list_streams_detailed(&self) -> Result<Vec<AudioStream>, AudioError> {
+        // The mock stores three streams keyed 0,1,2 with stable labels; match
+        // stream_id → label_id directly (they coincide by construction).
+        let state = self.state.lock();
+        let mut streams = state
+            .values()
+            .map(|v| AudioStream {
+                stream_id: v.stream_id,
+                label_id: match v.stream_id {
+                    0 => AudioStream::LABEL_MASTER,
+                    1 => AudioStream::LABEL_AURORA,
+                    2 => AudioStream::LABEL_CALL,
+                    other => other.try_into().unwrap_or(u8::MAX),
+                },
+                volume: v.volume,
+                muted: v.muted,
+            })
+            .collect::<Vec<_>>();
+        streams.sort_by_key(|s| s.stream_id);
+        Ok(streams)
+    }
+
     fn set_volume(
         &self,
         stream: StreamId,
@@ -139,6 +209,12 @@ impl Backend for LinuxBackend {
         ))
     }
 
+    fn list_streams_detailed(&self) -> Result<Vec<AudioStream>, AudioError> {
+        Err(AudioError::ServiceUnavailable(
+            "pipewire integration pending".into(),
+        ))
+    }
+
     fn set_volume(
         &self,
         _stream: StreamId,
@@ -161,6 +237,19 @@ mod tests {
         let b = MockBackend::new();
         let streams = b.list_streams().expect("list");
         assert_eq!(streams.len(), 3);
+    }
+
+    #[tokio::test]
+    async fn mock_list_streams_detailed_carries_labels_and_volume() {
+        let b = MockBackend::new();
+        let detailed = b.list_streams_detailed().expect("detailed");
+        assert_eq!(detailed.len(), 3);
+        // Master sink is id 0, label MASTER, full volume, unmuted.
+        let master = detailed.iter().find(|s| s.stream_id == 0).expect("master");
+        assert_eq!(master.label_id, AudioStream::LABEL_MASTER);
+        assert_eq!(master.label_text(), "Master Output");
+        assert!((master.volume - 1.0).abs() < f32::EPSILON);
+        assert!(!master.muted);
     }
 
     #[tokio::test]

@@ -6565,6 +6565,7 @@ dependencies = [
  "zettings-core",
  "zettings-display",
  "zettings-network",
+ "zettings-palette",
  "zettings-polkit",
  "zettings-power",
  "zettings-search",

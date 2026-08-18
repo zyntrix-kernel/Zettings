@@ -9,7 +9,9 @@ use tauri::Manager;
 use tauri_plugin_decorum::WebviewWindowExt;
 use tracing_subscriber::EnvFilter;
 use zettings_ipc::{
-    Health, ModuleInfo, SearchQueryRequest, SearchRegisterEntriesRequest,
+    AudioListStreamsResult, BluetoothListPairedResult, DisplayListOutputsResult, Health,
+    ModuleInfo, PaletteExtractRequest, PaletteExtractResult, PowerActiveProfileResult,
+    PowerBatteriesResult, SearchQueryRequest, SearchRegisterEntriesRequest,
     SearchRegisterEntriesResult,
 };
 use zettings_search::SearchHit;
@@ -54,6 +56,61 @@ fn zettings_search_query(
     zettings_ipc::search_query(request)
 }
 
+/// `zettings_display_list_outputs` — Phase 7 read-side surface returning the
+/// connected monitor outputs and their available modes. Mock backend returns
+/// two sample outputs; the real `KScreen` `DBus` integration lands in Phase 5.
+#[tauri::command]
+fn zettings_display_list_outputs() -> Result<DisplayListOutputsResult, zettings_ipc::IpcError> {
+    zettings_ipc::display_list_outputs()
+}
+
+/// `zettings_audio_list_streams` — Phase 7 read-side surface returning the
+/// per-stream volume/mute state plus human-readable labels. Mock backend
+/// returns three sample streams (Master, Aurora, Voice Call); real `PipeWire`
+/// integration lands in Phase 5.
+#[tauri::command]
+fn zettings_audio_list_streams() -> Result<AudioListStreamsResult, zettings_ipc::IpcError> {
+    zettings_ipc::audio_list_streams()
+}
+
+/// `zettings_bluetooth_list_paired` — Phase 7 read-side surface returning the
+/// paired Bluetooth/peripheral devices with battery indicators. Mock backend
+/// returns three sample devices; real `BlueZ` zbus integration lands in Phase 5.
+#[tauri::command]
+fn zettings_bluetooth_list_paired() -> Result<BluetoothListPairedResult, zettings_ipc::IpcError> {
+    zettings_ipc::bluetooth_list_paired()
+}
+
+/// `zettings_power_active_profile` — Phase 7 read-side surface returning the
+/// currently active power profile (`Balanced`/`Performance`/`PowerSaver`).
+/// Mock backend defaults to `Balanced`; real `power-profiles-daemon` `DBus`
+/// integration lands in Phase 5.
+#[tauri::command]
+fn zettings_power_active_profile() -> Result<PowerActiveProfileResult, zettings_ipc::IpcError> {
+    zettings_ipc::power_active_profile()
+}
+
+/// `zettings_power_batteries` — Phase 7 read-side surface returning the
+/// battery state (percentage + charging flag) for each UPower-registered
+/// battery. Mock backend returns a single sample battery; real `UPower` zbus
+/// integration lands in Phase 5.
+#[tauri::command]
+fn zettings_power_batteries() -> Result<PowerBatteriesResult, zettings_ipc::IpcError> {
+    zettings_ipc::power_batteries()
+}
+
+/// `zettings_palette_extract` — Phase 7 accent-palette extraction surface.
+/// Pure in-process operation (image decode + median-cut quantizer) — touches
+/// no system resources and requires no `PolicyKit` authorization. The frontend
+/// Personalization panel invokes this with the wallpaper bytes and applies the
+/// returned accent/secondary colors to the ZDL theme tokens.
+#[tauri::command]
+fn zettings_palette_extract(
+    request: PaletteExtractRequest,
+) -> Result<PaletteExtractResult, zettings_ipc::IpcError> {
+    zettings_ipc::palette_extract(request)
+}
+
 /// Zettings application entry point.
 ///
 /// Initializes the tracing subscriber, registers the Tauri plugins
@@ -75,7 +132,13 @@ fn main() {
             zettings_health,
             zettings_modules,
             zettings_search_register,
-            zettings_search_query
+            zettings_search_query,
+            zettings_display_list_outputs,
+            zettings_audio_list_streams,
+            zettings_bluetooth_list_paired,
+            zettings_power_active_profile,
+            zettings_power_batteries,
+            zettings_palette_extract,
         ])
         .setup(|app| {
             let window = app.get_webview_window("main").expect("main window");

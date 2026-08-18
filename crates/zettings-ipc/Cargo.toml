@@ -39,6 +39,7 @@ zettings-display = { workspace = true }
 zettings-audio = { workspace = true }
 zettings-network = { workspace = true }
 zettings-power = { workspace = true }
+zettings-palette = { workspace = true }
 zettings-search = { workspace = true }
 once_cell = { workspace = true }
 tauri = { workspace = true }

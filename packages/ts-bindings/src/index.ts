@@ -24,3 +24,16 @@ export type { SearchHit } from "./generated/search_hit";
 export type { SearchRegisterEntriesRequest } from "./generated/search_register_entries_request";
 export type { SearchRegisterEntriesResult } from "./generated/search_register_entries_result";
 export type { SearchQueryRequest } from "./generated/search_query_request";
+// Phase 7 read-side DTOs
+export type { DisplayOutputDto } from "./generated/display_output";
+export type { DisplayListOutputsResult } from "./generated/display_list_outputs_result";
+export type { AudioStreamDto } from "./generated/audio_stream";
+export type { AudioListStreamsResult } from "./generated/audio_list_streams_result";
+export type { PairedDeviceDto } from "./generated/paired_device";
+export type { BluetoothListPairedResult } from "./generated/bluetooth_list_paired_result";
+export type { PowerActiveProfileResult } from "./generated/power_active_profile_result";
+export type { BatteryStateDto } from "./generated/battery_state";
+export type { PowerBatteriesResult } from "./generated/power_batteries_result";
+export type { AccentPaletteDto } from "./generated/accent_palette";
+export type { PaletteExtractRequest } from "./generated/palette_extract_request";
+export type { PaletteExtractResult } from "./generated/palette_extract_result";
