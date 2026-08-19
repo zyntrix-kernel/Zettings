@@ -14,13 +14,12 @@
  * - Mute buttons have ARIA labels with state
  * - Reduced motion collapses VU animations
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import type { AudioListStreamsResult, AudioStreamDto, SearchRegisterEntriesRequest, SettingsEntry } from "@zettings/bindings";
+import type { AudioListStreamsResult, AudioStreamDto } from "@zettings/bindings";
 import { PanelShell } from "./panel-shell.js";
-import { Volume2, VolumeX, Music, SlidersHorizontal, Zap, RotateCcw, Headphones, Mic, Speaker } from "lucide-react";
+import { Volume2, VolumeX, Music, RotateCcw, Headphones, Mic, Speaker } from "lucide-react";
 import { useSpring, ZDL_SPRINGS } from "../lib/zdl-motion-hooks.js";
-import { useSpotlightStore } from "../stores/spotlight-store.js";
 
 interface AudioStreamExtended extends AudioStreamDto {
   // VU meter state (simulated for mock, real from PipeWire)
@@ -50,6 +49,19 @@ const EQ_PRESETS = [
   { name: "Loudness", gains: [3, 2, 1, 0, -1, -1, 0, 1, 2, 3] },
 ];
 
+function getStreamLabel(labelId: number): string {
+  switch (labelId) {
+    case 0:
+      return "Master";
+    case 1:
+      return "Aurora";
+    case 2:
+      return "Voice Call";
+    default:
+      return `Stream ${labelId}`;
+  }
+}
+
 export function AudioPanel(): React.ReactElement {
   const [streams, setStreams] = useState<AudioStreamExtended[]>([]);
   const [masterVolume, setMasterVolume] = useState(1);
@@ -57,10 +69,7 @@ export function AudioPanel(): React.ReactElement {
   const [selectedOutput, setSelectedOutput] = useState<string>("default");
   const [eqGains, setEqGains] = useState<number[]>(Array(10).fill(0));
   const [eqPreset, setEqPreset] = useState(0);
-  const [vuAnimationFrame, setVuAnimationFrame] = useState<number | null>(null);
-  const registerSearch = useSpotlightStore((s) => s.registerEntries);
-  const unregisterSearch = useSpotlightStore((s) => s.unregisterEntries);
-  const reducedMotion = useSpring(0, ZDL_SPRINGS.instant).position; // hack to get reduced motion
+  const reducedMotion = useSpring(0, ZDL_SPRINGS.toggle).position;
 
   // Load audio streams on mount
   useEffect(() => {
@@ -73,25 +82,14 @@ export function AudioPanel(): React.ReactElement {
           isSolo: false,
         }));
         setStreams(extended);
-        if (extended.length > 0) {
-          setMasterVolume(extended[0].volume);
-          setMasterMuted(extended[0].muted);
+        const first = extended[0];
+        if (first) {
+          setMasterVolume(first.volume);
+          setMasterMuted(first.muted);
         }
       })
       .catch((e) => console.error("Failed to load audio streams:", e));
   }, []);
-
-  // Register Spotlight entries
-  useEffect(() => {
-    const entries: SettingsEntry[] = [
-      { id: "audio-master-volume", title: "Master Volume", description: "Adjust system master volume", route: "/audio", keywords: ["volume", "master", "loudness", "sound level"] },
-      { id: "audio-equalizer", title: "Equalizer", description: "10-band parametric EQ with presets", route: "/audio", keywords: ["equalizer", "eq", "bass", "treble", "frequency", "audio enhancement"] },
-      { id: "audio-output-device", title: "Output Device", description: "Select audio output device", route: "/audio", keywords: ["output", "device", "speakers", "headphones", "bluetooth audio"] },
-      { id: "audio-stream-mixer", title: "Per-App Volume", description: "Individual volume per application", route: "/audio", keywords: ["per app", "application volume", "mixer", "individual"] },
-    ];
-    registerSearch(entries);
-    return () => unregisterSearch(entries.map((e) => e.id));
-  }, [registerSearch, unregisterSearch]);
 
   // Simulated VU meter animation (in real impl, this comes from PipeWire)
   useEffect(() => {
@@ -118,19 +116,19 @@ export function AudioPanel(): React.ReactElement {
   }, []);
 
   // Volume change handler
-  const handleVolumeChange = useCallback((streamId: u32, volume: number) => {
+  const handleVolumeChange = useCallback((streamId: number, volume: number) => {
     setStreams((prev) => prev.map((s) => (s.stream_id === streamId ? { ...s, volume } : s)));
     if (streamId === 0) setMasterVolume(volume);
     // TODO: invoke zettings_audio_set_volume when implemented
   }, []);
 
-  const handleMuteToggle = useCallback((streamId: u32) => {
+  const handleMuteToggle = useCallback((streamId: number) => {
     setStreams((prev) => prev.map((s) => (s.stream_id === streamId ? { ...s, muted: !s.muted } : s)));
     if (streamId === 0) setMasterMuted((m) => !m);
     // TODO: invoke zettings_audio_set_volume with muted
   }, []);
 
-  const handleSoloToggle = useCallback((streamId: u32) => {
+  const handleSoloToggle = useCallback((streamId: number) => {
     setStreams((prev) =>
       prev.map((s) =>
         s.stream_id === streamId ? { ...s, isSolo: !s.isSolo } : s.isSolo ? { ...s, isSolo: false } : s
@@ -147,8 +145,10 @@ export function AudioPanel(): React.ReactElement {
   }, []);
 
   const handleEqPresetChange = useCallback((presetIndex: number) => {
+    const preset = EQ_PRESETS[presetIndex];
+    if (!preset) return;
     setEqPreset(presetIndex);
-    setEqGains(EQ_PRESETS[presetIndex].gains);
+    setEqGains(preset.gains);
   }, []);
 
   const handleEqReset = useCallback(() => {
@@ -158,15 +158,15 @@ export function AudioPanel(): React.ReactElement {
 
   // VU meter bar component
   const renderVuMeter = (stream: AudioStreamExtended) => {
-    const vuSpring = useSpring(stream.vuLevel, ZDL_SPRINGS.vuMeter);
-    const peakSpring = useSpring(stream.peakLevel, ZDL_SPRINGS.vuMeter);
+    const vuSpring = useSpring(stream.vuLevel, ZDL_SPRINGS.slider);
+    const peakSpring = useSpring(stream.peakLevel, ZDL_SPRINGS.slider);
 
     return (
       <div className="audio-vu-meter" role="img" aria-label={`Volume level ${Math.round(stream.vuLevel * 100)}%`} data-testid={`vu-${stream.stream_id}`}>
         <div
           className="audio-vu-bar"
           style={{
-            height: `${vuSpring * 100}%`,
+            height: `${vuSpring.position * 100}%`,
             background: `linear-gradient(to top, var(--accent) 0%, var(--accent-secondary) 100%)`,
             transition: reducedMotion ? "none" : "height 30ms linear",
           }}
@@ -174,7 +174,7 @@ export function AudioPanel(): React.ReactElement {
         <div
           className="audio-vu-peak"
           style={{
-            bottom: `${peakSpring * 100}%`,
+            bottom: `${peakSpring.position * 100}%`,
             transition: reducedMotion ? "none" : "bottom 100ms ease-out",
           }}
         />
@@ -195,7 +195,7 @@ export function AudioPanel(): React.ReactElement {
               {labelIcon}
             </div>
             <div>
-              <h3 className="panel-card-title">{stream.label_text()}</h3>
+              <h3 className="panel-card-title">{getStreamLabel(stream.label_id)}</h3>
               <p className="panel-card-subtitle">Stream ID: {stream.stream_id} • {stream.muted ? "Muted" : "Active"}</p>
             </div>
           </div>
@@ -238,7 +238,6 @@ export function AudioPanel(): React.ReactElement {
               onChange={(e) => handleVolumeChange(stream.stream_id, Number(e.target.value))}
               disabled={stream.muted}
               className="panel-slider"
-              orient="vertical"
               style={{
                 width: 120,
                 height: 100,
@@ -247,7 +246,7 @@ export function AudioPanel(): React.ReactElement {
                 marginLeft: "auto",
                 marginRight: "auto",
               }}
-              aria-label={`${stream.label_text()} volume`}
+              aria-label={`${getStreamLabel(stream.label_id)} volume`}
               data-testid={`volume-slider-${stream.stream_id}`}
             />
             <div style={{ textAlign: "center", marginTop: "var(--space-2)", fontSize: "var(--text-xs)", color: "var(--text-muted)" }}>
@@ -261,7 +260,7 @@ export function AudioPanel(): React.ReactElement {
 
   // EQ band slider
   const renderEqBand = (band: typeof EQ_BANDS[0], index: number) => {
-    const gain = eqGains[index];
+    const gain = eqGains[index] ?? 0;
     return (
       <div key={band.freq} className="audio-eq-band" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "var(--space-2)", flex: 1 }} data-testid={`eq-band-${index}`}>
         <div style={{ height: 140, width: 40, position: "relative" }}>
@@ -273,7 +272,6 @@ export function AudioPanel(): React.ReactElement {
             value={gain}
             onChange={(e) => handleEqGainChange(index, Number(e.target.value))}
             className="panel-slider"
-            orient="vertical"
             style={{
               width: "100%",
               height: "100%",

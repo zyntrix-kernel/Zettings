@@ -16,11 +16,10 @@
  */
 import { useCallback, useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import type { AccessPointDto, NetworkScanWifiResult, SearchRegisterEntriesRequest, SettingsEntry } from "@zettings/bindings";
+import type { AccessPointDto, NetworkScanWifiResult } from "@zettings/bindings";
 import { PanelShell } from "./panel-shell.js";
-import { Wifi, WifiOff, Ethernet, Lock, Unlock, Eye, EyeOff, RefreshCw, Check, X, Settings, Key } from "lucide-react";
+import { Wifi, WifiOff, Lock, Unlock, Eye, EyeOff, RefreshCw, Check, X, Key } from "lucide-react";
 import { useSpring, ZDL_SPRINGS } from "../lib/zdl-motion-hooks.js";
-import { useSpotlightStore } from "../stores/spotlight-store.js";
 
 interface WiFiNetwork extends AccessPointDto {
   // Extended state
@@ -47,7 +46,7 @@ function getSignalBars(signalDbm: number) {
   for (const s of SIGNAL_BARS) {
     if (signalDbm >= s.threshold) return s;
   }
-  return SIGNAL_BARS[SIGNAL_BARS.length - 1];
+  return SIGNAL_BARS[SIGNAL_BARS.length - 1] ?? { threshold: -101, bars: 0, label: "No signal" };
 }
 
 export function NetworkPanel(): React.ReactElement {
@@ -61,8 +60,6 @@ export function NetworkPanel(): React.ReactElement {
     showPassword: false,
     onSubmit: () => {},
   });
-  const registerSearch = useSpotlightStore((s) => s.registerEntries);
-  const unregisterSearch = useSpotlightStore((s) => s.unregisterEntries);
 
   // Load networks on mount
   useEffect(() => {
@@ -86,18 +83,6 @@ export function NetworkPanel(): React.ReactElement {
     }
   }, []);
 
-  // Register Spotlight entries
-  useEffect(() => {
-    const entries: SettingsEntry[] = [
-      { id: "network-wifi-scan", title: "Scan Wi-Fi Networks", description: "Search for available wireless networks", route: "/network", keywords: ["wifi", "wireless", "scan", "network", "access point"] },
-      { id: "network-wifi-connect", title: "Connect to Wi-Fi", description: "Join a wireless network with password", route: "/network", keywords: ["connect", "join", "password", "wpa", "wpa2", "wpa3"] },
-      { id: "network-ethernet", title: "Ethernet", description: "Wired network connection status", route: "/network", keywords: ["ethernet", "wired", "lan", "cable", "connection"] },
-      { id: "network-known-networks", title: "Known Networks", description: "Manage saved Wi-Fi networks", route: "/network", keywords: ["saved", "known", "forget", "manage", "auto-connect"] },
-    ];
-    registerSearch(entries);
-    return () => unregisterSearch(entries.map((e) => e.id));
-  }, [registerSearch, unregisterSearch]);
-
   const handleConnect = useCallback((network: WiFiNetwork) => {
     if (network.secured) {
       setPasswordModal({
@@ -105,7 +90,7 @@ export function NetworkPanel(): React.ReactElement {
         ssid: network.ssid,
         password: "",
         showPassword: false,
-        onSubmit: (pwd) => {
+        onSubmit: () => {
           // TODO: invoke zettings_network_connect_wifi
           console.log(`Connecting to ${network.ssid} with password`);
           setNetworks((prev) =>
@@ -175,13 +160,13 @@ export function NetworkPanel(): React.ReactElement {
 
   // Network row
   const renderNetworkRow = (network: WiFiNetwork, idx: number) => {
-    const { bars, label } = getSignalBars(network.signal_dbm);
+    const { label } = getSignalBars(network.signal_dbm);
     const isConnected = network.saved && !network.connecting;
     const isConnecting = network.connecting;
 
     return (
       <div
-        key={network.bssid}
+        key={network.ssid}
         className="panel-card"
         style={{
           display: "flex",
@@ -234,7 +219,7 @@ export function NetworkPanel(): React.ReactElement {
                 className="panel-button panel-button-secondary"
                 onClick={() => handleDisconnect(network.ssid)}
                 aria-label={`Disconnect from ${network.ssid}`}
-                data-testid={`disconnect-${network.bssid}`}
+                data-testid={`disconnect-${network.ssid}`}
               >
                 <X size={16} /> Disconnect
               </button>
@@ -242,7 +227,7 @@ export function NetworkPanel(): React.ReactElement {
                 className="panel-button panel-button-secondary"
                 onClick={() => handleForget(network.ssid)}
                 aria-label={`Forget ${network.ssid}`}
-                data-testid={`forget-${network.bssid}`}
+                data-testid={`forget-${network.ssid}`}
               >
                 <Key size={16} /> Forget
               </button>
@@ -253,7 +238,7 @@ export function NetworkPanel(): React.ReactElement {
               onClick={() => handleConnect(network)}
               disabled={isConnecting}
               aria-label={`Connect to ${network.ssid}`}
-              data-testid={`connect-${network.bssid}`}
+              data-testid={`connect-${network.ssid}`}
             >
               {isConnecting ? <RefreshCw size={16} className="spin" /> : <Wifi size={16} />}
               {isConnecting ? "Connecting…" : "Connect"}
@@ -269,7 +254,7 @@ export function NetworkPanel(): React.ReactElement {
     if (!passwordModal.open) return null;
 
     const modalSpring = useSpring(passwordModal.open ? 1 : 0, ZDL_SPRINGS.modal);
-    const settledClosed = !passwordModal.open && modalSpring <= 0;
+    const settledClosed = !passwordModal.open && modalSpring.position <= 0;
     if (settledClosed) return null;
 
     return (
@@ -284,7 +269,7 @@ export function NetworkPanel(): React.ReactElement {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          opacity: modalSpring,
+          opacity: modalSpring.position,
           pointerEvents: passwordModal.open ? "auto" : "none",
         }}
         onClick={() => setPasswordModal({ ...passwordModal, open: false })}
@@ -295,7 +280,7 @@ export function NetworkPanel(): React.ReactElement {
         <div
           className="modal-content"
           style={{
-            transform: `scale(${0.95 + 0.05 * modalSpring})`,
+            transform: `scale(${0.95 + 0.05 * modalSpring.position})`,
             transition: "transform var(--motion-duration-base) var(--motion-ease-out)",
           }}
         >
@@ -370,7 +355,10 @@ export function NetworkPanel(): React.ReactElement {
         <section>
           <div style={{ display: "flex", alignItems: "center", gap: "var(--space-4)" }}>
             <div style={{ width: 48, height: 48, borderRadius: "12px", background: ethernetConnected ? "color-mix(in srgb, var(--accent) 18%, transparent)" : "var(--surface-muted)", display: "flex", alignItems: "center", justifyContent: "center", border: ethernetConnected ? "2px solid var(--accent)" : "1px solid var(--border)" }}>
-              <Ethernet size={24} color={ethernetConnected ? "var(--accent)" : "var(--text-muted)"} />
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ color: ethernetConnected ? "var(--accent)" : "var(--text-muted)" }}>
+                <rect x="2" y="3" width="20" height="14" rx="2" />
+                <path d="M6 17h12M6 11h12M6 7h12" />
+              </svg>
             </div>
             <div>
               <h3 style={{ fontSize: "var(--text-lg)", fontWeight: 600, color: "var(--text)", margin: 0 }}>Ethernet</h3>
@@ -417,7 +405,7 @@ export function NetworkPanel(): React.ReactElement {
           <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
             {networks.filter((n) => n.saved).map((network, idx) => (
               <div
-                key={network.bssid}
+                key={network.ssid}
                 className="panel-card"
                 style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "var(--space-3) var(--space-4)" }}
                 data-testid={`known-network-${idx}`}
@@ -433,7 +421,7 @@ export function NetworkPanel(): React.ReactElement {
                   className="panel-button panel-button-secondary"
                   onClick={() => handleForget(network.ssid)}
                   aria-label={`Forget ${network.ssid}`}
-                  data-testid={`forget-known-${network.bssid}`}
+                  data-testid={`forget-known-${network.ssid}`}
                 >
                   <Key size={16} /> Forget
                 </button>
@@ -453,15 +441,4 @@ export function NetworkPanel(): React.ReactElement {
       </div>
     </PanelShell>
   );
-}
-
-// Add spin animation for scanning button
-const style = document.createElement("style");
-style.textContent = `
-  @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-  .spin { animation: spin 1s linear infinite; }
-`;
-if (typeof document !== "undefined" && !document.head.querySelector("style[data-spin]")) {
-  style.setAttribute("data-spin", "");
-  document.head.appendChild(style);
 }

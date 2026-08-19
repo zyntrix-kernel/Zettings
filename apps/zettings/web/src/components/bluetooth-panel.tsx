@@ -16,11 +16,10 @@
  */
 import { useCallback, useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import type { PairedDeviceDto, BluetoothListPairedResult, SearchRegisterEntriesRequest, SettingsEntry } from "@zettings/bindings";
+import type { PairedDeviceDto, BluetoothListPairedResult } from "@zettings/bindings";
 import { PanelShell } from "./panel-shell.js";
-import { Bluetooth, BluetoothConnected, BluetoothOff, Battery, BatteryCharging, Headphones, Mouse, Keyboard, Phone, MoreVertical, Trash2, RotateCcw, X, Check } from "lucide-react";
+import { Bluetooth, BluetoothConnected, BluetoothOff, Battery, BatteryCharging, Headphones, Mouse, Keyboard, Phone, Trash2, RotateCcw } from "lucide-react";
 import { useSpring, ZDL_SPRINGS } from "../lib/zdl-motion-hooks.js";
-import { useSpotlightStore } from "../stores/spotlight-store.js";
 
 interface BluetoothDeviceExtended extends PairedDeviceDto {
   // Extended UI state
@@ -36,8 +35,9 @@ const DEVICE_CLASS_ICONS: Record<string, React.ComponentType<{ size?: number; co
   default: Bluetooth,
 };
 
-function getDeviceIcon(deviceClass: string) {
-  return DEVICE_CLASS_ICONS[deviceClass] || DEVICE_CLASS_ICONS.default;
+function getDeviceIcon(deviceClass: string): React.ComponentType<{ size?: number; color?: string }> {
+  const icon = DEVICE_CLASS_ICONS[deviceClass];
+  return (icon ?? DEVICE_CLASS_ICONS.default) as React.ComponentType<{ size?: number; color?: string }>;
 }
 
 function getBatteryIcon(percent?: number, charging = false) {
@@ -55,8 +55,6 @@ export function BluetoothPanel(): React.ReactElement {
     open: false,
     device: null,
   });
-  const registerSearch = useSpotlightStore((s) => s.registerEntries);
-  const unregisterSearch = useSpotlightStore((s) => s.unregisterEntries);
 
   // Load paired devices on mount
   useEffect(() => {
@@ -64,18 +62,6 @@ export function BluetoothPanel(): React.ReactElement {
       .then((r) => setDevices(r.devices))
       .catch((e) => console.error("Failed to load paired devices:", e));
   }, []);
-
-  // Register Spotlight entries
-  useEffect(() => {
-    const entries: SettingsEntry[] = [
-      { id: "bluetooth-pair-device", title: "Pair New Device", description: "Add a new Bluetooth device", route: "/bluetooth", keywords: ["pair", "add", "new", "device", "discoverable"] },
-      { id: "bluetooth-connected-devices", title: "Connected Devices", description: "Manage currently connected Bluetooth devices", route: "/bluetooth", keywords: ["connected", "active", "headphones", "mouse", "keyboard"] },
-      { id: "bluetooth-battery", title: "Device Battery Levels", description: "View battery percentage of paired peripherals", route: "/bluetooth", keywords: ["battery", "level", "percentage", "charge", "low battery"] },
-      { id: "bluetooth-remove-device", title: "Remove Device", description: "Forget a paired Bluetooth device", route: "/bluetooth", keywords: ["remove", "forget", "unpair", "delete", "trash"] },
-    ];
-    registerSearch(entries);
-    return () => unregisterSearch(entries.map((e) => e.id));
-  }, [registerSearch, unregisterSearch]);
 
   const handleToggleAdapter = useCallback(() => {
     setAdapterEnabled((prev) => !prev);
@@ -122,10 +108,10 @@ export function BluetoothPanel(): React.ReactElement {
 
   // Battery indicator component
   const renderBattery = (device: BluetoothDeviceExtended) => {
-    const { battery_percent, connected } = device;
-    if (battery_percent === undefined) return null;
+    const { battery_percent } = device;
+    if (battery_percent === undefined || battery_percent === null) return null;
 
-    const batterySpring = useSpring(battery_percent / 100, ZDL_SPRINGS.battery);
+    const batterySpring = useSpring(battery_percent / 100, ZDL_SPRINGS.slider);
     const Icon = getBatteryIcon(battery_percent);
 
     return (
@@ -158,10 +144,12 @@ export function BluetoothPanel(): React.ReactElement {
             <div style={{ position: "absolute", right: -4, top: "50%", transform: "translateY(-50%)", width: 4, height: 10, background: "var(--border)", borderRadius: "0 2px 2px 0" }} />
           </div>
         </div>
-        <span style={{ fontSize: "var(--text-sm)", fontWeight: 500, color: battery_percent <= 15 ? "#dc2626" : "var(--text)", minWidth: "36px" }}>
-          {Math.round(battery_percent)}%
+        <span style={{ fontSize: "var(--text-sm)", fontWeight: 500, color: battery_percent && battery_percent <= 15 ? "#dc2626" : "var(--text)", minWidth: "36px" }}>
+          {battery_percent !== null && battery_percent !== undefined ? Math.round(battery_percent) : "?"}%
         </span>
-        <Icon size={16} color={battery_percent <= 15 ? "#dc2626" : "var(--text-muted)"} aria-hidden="true" />
+        {battery_percent !== null && battery_percent !== undefined && (
+          <Icon size={16} color={battery_percent <= 15 ? "#dc2626" : "var(--text-muted)"} aria-hidden="true" />
+        )}
       </div>
     );
   };
@@ -281,11 +269,10 @@ export function BluetoothPanel(): React.ReactElement {
     if (!removeConfirm.open || !removeConfirm.device) return null;
 
     const modalSpring = useSpring(removeConfirm.open ? 1 : 0, ZDL_SPRINGS.modal);
-    const settledClosed = !removeConfirm.open && modalSpring <= 0;
+    const settledClosed = !removeConfirm.open && modalSpring.position <= 0;
     if (settledClosed) return null;
 
     const device = removeConfirm.device;
-    const Icon = getDeviceIcon(device.device_class);
 
     return (
       <div
@@ -299,7 +286,7 @@ export function BluetoothPanel(): React.ReactElement {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          opacity: modalSpring,
+          opacity: modalSpring.position,
           pointerEvents: removeConfirm.open ? "auto" : "none",
         }}
         onClick={handleRemoveCancel}
@@ -310,7 +297,7 @@ export function BluetoothPanel(): React.ReactElement {
         <div
           className="modal-content"
           style={{
-            transform: `scale(${0.95 + 0.05 * modalSpring})`,
+            transform: `scale(${0.95 + 0.05 * modalSpring.position})`,
             transition: "transform var(--motion-duration-base) var(--motion-ease-out)",
           }}
           onClick={(e) => e.stopPropagation()}

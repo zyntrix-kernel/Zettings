@@ -74,6 +74,7 @@
 
   /* --- Aurora teal-violet accent (first-run default; palette crate overrides) --- */
   --accent: #58aebc;
+  --accent-rgb: 88, 174, 188;
   --accent-on: #0c0a09;
   --accent-secondary: #7f62cf;
 
@@ -1060,6 +1061,102 @@ body {
   line-height: var(--text-sm-lh);
   margin: 0;
   max-width: 320px;
+}
+
+/* Spin animation for loading states */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+/* Pulse animation for skeleton loading states */
+@keyframes pulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+.pulse {
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+/* ============================================================================
+   Liquid Glass — Apple iOS 26 / macOS 26 style refraction
+   Four-layer composition: refraction + tint + specular + content
+   Graceful degradation: Firefox/Safari get blur-only, Chrome/Edge get full refraction. */
+
+/* SVG filter for edge refraction (embedded as data URI to avoid extra file) */
+.liquid-glass-filter {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* Layer 0: Refraction backdrop (requires backdrop-filter + SVG filter URL) */
+.liquid-glass__refract {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  backdrop-filter: blur(16px) url(#liquid-glass-refract) brightness(1.03) saturate(1.2);
+  -webkit-backdrop-filter: blur(16px) url(#liquid-glass-refract) brightness(1.03) saturate(1.2);
+  isolation: isolate;
+  pointer-events: none;
+}
+
+/* Layer 1: Glass tint — subtle white overlay */
+.liquid-glass__tint {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: rgba(255, 255, 255, 0.12);
+  pointer-events: none;
+}
+
+/* Layer 2: Specular rim — top bright, bottom subtle */
+.liquid-glass__specular {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.7),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.12);
+  pointer-events: none;
+}
+
+/* Layer 3: Content wrapper — ensure content sits above glass layers */
+.liquid-glass__content {
+  position: relative;
+  z-index: 1;
+}
+
+/* Container for liquid-glass elements — use for grouped navigation items */
+.liquid-glass-container {
+  position: relative;
+}
+
+/* Interactive states for liquid-glass elements */
+.liquid-glass:hover .liquid-glass__tint {
+  background: rgba(255, 255, 255, 0.18);
+}
+.liquid-glass:active .liquid-glass__tint {
+  background: rgba(255, 255, 255, 0.25);
+}
+.liquid-glass:focus-visible .liquid-glass__specular {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.2),
+    0 0 0 3px var(--ring);
+}
+
+/* Reduced motion: disable refraction animation if any */
+@media (prefers-reduced-motion: reduce) {
+  .liquid-glass__refract {
+    backdrop-filter: blur(16px) brightness(1.03) saturate(1.2);
+    -webkit-backdrop-filter: blur(16px) brightness(1.03) saturate(1.2);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

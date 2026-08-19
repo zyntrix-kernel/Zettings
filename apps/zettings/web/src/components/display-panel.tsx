@@ -16,12 +16,11 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import type { DisplayListOutputsResult, DisplayOutputDto, DisplayModeDto, SearchRegisterEntriesRequest, SettingsEntry, SearchHit } from "@zettings/bindings";
+import type { DisplayListOutputsResult, DisplayOutputDto, DisplayModeDto } from "@zettings/bindings";
 import { PanelShell } from "./panel-shell.js";
-import { Monitor, RotateCcw, Sun, Moon, Maximize, Minimize, MoreHorizontal, Drag } from "lucide-react";
-import { useSquircle } from "../lib/squircle.js";
+import { Monitor, RotateCcw, Sun, Moon, Maximize, Minimize } from "lucide-react";
+import { generateSquirclePath } from "../lib/zdl-motion.js";
 import { useSpring, ZDL_SPRINGS } from "../lib/zdl-motion-hooks.js";
-import { useSpotlightStore } from "../stores/spotlight-store.js";
 
 interface PositionedMonitor {
   outputId: string;
@@ -43,8 +42,15 @@ interface SnapGuide {
 
 const CANVAS_PADDING = 60;
 const MIN_MONITOR_W = 160;
-const MAX_MONITOR_W = 400;
 const SNAP_THRESHOLD = 12; // px
+
+/** Build a squircle clip-path CSS value without using a hook. */
+function buildClipPath(width: number, height: number, radius: number): string {
+  const path = generateSquirclePath(width, height, radius, 4);
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" preserveAspectRatio="none"><path d="${path}" /></svg>`;
+  const encoded = encodeURIComponent(svg).replace(/'/g, "%27").replace(/"/g, "%22");
+  return `path("data:image/svg+xml,${encoded}")`;
+}
 
 export function DisplayPanel(): React.ReactElement {
   const [outputs, setOutputs] = useState<DisplayOutputDto[]>([]);
@@ -52,12 +58,9 @@ export function DisplayPanel(): React.ReactElement {
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [snapGuides, setSnapGuides] = useState<SnapGuide[]>([]);
-  const [canvasSize, setCanvasSize] = useState({ width: 800, height: 500 });
   const [keyboardDraggingId, setKeyboardDraggingId] = useState<string | null>(null);
   const [keyboardDragPos, setKeyboardDragPos] = useState({ x: 0, y: 0 });
   const canvasRef = useRef<HTMLDivElement>(null);
-  const registerSearch = useSpotlightStore((s) => s.registerEntries);
-  const unregisterSearch = useSpotlightStore((s) => s.unregisterEntries);
 
   // Spring for snap guide fade-in/out
   const snapGuideSpring = useSpring(snapGuides.length > 0 ? 1 : 0, ZDL_SPRINGS.slider);
@@ -83,17 +86,6 @@ export function DisplayPanel(): React.ReactElement {
       })
       .catch((e) => console.error("Failed to load displays:", e));
   }, []);
-
-  // Register Spotlight entries for this panel
-  useEffect(() => {
-    const entries: SettingsEntry[] = [
-      { id: "display-arrange", title: "Arrange Displays", description: "Drag to reposition monitors", route: "/display", keywords: ["monitor", "screen", "arrange", "position", "layout"] },
-      { id: "display-night-light", title: "Night Light", description: "Reduce blue light at night", route: "/display", keywords: ["night light", "blue light", "warm", "color temperature", "eye strain"] },
-      { id: "display-resolution", title: "Display Resolution", description: "Change monitor resolution and refresh rate", route: "/display", keywords: ["resolution", "refresh rate", "hz", "1080p", "1440p", "4k"] },
-    ];
-    registerSearch(entries);
-    return () => unregisterSearch(entries.map((e) => e.id));
-  }, [registerSearch, unregisterSearch]);
 
   // Compute canvas bounds based on positioned monitors
   const canvasBounds = useMemo(() => {
@@ -163,7 +155,7 @@ export function DisplayPanel(): React.ReactElement {
     setDragOffset({ x: e.clientX - rect.left - monitor.x, y: e.clientY - rect.top - monitor.y });
   };
 
-  const handleMouseMove = (e: React.MouseEvent) => {
+  const handleMouseMove = (e: MouseEvent) => {
     if (!draggingId || !canvasRef.current) return;
     const rect = canvasRef.current.getBoundingClientRect();
     const rawX = e.clientX - rect.left - dragOffset.x;
@@ -257,7 +249,6 @@ export function DisplayPanel(): React.ReactElement {
   const renderMonitorCard = (monitor: PositionedMonitor, idx: number) => {
     const isDragging = draggingId === monitor.outputId || keyboardDraggingId === monitor.outputId;
     const isKeyboardDragging = keyboardDraggingId === monitor.outputId;
-    const squircle = useSquircle({ width: 200, height: 120, radius: 12, order: 4 });
 
     return (
       <div
@@ -295,7 +286,11 @@ export function DisplayPanel(): React.ReactElement {
               className="panel-input"
               value={`${monitor.selectedMode.width}x${monitor.selectedMode.height}@${monitor.selectedMode.refresh_hz}`}
               onChange={(e) => {
-                const [wh, hz] = e.target.value.split("@");
+                const parts = e.target.value.split("@");
+                if (parts.length !== 2) return;
+                const wh = parts[0];
+                const hz = parts[1];
+                if (!wh || !hz) return;
                 const [w, h] = wh.split("x").map(Number);
                 const mode = outputs.find((o) => o.output_id === monitor.outputId)?.modes.find(
                   (m) => m.width === w && m.height === h && m.refresh_hz === Number(hz)
@@ -340,7 +335,7 @@ export function DisplayPanel(): React.ReactElement {
     const scale = getMonitorScale(monitor.selectedMode);
     const w = monitor.width * scale;
     const h = monitor.height * scale;
-    const squircle = useSquircle({ width: w, height: h, radius: 12 * scale, order: 4 });
+    const clipPath = buildClipPath(w, h, 12 * scale);
 
     return (
       <div
@@ -362,7 +357,7 @@ export function DisplayPanel(): React.ReactElement {
         onKeyDown={(e) => handleKeyDown(e, monitor)}
         data-testid={`canvas-monitor-${idx}`}
       >
-        <div style={squircle.clipPath ? { clipPath: squircle.clipPath, width: "100%", height: "100%" } : {}}>
+        <div style={clipPath ? { clipPath, width: "100%", height: "100%" } : {}}>
           <div style={{
             width: "100%",
             height: "100%",
@@ -406,9 +401,9 @@ export function DisplayPanel(): React.ReactElement {
 
   // Snap guide lines
   const renderSnapGuides = () => {
-    if (snapGuideSpring < 0.01) return null;
+    if (snapGuideSpring.position < 0.01) return null;
     return (
-      <div style={{ pointerEvents: "none", position: "absolute", inset: 0, opacity: snapGuideSpring }}>
+      <div style={{ pointerEvents: "none", position: "absolute", inset: 0, opacity: snapGuideSpring.position }}>
         {snapGuides.map((g, i) => (
           <div
             key={i}

@@ -10,7 +10,7 @@ import { useHashRoute } from "../lib/hash-route.js";
 import { useSpotlightStore } from "../stores/spotlight-store.js";
 
 // Shared icon mappings for sidebar and quick actions
-const ICONS: Record<string, React.ComponentType<{ size?: number; color?: string }>> = {
+const ICONS: Record<string, React.FC<{ size?: number; color?: string }>> = {
   Wifi: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 13a10 10 0 0 1 14 0M5 17a14 14 0 0 1 14 0"/></svg>,
   Bluetooth: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6.5 6.5 17.5 17.5 12 23 12 1 17.5 6.5 6.5 17.5"/></svg>,
   Battery: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="1" y="4" width="18" height="16" rx="2"/><line x1="23" y1="9" x2="23" y2="11"/></svg>,
@@ -27,7 +27,6 @@ const PersonalizationPanel = lazy(() => import("../components/personalization-pa
 
 // Overview page (root route)
 function OverviewPage(): React.ReactElement {
-  const queryClient = useQueryClient();
   const { data, isLoading, isError } = useQuery({
     queryKey: ["zettings-health"],
     queryFn: async (): Promise<Health> => await invoke<Health>("zettings_health"),
@@ -80,61 +79,55 @@ interface ModuleCardProps {
     route: string;
     title: string;
     description: string;
-    icon: React.ComponentType<{ size?: number; color?: string }>;
+    icon: string; // Key into ICONS
     keywords: string[];
   };
 }
 
 function ModuleCard({ module }: ModuleCardProps): React.ReactElement {
-  const Icon = ICONS[module.icon];
+  const Icon = ICONS[module.icon] ?? ICONS.Wifi!;
   return (
     <button
       onClick={() => window.location.hash = module.route}
+      className="liquid-glass"
       style={{
+        position: "relative",
+        overflow: "hidden",
+        borderRadius: "16px",
         display: "flex",
         flexDirection: "column",
         gap: "var(--space-3)",
         padding: "var(--space-5)",
-        background: "var(--surface-muted)",
-        border: "1px solid var(--border)",
-        borderRadius: "12px",
         cursor: "pointer",
         textAlign: "left",
-        transition: "border-color var(--motion-duration-fast) var(--motion-ease-out), box-shadow var(--motion-duration-fast) var(--motion-ease-out), background var(--motion-duration-fast) var(--motion-ease-out)",
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.borderColor = "color-mix(in srgb, var(--accent) 40%, var(--border))";
-        e.currentTarget.style.boxShadow = "var(--shadow-1)";
-        e.currentTarget.style.background = "var(--surface-elevated)";
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.borderColor = "var(--border)";
-        e.currentTarget.style.boxShadow = "none";
-        e.currentTarget.style.background = "var(--surface-muted)";
-      }}
-      onFocus={(e) => {
-        e.currentTarget.style.outline = "2px solid var(--ring)";
-        e.currentTarget.style.outlineOffset = "2px";
-      }}
-      onBlur={(e) => {
-        e.currentTarget.style.outline = "none";
+        background: "transparent",
+        border: "none",
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
-        <div style={{ width: 44, height: 44, borderRadius: "12px", background: "color-mix(in srgb, var(--accent) 14%, transparent)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <Icon size={22} color="var(--accent)" />
+      {/* Layer 0: Refraction */}
+      <div className="liquid-glass__refract" style={{ borderRadius: "16px" }} />
+      {/* Layer 1: Tint */}
+      <div className="liquid-glass__tint" style={{ borderRadius: "16px" }} />
+      {/* Layer 2: Specular */}
+      <div className="liquid-glass__specular" style={{ borderRadius: "16px" }} />
+      {/* Layer 3: Content */}
+      <div className="liquid-glass__content">
+        <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
+          <div style={{ width: 44, height: 44, borderRadius: "12px", background: "color-mix(in srgb, var(--accent) 14%, transparent)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <Icon size={22} color="var(--accent)" />
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <h4 style={{ fontSize: "var(--text-base)", fontWeight: 600, color: "var(--text)", margin: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+              {module.title}
+            </h4>
+            <p style={{ fontSize: "var(--text-sm)", color: "var(--text-muted)", margin: "var(--space-1) 0 0" }}>
+              {module.description}
+            </p>
+          </div>
         </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <h4 style={{ fontSize: "var(--text-base)", fontWeight: 600, color: "var(--text)", margin: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-            {module.title}
-          </h4>
-          <p style={{ fontSize: "var(--text-sm)", color: "var(--text-muted)", margin: "var(--space-1) 0 0" }}>
-            {module.description}
-          </p>
+        <div style={{ fontSize: "var(--text-xs)", color: "var(--text-subtle)" }}>
+          Keywords: {module.keywords.slice(0, 3).join(", ")}…
         </div>
-      </div>
-      <div style={{ fontSize: "var(--text-xs)", color: "var(--text-subtle)" }}>
-        Keywords: {module.keywords.slice(0, 3).join(", ")}…
       </div>
     </button>
   );
@@ -147,16 +140,39 @@ interface QuickActionProps {
 }
 
 function QuickAction({ label, icon: IconName, onClick }: QuickActionProps): React.ReactElement {
-  const Icon = ICONS[IconName] || ICONS.Wifi;
+  const Icon = ICONS[IconName] ?? ICONS.Wifi!;
 
   return (
     <button
       onClick={onClick}
-      className="panel-button panel-button-secondary"
-      style={{ display: "inline-flex", alignItems: "center", gap: "var(--space-2)" }}
+      className="liquid-glass"
+      style={{
+        position: "relative",
+        overflow: "hidden",
+        borderRadius: "10px",
+        display: "inline-flex",
+        alignItems: "center",
+        gap: "var(--space-2)",
+        padding: "var(--space-2) var(--space-3)",
+        border: "none",
+        cursor: "pointer",
+        background: "transparent",
+        color: "var(--text)",
+        fontSize: "var(--text-sm)",
+        fontWeight: 500,
+      }}
     >
-      <Icon size={16} />
-      {label}
+      {/* Layer 0: Refraction */}
+      <div className="liquid-glass__refract" style={{ borderRadius: "10px" }} />
+      {/* Layer 1: Tint */}
+      <div className="liquid-glass__tint" style={{ borderRadius: "10px" }} />
+      {/* Layer 2: Specular */}
+      <div className="liquid-glass__specular" style={{ borderRadius: "10px" }} />
+      {/* Layer 3: Content */}
+      <div className="liquid-glass__content" style={{ display: "inline-flex", alignItems: "center", gap: "var(--space-2)" }}>
+        <Icon size={16} color="var(--accent)" />
+        <span>{label}</span>
+      </div>
     </button>
   );
 }
@@ -169,10 +185,6 @@ const MODULE_CARDS = [
   { route: "/power", title: "Power", description: "Battery health, discharge graph, performance profiles", icon: "Wifi", keywords: ["battery", "profile", "performance", "power saver", "cycles"] },
   { route: "/personalization", title: "Personalization", description: "Accent colors, corner roundness, glass blur, themes", icon: "Bluetooth", keywords: ["accent", "theme", "dark mode", "squircle", "glass", "blur"] },
 ];
-
-async function fetchHealth(): Promise<Health> {
-  return await invoke<Health>("zettings_health");
-}
 
 function isSpotlightShortcut(event: KeyboardEvent): boolean {
   if (event.type !== "keydown") return false;
@@ -231,6 +243,16 @@ export function Zettings(): React.ReactElement {
 
   return (
     <ShellFrame>
+      {/* Liquid Glass SVG filter definition — defines the refraction displacement map */}
+      <svg className="liquid-glass-filter" aria-hidden="true">
+        <defs>
+          <filter id="liquid-glass-refract" color-interpolation-filters="sRGB" x="0%" y="0%" width="100%" height="100%">
+            <feImage result="dispMap" x="0" y="0" width="400" height="400" preserveAspectRatio="none"
+              href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MDAiIGhlaWdodD0iNDAwIj48ZGVmcz48cmFkaWFsR3JhZGllbnQgaWQ9ImciIHI9IjUwJSIgY3g9IjUwJSIgY3k9IjUwJSI+PHN0b3Agb2Zmc2V0PSIwJSIgc3RvcC1jb2xvcj0iIzgwODA4MCIvPjxzdG9wIG9mZnNldD0iNzAlIiBzdG9wLWNvbG9yPSIjODA4MDgwIi8+PHN0b3Agb2Zmc2V0PSIxMDAlIiBzdG9wLWNvbG9yPSIjYzBjMGMwIi8+PC9yYWRpYWxHcmFkaWVudD48L2RlZnM+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0idXJsKCNnKSIvPjwvc3ZnPg==" />
+            <feDisplacementMap in="SourceGraphic" in2="dispMap" scale="-30" xChannelSelector="R" yChannelSelector="G" />
+          </filter>
+        </defs>
+      </svg>
       <div className="zettings-shell" data-reduced-motion={reducedMotion}>
         <aside className="sidebar">
           <header className="sidebar-title">
@@ -240,40 +262,42 @@ export function Zettings(): React.ReactElement {
           <nav aria-label="Settings modules">
             <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: "var(--space-1)" }}>
               {MODULE_CARDS.map((mod) => {
-                const Icon = ICONS[mod.icon] || ICONS.Wifi;
+                const Icon = ICONS[mod.icon] ?? ICONS.Wifi!;
+                const isActive = route.segments[0] === mod.route.replace("/", "");
                 return (
                   <li key={mod.route}>
                     <button
                       onClick={() => window.location.hash = mod.route}
+                      className="liquid-glass"
                       style={{
+                        position: "relative",
+                        overflow: "hidden",
+                        borderRadius: "12px",
                         display: "flex",
                         alignItems: "center",
                         gap: "var(--space-3)",
                         width: "100%",
                         padding: "var(--space-3) var(--space-4)",
-                        background: route.segments[0] === mod.route.replace("/", "") ? "color-mix(in srgb, var(--accent) 10%, transparent)" : "transparent",
                         border: "none",
-                        borderRadius: "8px",
-                        color: route.segments[0] === mod.route.replace("/", "") ? "var(--accent)" : "var(--text)",
+                        color: isActive ? "var(--accent)" : "var(--text)",
                         cursor: "pointer",
                         textAlign: "left",
                         fontSize: "var(--text-sm)",
-                        fontWeight: route.segments[0] === mod.route.replace("/", "") ? 600 : 400,
-                        transition: "background var(--motion-duration-fast) var(--motion-ease-out), color var(--motion-duration-fast) var(--motion-ease-out)",
-                      }}
-                      onMouseEnter={(e) => {
-                        if (route.segments[0] !== mod.route.replace("/")) {
-                          e.currentTarget.style.background = "var(--surface-muted)";
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        if (route.segments[0] !== mod.route.replace("/")) {
-                          e.currentTarget.style.background = "transparent";
-                        }
+                        fontWeight: isActive ? 600 : 400,
+                        background: "transparent",
                       }}
                     >
-                      <Icon size={18} style={{ color: route.segments[0] === mod.route.replace("/", "") ? "var(--accent)" : "var(--text-muted)" }} />
-                      <span>{mod.title}</span>
+                      {/* Layer 0: Refraction */}
+                      <div className="liquid-glass__refract" style={{ borderRadius: "12px" }} />
+                      {/* Layer 1: Tint */}
+                      <div className="liquid-glass__tint" style={{ borderRadius: "12px", background: isActive ? "rgba(var(--accent-rgb), 0.18)" : "rgba(255, 255, 255, 0.12)" }} />
+                      {/* Layer 2: Specular */}
+                      <div className="liquid-glass__specular" style={{ borderRadius: "12px" }} />
+                      {/* Layer 3: Content */}
+                      <div className="liquid-glass__content" style={{ display: "flex", alignItems: "center", gap: "var(--space-3)", width: "100%" }}>
+                        <Icon size={18} color={isActive ? "var(--accent)" : "var(--text-muted)"} />
+                        <span>{mod.title}</span>
+                      </div>
                     </button>
                   </li>
                 );
@@ -282,8 +306,17 @@ export function Zettings(): React.ReactElement {
           </nav>
         </aside>
         <main className="content">
-          <header className="content-bar">
-            <Breadcrumbs route={route} />
+          <header className="content-bar liquid-glass" style={{ position: "relative", overflow: "hidden", borderRadius: "var(--radius-lg)" }}>
+            {/* Layer 0: Refraction */}
+            <div className="liquid-glass__refract" style={{ borderRadius: "var(--radius-lg)" }} />
+            {/* Layer 1: Tint */}
+            <div className="liquid-glass__tint" style={{ borderRadius: "var(--radius-lg)" }} />
+            {/* Layer 2: Specular */}
+            <div className="liquid-glass__specular" style={{ borderRadius: "var(--radius-lg)" }} />
+            {/* Layer 3: Content */}
+            <div className="liquid-glass__content">
+              <Breadcrumbs route={route} />
+            </div>
           </header>
           <section className="content-body">
             <TargetHighlightBoundary>
@@ -302,15 +335,9 @@ export function Zettings(): React.ReactElement {
 function PanelSkeleton(): React.ReactElement {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-6)" }}>
-      <div style={{ height: "48px", background: "var(--surface-muted)", borderRadius: "12px", animation: "pulse 1.5s ease-in-out infinite" }} />
-      <div style={{ height: "200px", background: "var(--surface-muted)", borderRadius: "12px", animation: "pulse 1.5s ease-in-out infinite 0.2s" }} />
-      <div style={{ height: "200px", background: "var(--surface-muted)", borderRadius: "12px", animation: "pulse 1.5s ease-in-out infinite 0.4s" }} />
-      <style jsx>{`
-        @keyframes pulse {
-          0%, 100% { opacity: 0.6; }
-          50% { opacity: 1; }
-        }
-      `}</style>
+      <div className="pulse" style={{ height: "48px", background: "var(--surface-muted)", borderRadius: "12px" }} />
+      <div className="pulse" style={{ height: "200px", background: "var(--surface-muted)", borderRadius: "12px", animationDelay: "0.2s" }} />
+      <div className="pulse" style={{ height: "200px", background: "var(--surface-muted)", borderRadius: "12px", animationDelay: "0.4s" }} />
     </div>
   );
 }
