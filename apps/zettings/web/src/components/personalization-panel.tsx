@@ -30,6 +30,7 @@ import {
   RotateCcw,
   Sparkles
 } from "lucide-react";
+import { useSpring, ZDL_SPRINGS } from "../lib/zdl-motion-hooks.js";
 
 const THEME_VARIANTS = [
   { id: "light", name: "Light", icon: Sun, description: "Clean light theme" },
@@ -63,233 +64,271 @@ function getContrastColor(r: number, g: number, b: number): string {
 }
 
 export function PersonalizationPanel(): React.ReactElement {
-  const [accentColor, setAccentColor] = useState(DEFAULT_ACCENT);
-  const [accentOnColor, setAccentOnColor] = useState(DEFAULT_ACCENT_ON);
-  const [accentSecondaryColor, setAccentSecondaryColor] = useState(DEFAULT_ACCENT_SECONDARY);
-  const [squircleOrder, setSquircleOrder] = useState(4); // 4 = G2, 6 = G3
-  const [glassBlur, setGlassBlur] = useState(24); // px
-  const [glassSaturate, setGlassSaturate] = useState(180); // %
-  const [theme, setTheme] = useState<"light" | "dark" | "oled" | "hc">("dark");
-  const [wallpaperFile, setWallpaperFile] = useState<File | null>(null);
-  const [extracting, setExtracting] = useState(false);
+  const [accent, setAccent] = useState<string>(DEFAULT_ACCENT);
+  const [accentOn, setAccentOn] = useState<string>(DEFAULT_ACCENT_ON);
+  const [accentSecondary, setAccentSecondary] = useState<string>(DEFAULT_ACCENT_SECONDARY);
+  const [squircleOrder, setSquircleOrder] = useState<4 | 6>(4);
+  const [glassBlur, setGlassBlur] = useState<number>(16); // 8-32px
+  const [glassSaturate, setGlassSaturate] = useState<number>(180); // 100-250%
+  const [themeVariant, setThemeVariant] = useState<typeof THEME_VARIANTS[0]["id"]>("dark");
+  const [extracting, setExtracting] = useState<boolean>(false);
   const [extractedPalette, setExtractedPalette] = useState<AccentPaletteDto | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Apply theme to document
-  useEffect(() => {
-    document.documentElement.setAttribute("data-theme", theme);
-  }, [theme]);
-
   // Apply accent colors to CSS custom properties
-  useEffect(() => {
+  const applyAccent = useCallback((primary: string, on?: string, secondary?: string) => {
+    const [r, g, b] = hexToRgb(primary);
     const root = document.documentElement;
-    root.style.setProperty("--accent", accentColor);
-    root.style.setProperty("--accent-on", accentOnColor);
-    root.style.setProperty("--accent-secondary", accentSecondaryColor);
-  }, [accentColor, accentOnColor, accentSecondaryColor]);
+    root.style.setProperty("--accent", primary);
+    root.style.setProperty("--accent-rgb", `${Math.round(r * 255)}, ${Math.round(g * 255)}, ${Math.round(b * 255)}`);
+    if (on) root.style.setProperty("--accent-on", on);
+    if (secondary) root.style.setProperty("--accent-secondary", secondary);
+  }, []);
 
-  // Apply squircle order to CSS (affects GlassPanel)
-  useEffect(() => {
-    // This is a global token - in real impl would use a context or CSS var
-    document.documentElement.style.setProperty("--zdl-squircle-order", squircleOrder.toString());
-  }, [squircleOrder]);
+  // Apply theme variant
+  const applyTheme = useCallback((variant: string) => {
+    document.documentElement.setAttribute("data-theme", variant);
+  }, []);
+
+  // Apply squircle order
+  const applySquircle = useCallback((order: number) => {
+    document.documentElement.style.setProperty("--squircle-order", String(order));
+  }, []);
 
   // Apply glass blur/saturate
+  const applyGlass = useCallback((blur: number, saturate: number) => {
+    document.documentElement.style.setProperty("--glass-panel-blur", `${blur}px`);
+    document.documentElement.style.setProperty("--glass-panel-saturate", `${saturate}%`);
+  }, []);
+
+  // Initialize on mount
   useEffect(() => {
-    document.documentElement.style.setProperty("--glass-blur", `${glassBlur}px`);
-    document.documentElement.style.setProperty("--glass-saturate", `${glassSaturate}%`);
-  }, [glassBlur, glassSaturate]);
-
-  
-
-  const handleAccentChange = useCallback((color: string) => {
-    setAccentColor(color);
-    // Auto-calculate on/secondary based on hue
-    const [r, g, b] = hexToRgb(color);
-    setAccentOnColor(getContrastColor(r, g, b));
-    // Secondary: shift hue by ~60 degrees (complementary-ish)
-    const hsl = rgbToHsl(r, g, b);
-    const secondaryHsl: [number, number, number] = [(hsl[0] + 60) % 360, hsl[1], hsl[2]];
-    const [sr, sg, sb] = secondaryHsl;
-    setAccentSecondaryColor(rgbToHex(sr, sg, sb));
-  }, []);
-
-  const handleWallpaperChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setWallpaperFile(file);
-    }
-  }, []);
+    applyAccent(accent, accentOn, accentSecondary);
+    applyTheme(themeVariant);
+    applySquircle(squircleOrder);
+    applyGlass(glassBlur, glassSaturate);
+  }, [accent, accentOn, accentSecondary, themeVariant, squircleOrder, glassBlur, glassSaturate, applyAccent, applyTheme, applySquircle, applyGlass]);
 
   const handleExtractPalette = useCallback(async () => {
-    if (!wallpaperFile) return;
+    if (!fileInputRef.current?.files?.[0]) return;
     setExtracting(true);
     try {
-      const bytes = await wallpaperFile.arrayBuffer();
-      const result = await invoke<PaletteExtractResult>("zettings_palette_extract", {
-        request: { bytes: Array.from(new Uint8Array(bytes)) },
-      });
-      setExtractedPalette(result.palette);
-      // Apply extracted colors
-      const [r, g, b] = result.palette.accent;
-      const accent = rgbToHex(r, g, b);
-      const [ror, gog, bob] = result.palette.on_accent;
-      const onAccent = rgbToHex(ror, gog, bob);
-      const [sr, sg, sb] = result.palette.secondary;
-      const secondary = rgbToHex(sr, sg, sb);
-      handleAccentChange(accent);
-      setAccentOnColor(onAccent);
-      setAccentSecondaryColor(secondary);
+      const file = fileInputRef.current.files[0];
+      const arrayBuffer = await file.arrayBuffer();
+      const bytes = new Uint8Array(arrayBuffer);
+      const result = await invoke<PaletteExtractResult>("zettings_palette_extract", { imageBytes: Array.from(bytes) });
+      if (result.palette) {
+        setExtractedPalette(result.palette);
+        const [r, g, b] = result.palette.accent;
+        const newAccent = rgbToHex(r, g, b);
+        const [ro, go, bo] = result.palette.on_accent;
+        const newAccentOn = rgbToHex(ro, go, bo);
+        const [rs, gs, bs] = result.palette.secondary;
+        const newAccentSecondary = rgbToHex(rs, gs, bs);
+        setAccent(newAccent);
+        setAccentOn(newAccentOn);
+        setAccentSecondary(newAccentSecondary);
+      }
     } catch (e) {
       console.error("Failed to extract palette:", e);
     } finally {
       setExtracting(false);
     }
-  }, [wallpaperFile, handleAccentChange]);
+  }, []);
+
+  const handleFileSelect = useCallback(() => {
+    fileInputRef.current?.click();
+  }, []);
+
+  const handleApplyExtracted = useCallback(() => {
+    if (extractedPalette) {
+      const [r, g, b] = extractedPalette.accent;
+      const newAccent = rgbToHex(r, g, b);
+      const [ro, go, bo] = extractedPalette.on_accent;
+      const newAccentOn = rgbToHex(ro, go, bo);
+      const [rs, gs, bs] = extractedPalette.secondary;
+      const newAccentSecondary = rgbToHex(rs, gs, bs);
+      setAccent(newAccent);
+      setAccentOn(newAccentOn);
+      setAccentSecondary(newAccentSecondary);
+    }
+  }, [extractedPalette]);
 
   const handleReset = useCallback(() => {
-    setAccentColor(DEFAULT_ACCENT);
-    setAccentOnColor(DEFAULT_ACCENT_ON);
-    setAccentSecondaryColor(DEFAULT_ACCENT_SECONDARY);
-    setSquircleOrder(4);
-    setGlassBlur(24);
-    setGlassSaturate(180);
-    setTheme("dark");
+    setAccent(DEFAULT_ACCENT);
+    setAccentOn(DEFAULT_ACCENT_ON);
+    setAccentSecondary(DEFAULT_ACCENT_SECONDARY);
     setExtractedPalette(null);
   }, []);
 
-  // Color picker with text input
-  const renderColorPicker = (label: string, value: string, onChange: (c: string) => void, id: string, description?: string) => {
+  // Live preview box with liquid glass
+  const renderPreviewBox = (_label: string, color: string, size = 48) => {
+    const [r, g, b] = hexToRgb(color);
+    const contrast = getContrastColor(r, g, b);
     return (
-      <div className="panel-field" data-testid={`color-${id}`}>
-        <label className="panel-field-label" htmlFor={id}>{label}</label>
-        <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
-          <input
-            id={id}
-            type="color"
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            style={{
-              width: 48,
-              height: 48,
-              border: "none",
-              borderRadius: "10px",
-              cursor: "pointer",
-              background: "none",
-              padding: 0,
-            }}
-            aria-label={label}
-          />
-          <input
-            type="text"
-            value={value}
-            onChange={(e) => {
-              const v = e.target.value;
-              if (/^#[0-9a-fA-F]{6}$/.test(v)) onChange(v);
-            }}
-            className="panel-input"
-            style={{ flex: 1, maxWidth: 140, fontFamily: "var(--font-mono)" }}
-            placeholder="#rrggbb"
-            aria-label={`${label} hex value`}
-          />
-          <div
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: "8px",
-              background: value,
-              border: "2px solid var(--border)",
-              flexShrink: 0,
-            }}
-            aria-hidden="true"
-          />
+      <div className="liquid-glass liquid-glass--prominent" style={{ width: size, height: size, borderRadius: "var(--radius-md)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+        <div className="liquid-glass__refract" style={{ borderRadius: "var(--radius-md)" }} />
+        <div className="liquid-glass__tint" style={{ borderRadius: "var(--radius-md)" }} />
+        <div className="liquid-glass__specular" style={{ borderRadius: "var(--radius-md)" }} />
+        <div className="liquid-glass__content" style={{ background: color, borderRadius: "calc(var(--radius-md) - 2px)", width: "calc(100% - 4px)", height: "calc(100% - 4px)", display: "flex", alignItems: "center", justifyContent: "center", color: contrast, fontSize: "var(--text-xs)", fontWeight: 600 }}>
+          {color}
         </div>
-        {description && <p className="panel-field-hint">{description}</p>}
       </div>
     );
   };
 
-  // Theme variant card
+  // Theme variant card with liquid glass
   const renderThemeCard = (variant: typeof THEME_VARIANTS[0]) => {
-    const isActive = theme === variant.id;
-    const Icon = variant.icon;
+    const isActive = themeVariant === variant.id;
+    const cardSpring = useSpring(isActive ? 1 : 0, ZDL_SPRINGS.slider);
 
     return (
       <button
         key={variant.id}
-        className="panel-card"
-        onClick={() => setTheme(variant.id as typeof theme)}
+        onClick={() => setThemeVariant(variant.id)}
         aria-pressed={isActive}
+        className="liquid-glass liquid-glass--regular panel-card--glass"
         style={{
           display: "flex",
           flexDirection: "column",
-          alignItems: "center",
-          textAlign: "center",
-          padding: "var(--space-6)",
           gap: "var(--space-3)",
+          padding: "var(--space-5)",
           flex: 1,
-          cursor: "pointer",
-          border: isActive ? "2px solid var(--accent)" : "1px solid var(--border)",
-          background: isActive ? "color-mix(in srgb, var(--accent) 8%, transparent)" : "var(--surface-muted)",
-          transition: "border-color var(--motion-duration-fast) var(--motion-ease-out), background var(--motion-duration-fast) var(--motion-ease-out)",
+          minWidth: 0,
+          textAlign: "center",
+          opacity: 0.7 + 0.3 * cardSpring.position,
+          transform: `scale(${0.98 + 0.02 * cardSpring.position})`,
+          border: isActive ? "2px solid var(--accent)" : "none",
+          transition: "opacity var(--motion-duration-fast) var(--motion-ease-out), transform var(--motion-duration-fast) var(--motion-ease-out), border-color var(--motion-duration-fast) var(--motion-ease-out)",
         }}
         data-testid={`theme-${variant.id}`}
       >
-        <div style={{ width: 56, height: 56, borderRadius: "14px", background: isActive ? "color-mix(in srgb, var(--accent) 18%, transparent)" : "var(--surface)", display: "flex", alignItems: "center", justifyContent: "center", border: isActive ? "2px solid var(--accent)" : "1px solid var(--border)" }}>
-          <Icon size={26} color={isActive ? "var(--accent)" : "var(--text-muted)"} />
+        <div className="liquid-glass__content" style={{ display: "flex", flexDirection: "column", gap: "var(--space-3)", alignItems: "center" }}>
+          <div
+            className={`liquid-glass liquid-glass--${isActive ? "prominent" : "clear"}`}
+            style={{ width: 48, height: 48, borderRadius: "12px", display: "flex", alignItems: "center", justifyContent: "center" }}
+          >
+            <div className="liquid-glass__refract" style={{ borderRadius: "12px" }} />
+            <div className="liquid-glass__tint" style={{ borderRadius: "12px" }} />
+            <div className="liquid-glass__specular" style={{ borderRadius: "12px" }} />
+            <div className="liquid-glass__content" style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <variant.icon size={24} color={isActive ? "var(--accent)" : "var(--text-muted)"} />
+            </div>
+          </div>
+          <div>
+            <h4 style={{ fontSize: "var(--text-base)", fontWeight: 600, color: "var(--text)", margin: 0 }}>{variant.name}</h4>
+            <p style={{ fontSize: "var(--text-sm)", color: "var(--text-muted)", margin: "var(--space-1) 0 0" }}>{variant.description}</p>
+          </div>
+          {isActive && <Check size={20} color="var(--accent)" aria-label="Active" />}
         </div>
-        <h4 style={{ fontSize: "var(--text-base)", fontWeight: 600, color: "var(--text)", margin: 0 }}>{variant.name}</h4>
-        <p style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)", margin: 0 }}>{variant.description}</p>
-        {isActive && <Check size={16} color="var(--accent)" style={{ marginTop: "var(--space-1)" }} />}
       </button>
     );
   };
 
-  // Live preview card
-  const renderPreview = () => {
-    return (
-      <div className="panel-card" style={{ padding: "var(--space-6)", overflow: "hidden" }} data-testid="preview-card">
-        <h4 style={{ fontSize: "var(--text-base)", fontWeight: 600, color: "var(--text)", margin: "0 0 var(--space-4)" }}>Live Preview</h4>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-4)" }}>
-          {/* Glass panel preview */}
-          <div style={{ position: "relative", minHeight: 120, background: "linear-gradient(135deg, var(--surface) 0%, var(--surface-muted) 100%)", borderRadius: "12px", overflow: "hidden" }}>
-            <div
-              style={{
-                position: "absolute",
-                inset: "var(--space-4)",
-                background: "var(--glass-tint)",
-                backdropFilter: "blur(var(--glass-blur)) saturate(var(--glass-saturate))",
-                WebkitBackdropFilter: "blur(var(--glass-blur)) saturate(var(--glass-saturate))",
-                border: "1px solid var(--glass-specular)",
-                borderRadius: squircleOrder === 6 ? "0" : "12px",
-                clipPath: squircleOrder === 6 ? "polygon(0% 15%, 15% 0%, 85% 0%, 100% 15%, 100% 85%, 85% 100%, 15% 100%, 0% 85%)" : "none",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                padding: "var(--space-4)",
-              }}
-            >
-              <span style={{ color: "var(--text)", fontSize: "var(--text-sm)" }}>Glass Panel</span>
-            </div>
-            <div style={{ position: "absolute", bottom: "var(--space-3)", left: "var(--space-3)", fontSize: "var(--text-xs)", color: "var(--text-muted)" }}>
-              Blur: {glassBlur}px • Saturation: {glassSaturate}%
-            </div>
-          </div>
+  // Glass slider with value display
+  const renderGlassSlider = ({
+    label,
+    value,
+    min,
+    max,
+    step,
+    onChange,
+    unit = "",
+    marks,
+    id,
+  }: {
+    label: string;
+    value: number;
+    min: number;
+    max: number;
+    step: number;
+    onChange: (v: number) => void;
+    unit?: string;
+    marks?: { value: number; label: string }[];
+    id: string;
+  }) => {
+    const spring = useSpring(value, ZDL_SPRINGS.slider);
 
-          {/* Button preview */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-3)", justifyContent: "center" }}>
-            <button style={{ padding: "var(--space-3) var(--space-6)", background: "var(--accent)", color: "var(--accent-on)", border: "none", borderRadius: "10px", fontWeight: 500, cursor: "default" }}>
-              Primary Button
-            </button>
-            <button style={{ padding: "var(--space-3) var(--space-6)", background: "var(--surface-muted)", color: "var(--text)", border: "1px solid var(--border)", borderRadius: "10px", fontWeight: 500, cursor: "default" }}>
-              Secondary Button
-            </button>
-            <div style={{ display: "flex", gap: "var(--space-2)" }}>
-              <input type="range" className="panel-slider" style={{ flex: 1 }} defaultValue={50} />
-              <label style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", cursor: "pointer" }}>
-                <input type="checkbox" className="panel-toggle" defaultChecked />
-                <span style={{ fontSize: "var(--text-sm)", color: "var(--text)" }}>Toggle</span>
-              </label>
+    return (
+      <div className="liquid-glass liquid-glass--clear panel-card--glass" style={{ padding: "var(--space-4)", display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
+        <div className="liquid-glass__content">
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <label htmlFor={id} className="panel-field-label" style={{ margin: 0 }}>{label}</label>
+            <span style={{ fontSize: "var(--text-sm)", fontWeight: 500, color: "var(--accent)", fontVariantNumeric: "tabular-nums" }}>
+              {spring.position.toFixed(step < 1 ? 1 : 0)}{unit}
+            </span>
+          </div>
+          <input
+            id={id}
+            type="range"
+            min={min}
+            max={max}
+            step={step}
+            value={value}
+            onChange={(e) => onChange(Number(e.target.value))}
+            className="panel-slider"
+            style={{ width: "100%" }}
+            data-testid={id}
+          />
+          {marks && (
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "var(--text-xs)", color: "var(--text-subtle)" }}>
+              {marks.map((m) => (
+                <span key={m.value}>{m.label}</span>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  // Color input with liquid glass
+  const renderColorInput = ({
+    label,
+    value,
+    onChange,
+    id,
+    previewSize = 40,
+  }: {
+    label: string;
+    value: string;
+    onChange: (v: string) => void;
+    id: string;
+    previewSize?: number;
+  }) => {
+    return (
+      <div className="liquid-glass liquid-glass--clear panel-card--glass" style={{ padding: "var(--space-4)", display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
+        <div className="liquid-glass__content">
+          <label htmlFor={id} className="panel-field-label" style={{ margin: 0 }}>{label}</label>
+          <div style={{ display: "flex", alignItems: "center", gap: "var(--space-4)" }}>
+            <div className="liquid-glass liquid-glass--prominent" style={{ width: previewSize, height: previewSize, borderRadius: "var(--radius-md)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <div className="liquid-glass__refract" style={{ borderRadius: "var(--radius-md)" }} />
+              <div className="liquid-glass__tint" style={{ borderRadius: "var(--radius-md)" }} />
+              <div className="liquid-glass__specular" style={{ borderRadius: "var(--radius-md)" }} />
+              <div className="liquid-glass__content" style={{ background: value, borderRadius: "calc(var(--radius-md) - 2px)", width: "calc(100% - 4px)", height: "calc(100% - 4px)" }} />
+            </div>
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
+              <input
+                id={id}
+                type="color"
+                value={value}
+                onChange={(e) => onChange(e.target.value)}
+                className="panel-input"
+                style={{ width: "100%", height: 40, borderRadius: "var(--radius-sm)", cursor: "pointer", padding: "2px" }}
+                data-testid={id}
+              />
+              <input
+                type="text"
+                value={value}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  if (/^#[0-9a-fA-F]{6}$/.test(v)) onChange(v);
+                }}
+                className="panel-input"
+                placeholder="#RRGGBB"
+                style={{ width: "100%" }}
+                aria-label={`${label} hex value`}
+              />
             </div>
           </div>
         </div>
@@ -301,234 +340,165 @@ export function PersonalizationPanel(): React.ReactElement {
     <PanelShell
       title="Personalization"
       icon={Palette}
-      subtitle="Accent colors, corner roundness, glass material, and theme variants"
-      actions={
-        <button className="panel-button panel-button-secondary" onClick={handleReset} data-testid="reset-personalization">
-          <RotateCcw size={16} /> Reset to Defaults
-        </button>
-      }
+      subtitle="Accent colors, corner roundness, glass blur, and theme variants"
       dataTestId="personalization-panel"
     >
       <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-8)" }}>
-        {/* Accent colors */}
-        <section>
-          <h4 style={{ fontSize: "var(--text-base)", fontWeight: 600, color: "var(--text)", margin: "0 0 var(--space-4)" }}>Accent Colors</h4>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "var(--space-4)" }}>
-            {renderColorPicker(
-              "Primary Accent",
-              accentColor,
-              handleAccentChange,
-              "accent-primary",
-              "Main brand color used for highlights, links, and active states"
-            )}
-            {renderColorPicker(
-              "On Accent",
-              accentOnColor,
-              setAccentOnColor,
-              "accent-on",
-              "Text/icon color on top of the accent (auto-calculated for contrast)"
-            )}
-            {renderColorPicker(
-              "Secondary Accent",
-              accentSecondaryColor,
-              setAccentSecondaryColor,
-              "accent-secondary",
-              "Complementary color for gradients and secondary actions"
-            )}
-          </div>
-        </section>
-
-        {/* Wallpaper extraction */}
-        <section>
-          <h4 style={{ fontSize: "var(--text-base)", fontWeight: 600, color: "var(--text)", margin: "0 0 var(--space-4)" }}>Wallpaper Color Extraction</h4>
-          <div className="panel-card" style={{ padding: "var(--space-6)", display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "var(--space-4)", flexWrap: "wrap" }}>
-              <div style={{ width: 56, height: 56, borderRadius: "14px", background: "color-mix(in srgb, var(--accent) 14%, transparent)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <Image size={24} color="var(--accent)" />
-              </div>
-              <div style={{ flex: 1, minWidth: 200 }}>
-                <p style={{ fontWeight: 500, color: "var(--text)", margin: 0 }}>Extract accent palette from wallpaper</p>
-                <p style={{ fontSize: "var(--text-sm)", color: "var(--text-muted)", margin: "var(--space-1) 0 0" }}>
-                  Uses median-cut quantization to find dominant colors. Works offline — no upload.
-                </p>
-              </div>
+        {/* Accent color extraction */}
+        <section className="liquid-glass liquid-glass--regular panel-card--glass">
+          <div className="liquid-glass__content" style={{ padding: "var(--space-6)", display: "flex", flexDirection: "column", gap: "var(--space-6)" }}>
+            <div>
+              <h4 style={{ fontSize: "var(--text-base)", fontWeight: 600, color: "var(--text)", margin: 0 }}>Wallpaper Accent Extraction</h4>
+              <p style={{ fontSize: "var(--text-sm)", color: "var(--text-muted)", margin: "var(--space-1) 0 0" }}>Upload a wallpaper image to automatically extract an accent color palette</p>
+            </div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "var(--space-4)", alignItems: "center" }}>
               <input
-                type="file"
                 ref={fileInputRef}
+                type="file"
                 accept="image/*"
-                onChange={handleWallpaperChange}
+                onChange={handleExtractPalette}
                 style={{ display: "none" }}
-                id="wallpaper-file"
-                data-testid="wallpaper-file"
+                data-testid="wallpaper-upload"
               />
-              <label htmlFor="wallpaper-file" className="panel-button" style={{ cursor: "pointer" }}>
-                <Image size={16} /> Choose Image
-              </label>
               <button
-                className="panel-button"
-                onClick={handleExtractPalette}
-                disabled={!wallpaperFile || extracting}
-                data-testid="extract-palette"
+                className="liquid-glass-button liquid-glass--regular"
+                onClick={handleFileSelect}
+                disabled={extracting}
+                style={{ padding: "var(--space-3) var(--space-4)", borderRadius: "var(--radius-md)", display: "inline-flex", alignItems: "center", gap: "var(--space-2)" }}
               >
-                <Sparkles size={16} /> {extracting ? "Extracting…" : "Extract Palette"}
+                <div className="liquid-glass__refract" style={{ borderRadius: "var(--radius-md)" }} />
+                <div className="liquid-glass__tint" style={{ borderRadius: "var(--radius-md)" }} />
+                <div className="liquid-glass__specular" style={{ borderRadius: "var(--radius-md)" }} />
+                <div className="liquid-glass__content" style={{ display: "inline-flex", alignItems: "center", gap: "var(--space-2)" }}>
+                  <Image size={16} />
+                  {extracting ? <span>Extracting…</span> : <span>Choose Image</span>}
+                </div>
+              </button>
+              {extractedPalette && (
+                <>
+                  <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)", flexWrap: "wrap" }}>
+                    {renderPreviewBox("Primary", rgbToHex(...extractedPalette.accent), 40)}
+                    {renderPreviewBox("On Primary", rgbToHex(...extractedPalette.on_accent), 40)}
+                    {renderPreviewBox("Secondary", rgbToHex(...extractedPalette.secondary), 40)}
+                  </div>
+                  <button
+                    className="liquid-glass-button liquid-glass--prominent"
+                    onClick={handleApplyExtracted}
+                    style={{ padding: "var(--space-3) var(--space-4)", borderRadius: "var(--radius-md)", display: "inline-flex", alignItems: "center", gap: "var(--space-2)" }}
+                  >
+                    <div className="liquid-glass__refract" style={{ borderRadius: "var(--radius-md)" }} />
+                    <div className="liquid-glass__tint" style={{ borderRadius: "var(--radius-md)" }} />
+                    <div className="liquid-glass__specular" style={{ borderRadius: "var(--radius-md)" }} />
+                    <div className="liquid-glass__content" style={{ display: "inline-flex", alignItems: "center", gap: "var(--space-2)" }}>
+                      <Sparkles size={16} /> Apply Palette
+                    </div>
+                  </button>
+                </>
+              )}
+              <button
+                className="liquid-glass-button liquid-glass--regular"
+                onClick={handleReset}
+                style={{ padding: "var(--space-3) var(--space-4)", borderRadius: "var(--radius-md)", display: "inline-flex", alignItems: "center", gap: "var(--space-2)" }}
+              >
+                <div className="liquid-glass__refract" style={{ borderRadius: "var(--radius-md)" }} />
+                <div className="liquid-glass__tint" style={{ borderRadius: "var(--radius-md)" }} />
+                <div className="liquid-glass__specular" style={{ borderRadius: "var(--radius-md)" }} />
+                <div className="liquid-glass__content" style={{ display: "inline-flex", alignItems: "center", gap: "var(--space-2)" }}>
+                  <RotateCcw size={16} /> Reset
+                </div>
               </button>
             </div>
-
-            {wallpaperFile && (
-              <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)", padding: "var(--space-3)", background: "var(--surface)", borderRadius: "8px", border: "1px solid var(--border)" }}>
-                <Image size={20} color="var(--text-muted)" />
-                <span style={{ fontSize: "var(--text-sm)", color: "var(--text)", flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{wallpaperFile.name}</span>
-                <span style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)" }}>{(wallpaperFile.size / 1024).toFixed(1)} KB</span>
-              </div>
-            )}
-
-            {extractedPalette && (
-              <div style={{ display: "flex", gap: "var(--space-3)", flexWrap: "wrap" }}>
-                {([
-                  { label: "Accent", color: rgbToHex(...extractedPalette.accent) },
-                  { label: "On Accent", color: rgbToHex(...extractedPalette.on_accent) },
-                  { label: "Secondary", color: rgbToHex(...extractedPalette.secondary) },
-                ]).map((c, i) => (
-                  <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "var(--space-1)" }}>
-                    <div style={{ width: 40, height: 40, borderRadius: "10px", background: c.color, border: "2px solid var(--border)" }} />
-                    <span style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)" }}>{c.label}</span>
-                    <span style={{ fontSize: "var(--text-xs)", fontFamily: "var(--font-mono)", color: "var(--text)" }}>{c.color}</span>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
         </section>
 
-        {/* Squircle roundness */}
-        <section>
-          <h4 style={{ fontSize: "var(--text-base)", fontWeight: 600, color: "var(--text)", margin: "0 0 var(--space-4)" }}>Corner Roundness (Squircle Continuity)</h4>
-          <div className="panel-card" style={{ padding: "var(--space-6)", display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
-            <div className="panel-field">
-              <label className="panel-field-label" htmlFor="squircle-order">
-                Continuity: {squircleOrder === 4 ? "G2 (Standard)" : "G3 (Extra Smooth)"}
-              </label>
-              <div style={{ display: "flex", alignItems: "center", gap: "var(--space-4)" }}>
-                <input
-                  id="squircle-order"
-                  type="range"
-                  min="4"
-                  max="6"
-                  step="2"
-                  value={squircleOrder}
-                  onChange={(e) => setSquircleOrder(Number(e.target.value))}
-                  className="panel-slider"
-                  style={{ flex: 1 }}
-                  data-testid="squircle-order"
-                />
-                <span style={{ fontSize: "var(--text-sm)", fontWeight: 500, color: "var(--text)", minWidth: "40px" }}>
-                  {squircleOrder === 4 ? "G2" : "G3"}
-                </span>
-              </div>
-              <p className="panel-field-hint">
-                G2: Continuous curvature (standard). G3: Continuous curvature rate (Apple-style liquid smoothness).
-                Affects all GlassPanel components globally.
-              </p>
-            </div>
-
-            {/* Visual comparison */}
-            <div style={{ display: "flex", gap: "var(--space-4)", flexWrap: "wrap" }}>
-              {[
-                { order: 4, label: "G2 (Current)" },
-                { order: 6, label: "G3 (Extra Smooth)" },
-              ].map((opt) => (
-                <div key={opt.order} style={{ flex: 1, minWidth: 140, textAlign: "center" }}>
-                  <div
-                    style={{
-                      width: 100,
-                      height: 100,
-                      margin: "0 auto var(--space-2)",
-                      background: "linear-gradient(135deg, var(--accent) 0%, var(--accent-secondary) 100%)",
-                      clipPath: opt.order === 6
-                        ? "polygon(0% 15%, 15% 0%, 85% 0%, 100% 15%, 100% 85%, 85% 100%, 15% 100%, 0% 85%)"
-                        : "none",
-                      borderRadius: opt.order === 6 ? 0 : 24,
-                      boxShadow: "var(--shadow-3)",
-                      transition: "all var(--motion-duration-base) var(--motion-ease-out)",
-                    }}
-                  />
-                  <p style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)", margin: 0 }}>{opt.label}</p>
-                </div>
-              ))}
+        {/* Custom accent color pickers */}
+        <section className="liquid-glass liquid-glass--regular panel-card--glass">
+          <div className="liquid-glass__content" style={{ padding: "var(--space-6)", display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
+            <h4 style={{ fontSize: "var(--text-base)", fontWeight: 600, color: "var(--text)", margin: 0 }}>Custom Accent Colors</h4>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "var(--space-4)" }}>
+              {renderColorInput({ label: "Primary Accent", value: accent, onChange: setAccent, id: "accent-primary" })}
+              {renderColorInput({ label: "On Primary (Text)", value: accentOn, onChange: setAccentOn, id: "accent-on" })}
+              {renderColorInput({ label: "Secondary Accent", value: accentSecondary, onChange: setAccentSecondary, id: "accent-secondary" })}
             </div>
           </div>
         </section>
 
-        {/* Glass material */}
-        <section>
-          <h4 style={{ fontSize: "var(--text-base)", fontWeight: 600, color: "var(--text)", margin: "0 0 var(--space-4)" }}>Glass Material</h4>
-          <div className="panel-card" style={{ padding: "var(--space-6)", display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
-            <div className="panel-field">
-              <label className="panel-field-label" htmlFor="glass-blur">Backdrop Blur: {glassBlur}px</label>
-              <input
-                id="glass-blur"
-                type="range"
-                min="0"
-                max="60"
-                step="2"
-                value={glassBlur}
-                onChange={(e) => setGlassBlur(Number(e.target.value))}
-                className="panel-slider"
-                data-testid="glass-blur"
-              />
-              <p className="panel-field-hint">Blur intensity of the glass backdrop. Higher = more frosted.</p>
-            </div>
-            <div className="panel-field">
-              <label className="panel-field-label" htmlFor="glass-saturate">Backdrop Saturation: {glassSaturate}%</label>
-              <input
-                id="glass-saturate"
-                type="range"
-                min="100"
-                max="300"
-                step="10"
-                value={glassSaturate}
-                onChange={(e) => setGlassSaturate(Number(e.target.value))}
-                className="panel-slider"
-                data-testid="glass-saturate"
-              />
-              <p className="panel-field-hint">Color saturation of content behind the glass. 180% = enhanced vibrancy.</p>
+        {/* Glass material controls */}
+        <section className="liquid-glass liquid-glass--regular panel-card--glass">
+          <div className="liquid-glass__content" style={{ padding: "var(--space-6)", display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
+            <h4 style={{ fontSize: "var(--text-base)", fontWeight: 600, color: "var(--text)", margin: 0 }}>Glass Material</h4>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "var(--space-4)" }}>
+              {renderGlassSlider({
+                label: "Corner Roundness (Squircle Order)",
+                value: squircleOrder,
+                min: 4,
+                max: 6,
+                step: 2,
+                onChange: (v) => setSquircleOrder(v as 4 | 6),
+                id: "squircle-order",
+                marks: [
+                  { value: 4, label: "G2 (Order 4)" },
+                  { value: 6, label: "G3 (Order 6)" },
+                ],
+              })}
+              {renderGlassSlider({
+                label: "Glass Blur Intensity",
+                value: glassBlur,
+                min: 8,
+                max: 32,
+                step: 2,
+                onChange: setGlassBlur,
+                unit: "px",
+                id: "glass-blur",
+                marks: [
+                  { value: 8, label: "Subtle" },
+                  { value: 16, label: "Standard" },
+                  { value: 24, label: "Strong" },
+                  { value: 32, label: "Maximum" },
+                ],
+              })}
+              {renderGlassSlider({
+                label: "Glass Saturation",
+                value: glassSaturate,
+                min: 100,
+                max: 250,
+                step: 10,
+                onChange: setGlassSaturate,
+                unit: "%",
+                id: "glass-saturate",
+                marks: [
+                  { value: 100, label: "Natural" },
+                  { value: 150, label: "Enhanced" },
+                  { value: 180, label: "Standard" },
+                  { value: 250, label: "Vibrant" },
+                ],
+              })}
             </div>
           </div>
         </section>
 
-        {/* Theme variant */}
-        <section>
-          <h4 style={{ fontSize: "var(--text-base)", fontWeight: 600, color: "var(--text)", margin: "0 0 var(--space-4)" }}>Theme Variant</h4>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "var(--space-4)" }}>
-            {THEME_VARIANTS.map(renderThemeCard)}
+        {/* Theme variant selector */}
+        <section className="liquid-glass liquid-glass--regular panel-card--glass">
+          <div className="liquid-glass__content" style={{ padding: "var(--space-6)", display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
+            <h4 style={{ fontSize: "var(--text-base)", fontWeight: 600, color: "var(--text)", margin: 0 }}>Theme Variant</h4>
+            <div className="glass-grid glass-grid--4" style={{ gap: "var(--space-4)" }}>
+              {THEME_VARIANTS.map(renderThemeCard)}
+            </div>
           </div>
         </section>
 
-        {/* Live preview */}
-        <section>
-          {renderPreview()}
+        {/* Live preview section */}
+        <section className="liquid-glass liquid-glass--clear glass-empty" style={{ padding: "var(--space-8)" }}>
+          <div className="liquid-glass__refract" style={{ borderRadius: "var(--radius-xl)" }} />
+          <div className="liquid-glass__tint" style={{ borderRadius: "var(--radius-xl)" }} />
+          <div className="liquid-glass__specular" style={{ borderRadius: "var(--radius-xl)" }} />
+          <div className="liquid-glass__content">
+            <Sparkles className="glass-empty__icon" size={48} />
+            <h3 className="glass-empty__title">Live Preview Active</h3>
+            <p className="glass-empty__description">All changes above are applied instantly. Adjust colors, blur, and roundness to see real-time updates across the entire application.</p>
+          </div>
         </section>
       </div>
     </PanelShell>
   );
 }
-
-// Color space conversion helpers
-function rgbToHsl(r: number, g: number, b: number): [number, number, number] {
-  const max = Math.max(r, g, b);
-  const min = Math.min(r, g, b);
-  let h = 0, s = 0, l = (max + min) / 2;
-
-  if (max !== min) {
-    const d = max - min;
-    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-    switch (max) {
-      case r: h = (g - b) / d + (g < b ? 6 : 0); break;
-      case g: h = (b - r) / d + 2; break;
-      case b: h = (r - g) / d + 4; break;
-    }
-    h *= 60;
-  }
-  return [h, s, l];
-}
-

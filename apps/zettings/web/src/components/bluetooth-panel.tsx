@@ -25,6 +25,7 @@ interface BluetoothDeviceExtended extends PairedDeviceDto {
   // Extended UI state
   connecting?: boolean;
   removing?: boolean;
+  charging?: boolean; // Not in backend, but we can add for UI
 }
 
 const DEVICE_CLASS_ICONS: Record<string, React.ComponentType<{ size?: number; color?: string }>> = {
@@ -40,10 +41,9 @@ function getDeviceIcon(deviceClass: string): React.ComponentType<{ size?: number
   return (icon ?? DEVICE_CLASS_ICONS.default) as React.ComponentType<{ size?: number; color?: string }>;
 }
 
-function getBatteryIcon(percent?: number, charging = false) {
+function getBatteryIcon(percent?: number | null, charging = false) {
   if (charging) return BatteryCharging;
-  if (percent === undefined) return Battery;
-  if (percent <= 10) return Battery;
+  if (percent === undefined || percent === null) return Battery;
   return Battery;
 }
 
@@ -59,23 +59,20 @@ export function BluetoothPanel(): React.ReactElement {
   // Load paired devices on mount
   useEffect(() => {
     invoke<BluetoothListPairedResult>("zettings_bluetooth_list_paired")
-      .then((r) => setDevices(r.devices))
+      .then((r) => {
+        setDevices(r.devices.map((d) => ({ ...d, connecting: false, removing: false })));
+      })
       .catch((e) => console.error("Failed to load paired devices:", e));
   }, []);
 
-  const handleToggleAdapter = useCallback(() => {
-    setAdapterEnabled((prev) => !prev);
-    // TODO: invoke zettings_bluetooth_set_adapter
-  }, []);
-
-  const handleConnect = useCallback((address: string) => {
+  const handleConnect = useCallback((device: BluetoothDeviceExtended) => {
     setDevices((prev) =>
-      prev.map((d) => (d.address === address ? { ...d, connecting: true } : d))
+      prev.map((d) => (d.address === device.address ? { ...d, connecting: true } : d))
     );
     // TODO: invoke zettings_bluetooth_connect
     setTimeout(() => {
       setDevices((prev) =>
-        prev.map((d) => (d.address === address ? { ...d, connecting: false, connected: true } : d))
+        prev.map((d) => (d.address === device.address ? { ...d, connecting: false, connected: true } : d))
       );
     }, 1500);
   }, []);
@@ -91,235 +88,220 @@ export function BluetoothPanel(): React.ReactElement {
     setRemoveConfirm({ open: true, device });
   }, []);
 
-  const handleRemoveConfirm = useCallback(() => {
+  const confirmRemove = useCallback(() => {
     if (!removeConfirm.device) return;
     const address = removeConfirm.device.address;
-    setDevices((prev) => prev.map((d) => (d.address === address ? { ...d, removing: true } : d)));
-    // TODO: invoke zettings_bluetooth_remove_device
+    setDevices((prev) =>
+      prev.map((d) => (d.address === address ? { ...d, removing: true } : d))
+    );
+    setRemoveConfirm({ open: false, device: null });
+    // TODO: invoke zettings_bluetooth_remove
     setTimeout(() => {
       setDevices((prev) => prev.filter((d) => d.address !== address));
-      setRemoveConfirm({ open: false, device: null });
-    }, 800);
-  }, [removeConfirm.device]);
+    }, 500);
+  }, [removeConfirm]);
 
-  const handleRemoveCancel = useCallback(() => {
-    setRemoveConfirm({ open: false, device: null });
+  const handleScan = useCallback(async () => {
+    setScanning(true);
+    try {
+      // TODO: invoke zettings_bluetooth_scan
+      await new Promise((r) => setTimeout(r, 2000));
+      // Mock new device found
+      setDevices((prev) => [
+        ...prev,
+        {
+          address: "AA:BB:CC:DD:EE:FF",
+          name: "New Device",
+          device_class: "Audio",
+          connected: false,
+          battery_percent: 85,
+          connecting: false,
+          removing: false,
+        },
+      ]);
+    } catch (e) {
+      console.error("Failed to scan:", e);
+    } finally {
+      setScanning(false);
+    }
   }, []);
 
-  // Battery indicator component
-  const renderBattery = (device: BluetoothDeviceExtended) => {
-    const { battery_percent } = device;
-    if (battery_percent === undefined || battery_percent === null) return null;
-
-    const batterySpring = useSpring(battery_percent / 100, ZDL_SPRINGS.slider);
-    const Icon = getBatteryIcon(battery_percent);
-
-    return (
-      <div className="bluetooth-battery" style={{ display: "flex", alignItems: "center", gap: "var(--space-2)" }} data-testid={`battery-${device.address}`}>
-        <div style={{ position: "relative", width: 48, height: 24 }}>
-          <div
-            style={{
-              width: "100%",
-              height: "100%",
-              border: "2px solid var(--border)",
-              borderRadius: "6px",
-              position: "relative",
-              background: "var(--surface-muted)",
-            }}
-          >
-            <div
-              style={{
-                position: "absolute",
-                top: 2,
-                left: 2,
-                right: 2,
-                bottom: 2,
-                background: battery_percent <= 15 ? "#dc2626" : battery_percent <= 40 ? "#f59e0b" : "var(--accent)",
-                borderRadius: "3px",
-                transformOrigin: "left center",
-                transform: `scaleX(${batterySpring})`,
-                transition: "transform var(--motion-duration-base) var(--motion-ease-out)",
-              }}
-            />
-            <div style={{ position: "absolute", right: -4, top: "50%", transform: "translateY(-50%)", width: 4, height: 10, background: "var(--border)", borderRadius: "0 2px 2px 0" }} />
-          </div>
-        </div>
-        <span style={{ fontSize: "var(--text-sm)", fontWeight: 500, color: battery_percent && battery_percent <= 15 ? "#dc2626" : "var(--text)", minWidth: "36px" }}>
-          {battery_percent !== null && battery_percent !== undefined ? Math.round(battery_percent) : "?"}%
-        </span>
-        {battery_percent !== null && battery_percent !== undefined && (
-          <Icon size={16} color={battery_percent <= 15 ? "#dc2626" : "var(--text-muted)"} aria-hidden="true" />
-        )}
-      </div>
-    );
-  };
-
-  // Device card
+  // Device card with liquid glass
   const renderDeviceCard = (device: BluetoothDeviceExtended, idx: number) => {
-    const Icon = getDeviceIcon(device.device_class);
+    const DeviceIcon = getDeviceIcon(device.device_class);
+    const BatteryIcon = getBatteryIcon(device.battery_percent, device.charging);
     const isConnected = device.connected;
     const isConnecting = device.connecting;
     const isRemoving = device.removing;
+    const cardSpring = useSpring(isRemoving ? 0 : 1, ZDL_SPRINGS.slider);
 
     return (
       <div
         key={device.address}
-        className="panel-card"
+        className="liquid-glass liquid-glass--regular panel-card--glass"
         style={{
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
           gap: "var(--space-4)",
-          opacity: isRemoving ? 0.4 : isConnecting ? 0.7 : 1,
+          flexDirection: "row",
+          opacity: cardSpring.position,
+          transform: `scale(${cardSpring.position})`,
+          transition: "opacity var(--motion-duration-base) var(--motion-ease-out), transform var(--motion-duration-base) var(--motion-ease-out)",
         }}
         data-testid={`bluetooth-device-${idx}`}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: "var(--space-4)", flex: 1, minWidth: 0 }}>
+        <div className="liquid-glass__content" style={{ display: "flex", alignItems: "center", gap: "var(--space-4)", flex: 1, minWidth: 0, padding: "var(--space-4)", paddingRight: 0 }}>
           <div
-            style={{
-              width: 52,
-              height: 52,
-              borderRadius: "14px",
-              background: isConnected
-                ? "color-mix(in srgb, var(--accent) 18%, transparent)"
-                : "var(--surface-muted)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              border: isConnected ? "2px solid var(--accent)" : "1px solid var(--border)",
-            }}
+            className={`liquid-glass liquid-glass--${isConnected ? "prominent" : "clear"}`}
+            style={{ width: 48, height: 48, borderRadius: "12px", display: "flex", alignItems: "center", justifyContent: "center", border: isConnected ? "2px solid var(--accent)" : "1px solid var(--border)" }}
           >
-            <Icon size={26} color={isConnected ? "var(--accent)" : "var(--text-muted)"} />
+            <div className="liquid-glass__refract" style={{ borderRadius: "12px" }} />
+            <div className="liquid-glass__tint" style={{ borderRadius: "12px" }} />
+            <div className="liquid-glass__specular" style={{ borderRadius: "12px" }} />
+            <div className="liquid-glass__content" style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <DeviceIcon size={24} color={isConnected ? "var(--accent)" : "var(--text-muted)"} />
+            </div>
           </div>
           <div style={{ minWidth: 0 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", flexWrap: "wrap" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)" }}>
               <h3 className="panel-card-title" style={{ margin: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                {device.name}
+                {device.name || device.address}
               </h3>
-              {isConnected && (
-                <span
-                  style={{
-                    fontSize: "var(--text-xs)",
-                    fontWeight: 500,
-                    color: "var(--accent)",
-                    background: "color-mix(in srgb, var(--accent) 14%, transparent)",
-                    padding: "2px var(--space-2)",
-                    borderRadius: "999px",
-                  }}
-                  data-testid={`connected-badge-${device.address}`}
-                >
-                  Connected
-                </span>
-              )}
-              {isConnecting && (
-                <span style={{ fontSize: "var(--text-xs)", color: "var(--accent)" }}>Connecting…</span>
+              {isConnected && <BluetoothConnected size={16} color="var(--accent)" aria-label="Connected" />}
+              {isConnecting && <span style={{ fontSize: "var(--text-xs)", color: "var(--accent)" }}>Connecting…</span>}
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", marginTop: "var(--space-1)" }}>
+              <span style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)", textTransform: "capitalize" }}>{device.device_class}</span>
+              {device.battery_percent !== undefined && (
+                <>
+                  <BatteryIcon size={12} color="var(--text-subtle)" />
+                  <span style={{ fontSize: "var(--text-xs)", color: "var(--text-subtle)", fontWeight: 500 }}>
+                    {device.battery_percent}%
+                  </span>
+                </>
               )}
             </div>
-            <p className="panel-card-subtitle" style={{ margin: "var(--space-1) 0 0" }}>
-              {device.device_class} • {device.address}
-            </p>
           </div>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", flexShrink: 0 }}>
-          {renderBattery(device)}
-
-          <div style={{ display: "flex", gap: "var(--space-2)" }}>
-            {isConnected ? (
-              <>
-                <button
-                  className="panel-button panel-button-secondary"
-                  onClick={() => handleDisconnect(device.address)}
-                  disabled={isConnecting || isRemoving}
-                  aria-label={`Disconnect ${device.name}`}
-                  data-testid={`disconnect-${device.address}`}
-                >
-                  <BluetoothOff size={16} /> Disconnect
-                </button>
-              </>
-            ) : (
+        <div className="liquid-glass__content glass-container" style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", flexShrink: 0, padding: "var(--space-4)", paddingLeft: 0 }}>
+          {isConnected ? (
+            <>
               <button
-                className="panel-button"
-                onClick={() => handleConnect(device.address)}
-                disabled={isConnecting || isRemoving}
-                aria-label={`Connect ${device.name}`}
-                data-testid={`connect-${device.address}`}
+                className="liquid-glass-button liquid-glass--regular"
+                onClick={() => handleDisconnect(device.address)}
+                disabled={isRemoving}
+                aria-label={`Disconnect ${device.name || device.address}`}
+                data-testid={`disconnect-${device.address}`}
+                style={{ padding: "var(--space-2) var(--space-3)", borderRadius: "var(--radius-md)", display: "inline-flex", alignItems: "center", gap: "var(--space-2)" }}
               >
-                <BluetoothConnected size={16} /> Connect
+                <div className="liquid-glass__refract" style={{ borderRadius: "var(--radius-md)" }} />
+                <div className="liquid-glass__tint" style={{ borderRadius: "var(--radius-md)" }} />
+                <div className="liquid-glass__specular" style={{ borderRadius: "var(--radius-md)" }} />
+                <div className="liquid-glass__content" style={{ display: "inline-flex", alignItems: "center", gap: "var(--space-2)" }}>
+                  <BluetoothOff size={16} /> Disconnect
+                </div>
               </button>
-            )}
-
+              <button
+                className="liquid-glass-button liquid-glass--regular"
+                onClick={() => handleRemove(device)}
+                disabled={isRemoving}
+                aria-label={`Remove ${device.name || device.address}`}
+                data-testid={`remove-${device.address}`}
+                style={{ padding: "var(--space-2) var(--space-3)", borderRadius: "var(--radius-md)", display: "inline-flex", alignItems: "center", gap: "var(--space-2)" }}
+              >
+                <div className="liquid-glass__refract" style={{ borderRadius: "var(--radius-md)" }} />
+                <div className="liquid-glass__tint" style={{ borderRadius: "var(--radius-md)", background: "rgba(255, 100, 100, 0.2)" }} />
+                <div className="liquid-glass__specular" style={{ borderRadius: "var(--radius-md)" }} />
+                <div className="liquid-glass__content" style={{ display: "inline-flex", alignItems: "center", gap: "var(--space-2)" }}>
+                  <Trash2 size={16} /> Remove
+                </div>
+              </button>
+            </>
+          ) : (
             <button
-              className="panel-button panel-button-secondary panel-button-destructive"
-              onClick={() => handleRemove(device)}
+              className="liquid-glass-button liquid-glass--prominent"
+              onClick={() => handleConnect(device)}
               disabled={isConnecting || isRemoving}
-              aria-label={`Remove ${device.name}`}
-              data-testid={`remove-${device.address}`}
+              aria-label={`Connect ${device.name || device.address}`}
+              data-testid={`connect-${device.address}`}
+              style={{ padding: "var(--space-2) var(--space-4)", borderRadius: "var(--radius-md)", display: "inline-flex", alignItems: "center", gap: "var(--space-2)" }}
             >
-              <Trash2 size={16} />
+              <div className="liquid-glass__refract" style={{ borderRadius: "var(--radius-md)" }} />
+              <div className="liquid-glass__tint" style={{ borderRadius: "var(--radius-md)" }} />
+              <div className="liquid-glass__specular" style={{ borderRadius: "var(--radius-md)" }} />
+              <div className="liquid-glass__content" style={{ display: "inline-flex", alignItems: "center", gap: "var(--space-2)" }}>
+                {isConnecting ? <RotateCcw size={16} className="spin" /> : <Bluetooth size={16} />}
+                {isConnecting ? "Connecting…" : "Connect"}
+              </div>
             </button>
-          </div>
+          )}
         </div>
       </div>
     );
   };
 
-  // Remove confirmation modal
+  // Remove confirmation modal with liquid glass
   const renderRemoveModal = () => {
-    if (!removeConfirm.open || !removeConfirm.device) return null;
+    if (!removeConfirm.open) return null;
 
     const modalSpring = useSpring(removeConfirm.open ? 1 : 0, ZDL_SPRINGS.modal);
     const settledClosed = !removeConfirm.open && modalSpring.position <= 0;
     if (settledClosed) return null;
 
-    const device = removeConfirm.device;
-
     return (
       <div
-        className="modal-backdrop"
+        className="glass-modal__backdrop"
         style={{
           position: "fixed",
           inset: 0,
           zIndex: 100,
           background: "rgba(12, 10, 9, 0.5)",
-          backdropFilter: "blur(8px)",
+          backdropFilter: "blur(8px) url(#liquid-glass-refract)",
+          WebkitBackdropFilter: "blur(8px) url(#liquid-glass-refract)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           opacity: modalSpring.position,
           pointerEvents: removeConfirm.open ? "auto" : "none",
         }}
-        onClick={handleRemoveCancel}
+        onClick={() => setRemoveConfirm({ open: false, device: null })}
         role="dialog"
         aria-modal="true"
         aria-labelledby="remove-modal-title"
       >
         <div
-          className="modal-content"
+          className="glass-modal glass-modal__content liquid-glass liquid-glass--prominent"
           style={{
             transform: `scale(${0.95 + 0.05 * modalSpring.position})`,
             transition: "transform var(--motion-duration-base) var(--motion-ease-out)",
+            borderRadius: "16px",
           }}
           onClick={(e) => e.stopPropagation()}
         >
-          <div style={{ background: "var(--surface-elevated)", borderRadius: "16px", padding: "var(--space-6)", minWidth: 360, maxWidth: "90vw", boxShadow: "var(--shadow-4)" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)", marginBottom: "var(--space-4)" }}>
-              <div style={{ width: 48, height: 48, borderRadius: "12px", background: "color-mix(in srgb, #dc2626 18%, transparent)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <Trash2 size={24} color="#dc2626" />
-              </div>
-              <h3 id="remove-modal-title" style={{ margin: 0, fontSize: "var(--text-lg)", color: "var(--text)" }}>
-                Remove "{device.name}"?
-              </h3>
-            </div>
+          <div className="liquid-glass__refract" style={{ borderRadius: "16px" }} />
+          <div className="liquid-glass__tint" style={{ borderRadius: "16px" }} />
+          <div className="liquid-glass__specular" style={{ borderRadius: "16px" }} />
+          <div className="liquid-glass__content" style={{ padding: "var(--space-6)", minWidth: 360, maxWidth: "90vw", background: "var(--surface-elevated)" }}>
+            <h3 id="remove-modal-title" style={{ margin: "0 0 var(--space-2)", fontSize: "var(--text-lg)", color: "var(--text)" }}>
+              Remove Device
+            </h3>
             <p style={{ margin: "0 0 var(--space-6)", fontSize: "var(--text-sm)", color: "var(--text-muted)" }}>
-              This will unpair the device. You&apos;ll need to pair it again to reconnect.
+              Are you sure you want to remove <strong>{removeConfirm.device?.name || removeConfirm.device?.address}</strong>? This will unpair the device.
             </p>
             <div style={{ display: "flex", justifyContent: "flex-end", gap: "var(--space-2)" }}>
-              <button className="panel-button panel-button-secondary" onClick={handleRemoveCancel} data-testid="cancel-remove">
-                Cancel
+              <button className="liquid-glass-button liquid-glass--regular" onClick={() => setRemoveConfirm({ open: false, device: null })} style={{ padding: "var(--space-3) var(--space-4)", borderRadius: "var(--radius-md)" }}>
+                <div className="liquid-glass__refract" style={{ borderRadius: "var(--radius-md)" }} />
+                <div className="liquid-glass__tint" style={{ borderRadius: "var(--radius-md)" }} />
+                <div className="liquid-glass__specular" style={{ borderRadius: "var(--radius-md)" }} />
+                <div className="liquid-glass__content">Cancel</div>
               </button>
-              <button className="panel-button panel-button-destructive" onClick={handleRemoveConfirm} data-testid="confirm-remove">
-                <Trash2 size={16} /> Remove
+              <button className="liquid-glass-button liquid-glass--prominent" onClick={confirmRemove} style={{ padding: "var(--space-3) var(--space-4)", borderRadius: "var(--radius-md)" }}>
+                <div className="liquid-glass__refract" style={{ borderRadius: "var(--radius-md)" }} />
+                <div className="liquid-glass__tint" style={{ borderRadius: "var(--radius-md)", background: "rgba(255, 100, 100, 0.3)" }} />
+                <div className="liquid-glass__specular" style={{ borderRadius: "var(--radius-md)" }} />
+                <div className="liquid-glass__content">Remove</div>
               </button>
             </div>
           </div>
@@ -335,66 +317,80 @@ export function BluetoothPanel(): React.ReactElement {
       subtitle="Paired devices, battery levels, and connection management"
       actions={
         <button
-          className={`panel-button ${adapterEnabled ? "panel-button" : "panel-button-secondary"}`}
-          onClick={handleToggleAdapter}
-          aria-label={adapterEnabled ? "Disable Bluetooth" : "Enable Bluetooth"}
-          aria-pressed={adapterEnabled}
-          data-testid="toggle-adapter"
+          className="liquid-glass-button liquid-glass--regular"
+          onClick={handleScan}
+          disabled={scanning}
+          data-testid="scan-bluetooth"
+          style={{ padding: "var(--space-3) var(--space-4)", borderRadius: "var(--radius-md)", display: "inline-flex", alignItems: "center", gap: "var(--space-2)" }}
         >
-          {adapterEnabled ? <BluetoothConnected size={16} /> : <BluetoothOff size={16} />}
-          {adapterEnabled ? "On" : "Off"}
+          <div className="liquid-glass__refract" style={{ borderRadius: "var(--radius-md)" }} />
+          <div className="liquid-glass__tint" style={{ borderRadius: "var(--radius-md)" }} />
+          <div className="liquid-glass__specular" style={{ borderRadius: "var(--radius-md)" }} />
+          <div className="liquid-glass__content" style={{ display: "inline-flex", alignItems: "center", gap: "var(--space-2)" }}>
+            <RotateCcw size={16} className={scanning ? "spin" : ""} />
+            {scanning ? "Scanning…" : "Scan"}
+          </div>
         </button>
       }
       dataTestId="bluetooth-panel"
     >
       <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-8)" }}>
-        {/* Adapter status */}
-        <section style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "var(--space-4)", flexWrap: "wrap" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "var(--space-4)" }}>
-            <div
-              style={{
-                width: 56,
-                height: 56,
-                borderRadius: "14px",
-                background: adapterEnabled
-                  ? "color-mix(in srgb, var(--accent) 18%, transparent)"
-                  : "var(--surface-muted)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                border: adapterEnabled ? "2px solid var(--accent)" : "1px solid var(--border)",
-              }}
+        {/* Adapter toggle with liquid glass */}
+        <section className="liquid-glass liquid-glass--regular panel-card--glass">
+          <div className="liquid-glass__content" style={{ padding: "var(--space-4)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "var(--space-4)" }}>
+              <div
+                className={`liquid-glass liquid-glass--${adapterEnabled ? "prominent" : "clear"}`}
+                style={{ width: 48, height: 48, borderRadius: "12px", display: "flex", alignItems: "center", justifyContent: "center", border: adapterEnabled ? "2px solid var(--accent)" : "1px solid var(--border)" }}
+              >
+                <div className="liquid-glass__refract" style={{ borderRadius: "12px" }} />
+                <div className="liquid-glass__tint" style={{ borderRadius: "12px" }} />
+                <div className="liquid-glass__specular" style={{ borderRadius: "12px" }} />
+                <div className="liquid-glass__content" style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  {adapterEnabled ? <BluetoothConnected size={24} color="var(--accent)" /> : <BluetoothOff size={24} color="var(--text-muted)" />}
+                </div>
+              </div>
+              <div>
+                <h3 style={{ fontSize: "var(--text-lg)", fontWeight: 600, color: "var(--text)", margin: 0 }}>Bluetooth Adapter</h3>
+                <p style={{ fontSize: "var(--text-sm)", color: adapterEnabled ? "var(--accent)" : "var(--text-muted)", margin: 0 }}>
+                  {adapterEnabled ? "Enabled" : "Disabled"}
+                </p>
+              </div>
+            </div>
+            <button
+              className="liquid-glass-button liquid-glass--prominent"
+              onClick={() => setAdapterEnabled(!adapterEnabled)}
+              aria-label={adapterEnabled ? "Disable Bluetooth" : "Enable Bluetooth"}
+              data-testid="toggle-adapter"
+              style={{ padding: "var(--space-3) var(--space-6)", borderRadius: "var(--radius-md)", display: "inline-flex", alignItems: "center", gap: "var(--space-2)" }}
             >
-              <Bluetooth size={28} color={adapterEnabled ? "var(--accent)" : "var(--text-muted)"} />
-            </div>
-            <div>
-              <h3 style={{ fontSize: "var(--text-xl)", fontWeight: 600, color: "var(--text)", margin: 0 }}>Bluetooth</h3>
-              <p style={{ fontSize: "var(--text-sm)", color: adapterEnabled ? "var(--accent)" : "var(--text-muted)", margin: 0 }}>
-                {adapterEnabled ? "On • Discoverable" : "Off"}
-              </p>
-            </div>
+              <div className="liquid-glass__refract" style={{ borderRadius: "var(--radius-md)" }} />
+              <div className="liquid-glass__tint" style={{ borderRadius: "var(--radius-md)" }} />
+              <div className="liquid-glass__specular" style={{ borderRadius: "var(--radius-md)" }} />
+              <div className="liquid-glass__content" style={{ display: "inline-flex", alignItems: "center", gap: "var(--space-2)" }}>
+                {adapterEnabled ? <BluetoothOff size={16} /> : <Bluetooth size={16} />}
+                {adapterEnabled ? "Disable" : "Enable"}
+              </div>
+            </button>
           </div>
-          <button
-            className="panel-button panel-button-secondary"
-            onClick={() => { setScanning(true); setTimeout(() => setScanning(false), 3000); }}
-            disabled={scanning || !adapterEnabled}
-            data-testid="scan-devices"
-          >
-            <RotateCcw size={16} className={scanning ? "spin" : ""} />
-            {scanning ? "Scanning…" : "Scan for Devices"}
-          </button>
         </section>
 
         {/* Paired devices */}
         <section>
-          <h4 style={{ fontSize: "var(--text-base)", fontWeight: 600, color: "var(--text)", margin: "0 0 var(--space-3)" }}>
-            Paired Devices ({devices.length})
-          </h4>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "var(--space-4)" }}>
+            <h4 style={{ fontSize: "var(--text-base)", fontWeight: 600, color: "var(--text)", margin: 0 }}>Paired Devices</h4>
+            <span style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)" }}>{devices.length} device{devices.length !== 1 ? "s" : ""}</span>
+          </div>
           {devices.length === 0 ? (
-            <div className="panel-empty" style={{ padding: "var(--space-8)" }}>
-              <BluetoothOff className="panel-empty-icon" size={48} />
-              <h3 className="panel-empty-title">No paired devices</h3>
-              <p className="panel-empty-description">Click "Scan for Devices" to discover and pair new Bluetooth devices.</p>
+            <div className="liquid-glass liquid-glass--clear glass-empty" style={{ padding: "var(--space-12)" }}>
+              <div className="liquid-glass__refract" style={{ borderRadius: "var(--radius-xl)" }} />
+              <div className="liquid-glass__tint" style={{ borderRadius: "var(--radius-xl)" }} />
+              <div className="liquid-glass__specular" style={{ borderRadius: "var(--radius-xl)" }} />
+              <div className="liquid-glass__content">
+                <BluetoothOff className="glass-empty__icon" size={48} />
+                <h3 className="glass-empty__title">No paired devices</h3>
+                <p className="glass-empty__description">Click "Scan" to discover and pair new Bluetooth devices.</p>
+              </div>
             </div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
@@ -403,44 +399,8 @@ export function BluetoothPanel(): React.ReactElement {
           )}
         </section>
 
-        {/* Quick stats */}
-        <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: "var(--space-4)" }}>
-          <div className="panel-card" style={{ textAlign: "center", padding: "var(--space-6)" }}>
-            <BluetoothConnected size={28} color="var(--accent)" style={{ marginBottom: "var(--space-2)" }} />
-            <p style={{ fontSize: "var(--text-2xl)", fontWeight: 700, color: "var(--text)", margin: 0 }}>
-              {devices.filter((d) => d.connected).length}
-            </p>
-            <p style={{ fontSize: "var(--text-sm)", color: "var(--text-muted)", margin: "var(--space-1) 0 0" }}>Connected</p>
-          </div>
-          <div className="panel-card" style={{ textAlign: "center", padding: "var(--space-6)" }}>
-            <Battery size={28} color="var(--accent)" style={{ marginBottom: "var(--space-2)" }} />
-            <p style={{ fontSize: "var(--text-2xl)", fontWeight: 700, color: "var(--text)", margin: 0 }}>
-              {devices.filter((d) => d.battery_percent !== undefined && d.battery_percent! <= 20).length}
-            </p>
-            <p style={{ fontSize: "var(--text-sm)", color: "var(--text-muted)", margin: "var(--space-1) 0 0" }}>Low Battery</p>
-          </div>
-          <div className="panel-card" style={{ textAlign: "center", padding: "var(--space-6)" }}>
-            <Headphones size={28} color="var(--accent)" style={{ marginBottom: "var(--space-2)" }} />
-            <p style={{ fontSize: "var(--text-2xl)", fontWeight: 700, color: "var(--text)", margin: 0 }}>
-              {devices.filter((d) => d.device_class === "Audio").length}
-            </p>
-            <p style={{ fontSize: "var(--text-sm)", color: "var(--text-muted)", margin: "var(--space-1) 0 0" }}>Audio Devices</p>
-          </div>
-        </section>
-
         {renderRemoveModal()}
       </div>
     </PanelShell>
   );
-}
-
-// Spin animation
-const style = document.createElement("style");
-style.textContent = `
-  @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-  .spin { animation: spin 1s linear infinite; }
-`;
-if (typeof document !== "undefined" && !document.head.querySelector("style[data-spin-bt]")) {
-  style.setAttribute("data-spin-bt", "");
-  document.head.appendChild(style);
 }

@@ -1104,6 +1104,7 @@ body {
   -webkit-backdrop-filter: blur(16px) url(#liquid-glass-refract) brightness(1.03) saturate(1.2);
   isolation: isolate;
   pointer-events: none;
+  transition: backdrop-filter var(--motion-duration-base) var(--motion-ease-out);
 }
 
 /* Layer 1: Glass tint — subtle white overlay */
@@ -1113,6 +1114,7 @@ body {
   border-radius: inherit;
   background: rgba(255, 255, 255, 0.12);
   pointer-events: none;
+  transition: background var(--motion-duration-fast) var(--motion-ease-out);
 }
 
 /* Layer 2: Specular rim — top bright, bottom subtle */
@@ -1124,6 +1126,7 @@ body {
     inset 0 1px 0 rgba(255, 255, 255, 0.7),
     inset 0 -1px 0 rgba(255, 255, 255, 0.12);
   pointer-events: none;
+  transition: box-shadow var(--motion-duration-fast) var(--motion-ease-out);
 }
 
 /* Layer 3: Content wrapper — ensure content sits above glass layers */
@@ -1132,12 +1135,397 @@ body {
   z-index: 1;
 }
 
-/* Container for liquid-glass elements — use for grouped navigation items */
-.liquid-glass-container {
+/* ============================================================================
+   Glass Variants — Different material densities for different UI roles
+   ============================================================================ */
+
+/* Regular glass — standard navigation chrome (sidebars, toolbars, cards) */
+.liquid-glass--regular .liquid-glass__refract {
+  backdrop-filter: blur(20px) url(#liquid-glass-refract) brightness(1.03) saturate(1.2);
+  -webkit-backdrop-filter: blur(20px) url(#liquid-glass-refract) brightness(1.03) saturate(1.2);
+}
+.liquid-glass--regular .liquid-glass__tint {
+  background: rgba(255, 255, 255, 0.10);
+}
+.liquid-glass--regular .liquid-glass__specular {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.6),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.10);
+}
+
+/* Clear glass — lighter, more transparent (for overlays, sheets, popovers) */
+.liquid-glass--clear .liquid-glass__refract {
+  backdrop-filter: blur(12px) url(#liquid-glass-refract) brightness(1.02) saturate(1.1);
+  -webkit-backdrop-filter: blur(12px) url(#liquid-glass-refract) brightness(1.02) saturate(1.1);
+}
+.liquid-glass--clear .liquid-glass__tint {
+  background: rgba(255, 255, 255, 0.06);
+}
+.liquid-glass--clear .liquid-glass__specular {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.05);
+}
+
+/* Prominent glass — more opaque, for primary actions and key UI */
+.liquid-glass--prominent .liquid-glass__refract {
+  backdrop-filter: blur(28px) url(#liquid-glass-refract) brightness(1.05) saturate(1.3);
+  -webkit-backdrop-filter: blur(28px) url(#liquid-glass-refract) brightness(1.05) saturate(1.3);
+}
+.liquid-glass--prominent .liquid-glass__tint {
+  background: rgba(255, 255, 255, 0.18);
+}
+.liquid-glass--prominent .liquid-glass__specular {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.8),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.15);
+}
+
+/* Identity glass — no glass effect, used for toggling off */
+.liquid-glass--identity .liquid-glass__refract {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.liquid-glass--identity .liquid-glass__tint {
+  background: transparent;
+}
+.liquid-glass--identity .liquid-glass__specular {
+  box-shadow: none;
+}
+
+/* ============================================================================
+   Interactive Glass Button Styles
+   ============================================================================ */
+
+.liquid-glass-button {
+  position: relative;
+  overflow: hidden;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: var(--radius-lg);
+  transition: transform var(--motion-duration-fast) var(--motion-ease-out);
+}
+
+.liquid-glass-button:focus-visible {
+  outline: none;
+}
+
+.liquid-glass-button:focus-visible .liquid-glass__specular {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.2),
+    0 0 0 3px var(--ring);
+}
+
+.liquid-glass-button:hover {
+  transform: scale(1.02);
+}
+
+.liquid-glass-button:active {
+  transform: scale(0.98);
+}
+
+/* ============================================================================
+   Panel Card Enhancements with Liquid Glass
+   ============================================================================ */
+
+.panel-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-xl);
+  background: transparent;
+  border: 1px solid transparent;
+  transition:
+    transform var(--motion-duration-base) var(--motion-ease-out),
+    box-shadow var(--motion-duration-base) var(--motion-ease-out);
+}
+
+.panel-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  z-index: -1;
+}
+
+.panel-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-2);
+}
+
+.panel-card:focus-within {
+  box-shadow: var(--shadow-2), 0 0 0 3px var(--ring);
+}
+
+/* Liquid glass panel card variant */
+.panel-card--glass {
+  background: transparent;
+  border: none;
+}
+
+.panel-card--glass > .liquid-glass__content {
+  padding: var(--space-5);
+}
+
+/* ============================================================================
+   Glass Container for Morphing Groups
+   ============================================================================ */
+
+.glass-container {
   position: relative;
 }
 
-/* Interactive states for liquid-glass elements */
+.glass-container::before {
+  content: "";
+  position: absolute;
+  inset: -20px;
+  border-radius: var(--radius-xl);
+  pointer-events: none;
+}
+
+/* ============================================================================
+   Glass Slider Enhancements
+   ============================================================================ */
+
+.panel-slider {
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.panel-slider::-webkit-slider-track {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--surface-muted);
+}
+
+.panel-slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  transition:
+    transform var(--motion-duration-fast) var(--motion-ease-out),
+    box-shadow var(--motion-duration-fast) var(--motion-ease-out);
+  margin-top: -8px;
+}
+
+.panel-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.panel-slider:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 4px var(--ring), 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Vertical slider support via transform */
+.panel-slider--vertical {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+  transform-origin: bottom left;
+}
+
+/* ============================================================================
+   Glass Input Enhancements
+   ============================================================================ */
+
+.panel-input {
+  position: relative;
+  z-index: 1;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--text);
+  transition:
+    border-color var(--motion-duration-fast) var(--motion-ease-out),
+    box-shadow var(--motion-duration-fast) var(--motion-ease-out),
+    background var(--motion-duration-fast) var(--motion-ease-out);
+}
+
+.panel-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 30%, transparent);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.panel-input::placeholder {
+  color: var(--text-subtle);
+}
+
+/* ============================================================================
+   Glass Modal/Overlay
+   ============================================================================ */
+
+.glass-modal {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-xl);
+  background: transparent;
+}
+
+.glass-modal__backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(12, 10, 9, 0.5);
+  backdrop-filter: blur(8px) url(#liquid-glass-refract);
+  -webkit-backdrop-filter: blur(8px) url(#liquid-glass-refract);
+  z-index: 99;
+  animation: fade-in var(--motion-duration-base) var(--motion-ease-out);
+}
+
+.glass-modal__content {
+  position: relative;
+  z-index: 100;
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-4);
+  animation: scale-in var(--motion-duration-base) var(--motion-ease-out);
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* ============================================================================
+   Glass Navigation / Sidebar Items
+   ============================================================================ */
+
+.glass-nav-item {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  transition:
+    background var(--motion-duration-fast) var(--motion-ease-out),
+    color var(--motion-duration-fast) var(--motion-ease-out);
+}
+
+.glass-nav-item.active {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.glass-nav-item.active .glass-nav-item__icon {
+  color: var(--accent);
+}
+
+/* ============================================================================
+   Glass Progress/Status Indicators
+   ============================================================================ */
+
+.glass-progress {
+  position: relative;
+  overflow: hidden;
+  border-radius: 9999px;
+  background: var(--surface-muted);
+}
+
+.glass-progress__fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--accent), var(--accent-secondary));
+  transition: width var(--motion-duration-base) var(--motion-ease-out);
+}
+
+/* VU Meter glass bars */
+.glass-vu-meter {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.glass-vu-meter__bar {
+  width: 4px;
+  border-radius: 2px;
+  background: linear-gradient(to top, var(--accent), var(--accent-secondary));
+  transition: height 30ms linear;
+}
+
+/* ============================================================================
+   Glass Empty State
+   ============================================================================ */
+
+.glass-empty {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-xl);
+  padding: var(--space-12);
+  text-align: center;
+}
+
+.glass-empty__icon {
+  opacity: 0.5;
+  margin-bottom: var(--space-4);
+}
+
+.glass-empty__title {
+  font-size: var(--text-lg);
+  font-weight: 600;
+  color: var(--text);
+  margin: 0 0 var(--space-2);
+}
+
+.glass-empty__description {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  margin: 0;
+  max-width: 320px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* ============================================================================
+   Glass Grid Layouts
+   ============================================================================ */
+
+.glass-grid {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.glass-grid--auto-fill {
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+}
+
+.glass-grid--2 {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.glass-grid--3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+@media (max-width: 1024px) {
+  .glass-grid--3 { grid-template-columns: repeat(2, 1fr); }
+  .glass-grid--2 { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 640px) {
+  .glass-grid--3,
+  .glass-grid--2 { grid-template-columns: 1fr; }
+}
+
+/* ============================================================================
+   Interactive States (Shared)
+   ============================================================================ */
+
 .liquid-glass:hover .liquid-glass__tint {
   background: rgba(255, 255, 255, 0.18);
 }
@@ -1156,7 +1544,53 @@ body {
   .liquid-glass__refract {
     backdrop-filter: blur(16px) brightness(1.03) saturate(1.2);
     -webkit-backdrop-filter: blur(16px) brightness(1.03) saturate(1.2);
+    transition: none;
   }
+  .liquid-glass__tint,
+  .liquid-glass__specular {
+    transition: none;
+  }
+  .panel-card,
+  .liquid-glass-button,
+  .panel-slider::-webkit-slider-thumb {
+    transition: none;
+  }
+}
+
+/* ============================================================================
+   Glass Animation Keyframes
+   ============================================================================ */
+
+@keyframes glass-morph {
+  0% {
+    border-radius: var(--radius-lg);
+  }
+  50% {
+    border-radius: var(--radius-xl);
+  }
+  100% {
+    border-radius: var(--radius-lg);
+  }
+}
+
+@keyframes glass-shimmer {
+  0% {
+    background-position: -200% center;
+  }
+  100% {
+    background-position: 200% center;
+  }
+}
+
+.glass-shimmer {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.1) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: glass-shimmer 2s ease-in-out infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {

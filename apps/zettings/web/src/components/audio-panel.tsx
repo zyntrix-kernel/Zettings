@@ -51,14 +51,10 @@ const EQ_PRESETS = [
 
 function getStreamLabel(labelId: number): string {
   switch (labelId) {
-    case 0:
-      return "Master";
-    case 1:
-      return "Aurora";
-    case 2:
-      return "Voice Call";
-    default:
-      return `Stream ${labelId}`;
+    case 0: return "Master";
+    case 1: return "Aurora";
+    case 2: return "Voice Call";
+    default: return `Stream ${labelId}`;
   }
 }
 
@@ -156,72 +152,109 @@ export function AudioPanel(): React.ReactElement {
     setEqPreset(0);
   }, []);
 
-  // VU meter bar component
+  // VU meter bar component with liquid glass
   const renderVuMeter = (stream: AudioStreamExtended) => {
     const vuSpring = useSpring(stream.vuLevel, ZDL_SPRINGS.slider);
     const peakSpring = useSpring(stream.peakLevel, ZDL_SPRINGS.slider);
 
     return (
-      <div className="audio-vu-meter" role="img" aria-label={`Volume level ${Math.round(stream.vuLevel * 100)}%`} data-testid={`vu-${stream.stream_id}`}>
-        <div
-          className="audio-vu-bar"
-          style={{
-            height: `${vuSpring.position * 100}%`,
-            background: `linear-gradient(to top, var(--accent) 0%, var(--accent-secondary) 100%)`,
-            transition: reducedMotion ? "none" : "height 30ms linear",
-          }}
-        />
-        <div
-          className="audio-vu-peak"
-          style={{
-            bottom: `${peakSpring.position * 100}%`,
-            transition: reducedMotion ? "none" : "bottom 100ms ease-out",
-          }}
-        />
+      <div className="glass-vu-meter" role="img" aria-label={`Volume level ${Math.round(stream.vuLevel * 100)}%`} data-testid={`vu-${stream.stream_id}`} style={{ width: 24, height: 120, position: "relative", flexShrink: 0 }}>
+        <div className="liquid-glass liquid-glass--clear" style={{ width: "100%", height: "100%", borderRadius: "9999px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end", padding: 2 }}>
+          <div className="liquid-glass__refract" style={{ borderRadius: "9999px" }} />
+          <div className="liquid-glass__tint" style={{ borderRadius: "9999px", background: "rgba(0, 0, 0, 0.2)" }} />
+          <div className="liquid-glass__specular" style={{ borderRadius: "9999px" }} />
+          <div className="liquid-glass__content" style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end", gap: 2 }}>
+            <div
+              className="glass-vu-meter__bar"
+              style={{
+                width: "100%",
+                height: `${vuSpring.position * 100}%`,
+                background: `linear-gradient(to top, var(--accent) 0%, var(--accent-secondary) 100%)`,
+                borderRadius: "2px",
+                transition: reducedMotion ? "none" : "height 30ms linear",
+                minHeight: vuSpring.position > 0 ? "2px" : 0,
+              }}
+            />
+            <div
+              className="glass-vu-meter__peak"
+              style={{
+                width: "100%",
+                height: 3,
+                background: "var(--text)",
+                borderRadius: "2px",
+                opacity: peakSpring.position > 0 ? 1 : 0,
+                marginBottom: `${peakSpring.position * 100}%`,
+                transition: reducedMotion ? "none" : "margin-bottom 100ms ease-out, opacity 100ms ease-out",
+              }}
+            />
+          </div>
+        </div>
       </div>
     );
   };
 
-  // Stream mixer card
+  // Stream mixer card with liquid glass
   const renderStreamCard = (stream: AudioStreamExtended, idx: number) => {
     const isMaster = stream.stream_id === 0;
     const labelIcon = isMaster ? <Speaker size={20} /> : stream.label_id === 1 ? <Headphones size={20} /> : <Mic size={20} />;
 
     return (
-      <div key={stream.stream_id} className="panel-card audio-stream-card" style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }} data-testid={`stream-card-${idx}`}>
-        <div className="panel-card-header" style={{ flexDirection: "row", alignItems: "center" }}>
+      <div
+        key={stream.stream_id}
+        className="liquid-glass liquid-glass--regular panel-card--glass audio-stream-card"
+        style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}
+        data-testid={`stream-card-${idx}`}
+      >
+        <div className="liquid-glass__content panel-card-header" style={{ padding: "var(--space-4)", paddingBottom: 0, flexDirection: "row", alignItems: "center" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
-            <div style={{ width: 40, height: 40, borderRadius: "10px", background: "color-mix(in srgb, var(--accent) 14%, transparent)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              {labelIcon}
+            <div className="liquid-glass liquid-glass--prominent" style={{ width: 40, height: 40, borderRadius: "10px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <div className="liquid-glass__refract" style={{ borderRadius: "10px" }} />
+              <div className="liquid-glass__tint" style={{ borderRadius: "10px" }} />
+              <div className="liquid-glass__specular" style={{ borderRadius: "10px" }} />
+              <div className="liquid-glass__content" style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+                {labelIcon}
+              </div>
             </div>
             <div>
-              <h3 className="panel-card-title">{getStreamLabel(stream.label_id)}</h3>
+              <h3 className="panel-card-title" style={{ marginBottom: "var(--space-1)" }}>{getStreamLabel(stream.label_id)}</h3>
               <p className="panel-card-subtitle">Stream ID: {stream.stream_id} • {stream.muted ? "Muted" : "Active"}</p>
             </div>
           </div>
-          <div className="panel-card-actions" style={{ gap: "var(--space-2)" }}>
+          <div className="panel-card-actions" style={{ gap: "var(--space-2)", marginLeft: "auto" }}>
             <button
-              className={`panel-button panel-button-secondary ${stream.isSolo ? "panel-button" : ""}`}
+              className={`liquid-glass-button liquid-glass--regular ${stream.isSolo ? "liquid-glass--prominent" : ""}`}
               onClick={() => handleSoloToggle(stream.stream_id)}
               aria-label={stream.isSolo ? "Unsolo" : "Solo"}
               aria-pressed={stream.isSolo}
               data-testid={`solo-${stream.stream_id}`}
+              style={{ padding: "var(--space-2) var(--space-3)", borderRadius: "var(--radius-md)", display: "inline-flex", alignItems: "center", gap: "var(--space-2)" }}
             >
-              <Music size={16} /> Solo
+              <div className="liquid-glass__refract" style={{ borderRadius: "var(--radius-md)" }} />
+              <div className="liquid-glass__tint" style={{ borderRadius: "var(--radius-md)", background: stream.isSolo ? "rgba(88, 174, 188, 0.3)" : "rgba(255, 255, 255, 0.10)" }} />
+              <div className="liquid-glass__specular" style={{ borderRadius: "var(--radius-md)" }} />
+              <div className="liquid-glass__content" style={{ display: "inline-flex", alignItems: "center", gap: "var(--space-2)" }}>
+                <Music size={16} /> Solo
+              </div>
             </button>
             <button
-              className={`panel-button panel-button-secondary ${stream.muted ? "panel-button" : ""}`}
+              className={`liquid-glass-button liquid-glass--regular ${stream.muted ? "liquid-glass--prominent" : ""}`}
               onClick={() => handleMuteToggle(stream.stream_id)}
               aria-label={stream.muted ? "Unmute" : "Mute"}
               aria-pressed={stream.muted}
               data-testid={`mute-${stream.stream_id}`}
+              style={{ padding: "var(--space-2) var(--space-3)", borderRadius: "var(--radius-md)", display: "inline-flex", alignItems: "center", gap: "var(--space-2)" }}
             >
-              {stream.muted ? <VolumeX size={16} /> : <Volume2 size={16} />}
+              <div className="liquid-glass__refract" style={{ borderRadius: "var(--radius-md)" }} />
+              <div className="liquid-glass__tint" style={{ borderRadius: "var(--radius-md)", background: stream.muted ? "rgba(255, 100, 100, 0.3)" : "rgba(255, 255, 255, 0.10)" }} />
+              <div className="liquid-glass__specular" style={{ borderRadius: "var(--radius-md)" }} />
+              <div className="liquid-glass__content" style={{ display: "inline-flex", alignItems: "center", gap: "var(--space-2)" }}>
+                {stream.muted ? <VolumeX size={16} /> : <Volume2 size={16} />}
+              </div>
             </button>
           </div>
         </div>
 
-        <div style={{ display: "flex", alignItems: "flex-end", gap: "var(--space-4)" }}>
+        <div className="liquid-glass__content" style={{ padding: "var(--space-4)", paddingTop: 0, display: "flex", alignItems: "flex-end", gap: "var(--space-4)" }}>
           {/* VU Meter */}
           <div style={{ width: 24, height: 120, position: "relative", flexShrink: 0 }}>
             {renderVuMeter(stream)}
@@ -237,7 +270,7 @@ export function AudioPanel(): React.ReactElement {
               value={stream.muted ? 0 : stream.volume}
               onChange={(e) => handleVolumeChange(stream.stream_id, Number(e.target.value))}
               disabled={stream.muted}
-              className="panel-slider"
+              className="panel-slider panel-slider--vertical"
               style={{
                 width: 120,
                 height: 100,
@@ -258,42 +291,53 @@ export function AudioPanel(): React.ReactElement {
     );
   };
 
-  // EQ band slider
+  // EQ band slider with liquid glass
   const renderEqBand = (band: typeof EQ_BANDS[0], index: number) => {
     const gain = eqGains[index] ?? 0;
+
     return (
       <div key={band.freq} className="audio-eq-band" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "var(--space-2)", flex: 1 }} data-testid={`eq-band-${index}`}>
         <div style={{ height: 140, width: 40, position: "relative" }}>
-          <input
-            type="range"
-            min="-12"
-            max="12"
-            step="0.5"
-            value={gain}
-            onChange={(e) => handleEqGainChange(index, Number(e.target.value))}
-            className="panel-slider"
-            style={{
-              width: "100%",
-              height: "100%",
-              transform: "rotate(-90deg)",
-              transformOrigin: "bottom left",
-            }}
-            aria-label={`${band.label} gain ${gain >= 0 ? "+" : ""}${gain}dB`}
-          />
-          <div
-            className="audio-eq-gain-indicator"
-            style={{
-              position: "absolute",
-              bottom: 0,
-              left: 0,
-              right: 0,
-              height: `${((gain + 12) / 24) * 100}%`,
-              background: gain > 0 ? "var(--accent)" : "var(--text-muted)",
-              opacity: 0.3,
-              borderRadius: "4px 4px 0 0",
-              pointerEvents: "none",
-            }}
-          />
+          <div className="liquid-glass liquid-glass--clear" style={{ width: "100%", height: "100%", borderRadius: "9999px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end", padding: 2 }}>
+            <div className="liquid-glass__refract" style={{ borderRadius: "9999px" }} />
+            <div className="liquid-glass__tint" style={{ borderRadius: "9999px", background: "rgba(0, 0, 0, 0.15)" }} />
+            <div className="liquid-glass__specular" style={{ borderRadius: "9999px" }} />
+            <div className="liquid-glass__content" style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end" }}>
+              <input
+                type="range"
+                min="-12"
+                max="12"
+                step="0.5"
+                value={gain}
+                onChange={(e) => handleEqGainChange(index, Number(e.target.value))}
+                className="panel-slider panel-slider--vertical"
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  transform: "rotate(-90deg)",
+                  transformOrigin: "bottom left",
+                  zIndex: 10,
+                }}
+                aria-label={`${band.label} gain ${gain >= 0 ? "+" : ""}${gain}dB`}
+              />
+              <div
+                className="glass-progress__fill"
+                style={{
+                  position: "absolute",
+                  bottom: 0,
+                  left: "50%",
+                  transform: "translateX(-50%)",
+                  width: "80%",
+                  height: `${((gain + 12) / 24) * 100}%`,
+                  background: gain > 0 ? "var(--accent)" : "var(--text-muted)",
+                  opacity: 0.3,
+                  borderRadius: "4px 4px 0 0",
+                  pointerEvents: "none",
+                  transition: "height var(--motion-duration-base) var(--motion-ease-out)",
+                }}
+              />
+            </div>
+          </div>
         </div>
         <span style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)", whiteSpace: "nowrap" }}>{band.label}</span>
         <span style={{ fontSize: "var(--text-xs)", fontWeight: 500, color: gain !== 0 ? "var(--accent)" : "var(--text-subtle)" }}>
@@ -311,62 +355,77 @@ export function AudioPanel(): React.ReactElement {
       dataTestId="audio-panel"
     >
       <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-8)" }}>
-        {/* Master section */}
-        <section style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: "var(--space-6)", alignItems: "center" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "var(--space-4)" }}>
-            <div style={{ width: 56, height: 56, borderRadius: "14px", background: "color-mix(in srgb, var(--accent) 14%, transparent)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <Volume2 size={28} color="var(--accent)" />
+        {/* Master section with liquid glass */}
+        <section className="liquid-glass liquid-glass--regular panel-card--glass">
+          <div className="liquid-glass__content" style={{ padding: "var(--space-6)", display: "grid", gridTemplateColumns: "1fr auto", gap: "var(--space-6)", alignItems: "center" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "var(--space-4)" }}>
+              <div className="liquid-glass liquid-glass--prominent" style={{ width: 56, height: 56, borderRadius: "14px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <div className="liquid-glass__refract" style={{ borderRadius: "14px" }} />
+                <div className="liquid-glass__tint" style={{ borderRadius: "14px" }} />
+                <div className="liquid-glass__specular" style={{ borderRadius: "14px" }} />
+                <div className="liquid-glass__content" style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <Volume2 size={28} color="var(--accent)" />
+                </div>
+              </div>
+              <div>
+                <h3 style={{ fontSize: "var(--text-xl)", fontWeight: 600, color: "var(--text)", margin: 0 }}>Master Volume</h3>
+                <p style={{ fontSize: "var(--text-sm)", color: "var(--text-muted)", margin: 0 }}>System-wide output level</p>
+              </div>
             </div>
-            <div>
-              <h3 style={{ fontSize: "var(--text-xl)", fontWeight: 600, color: "var(--text)", margin: 0 }}>Master Volume</h3>
-              <p style={{ fontSize: "var(--text-sm)", color: "var(--text-muted)", margin: 0 }}>System-wide output level</p>
+            <div className="glass-container" style={{ display: "flex", alignItems: "center", gap: "var(--space-4)", minWidth: 280 }}>
+              <button
+                className={`liquid-glass-button liquid-glass--regular ${masterMuted ? "liquid-glass--prominent" : ""}`}
+                onClick={() => handleMuteToggle(0)}
+                aria-label={masterMuted ? "Unmute master" : "Mute master"}
+                aria-pressed={masterMuted}
+                data-testid="master-mute"
+                style={{ width: 48, height: 48, borderRadius: "var(--radius-md)", display: "flex", alignItems: "center", justifyContent: "center" }}
+              >
+                <div className="liquid-glass__refract" style={{ borderRadius: "var(--radius-md)" }} />
+                <div className="liquid-glass__tint" style={{ borderRadius: "var(--radius-md)", background: masterMuted ? "rgba(255, 100, 100, 0.3)" : "rgba(255, 255, 255, 0.10)" }} />
+                <div className="liquid-glass__specular" style={{ borderRadius: "var(--radius-md)" }} />
+                <div className="liquid-glass__content" style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  {masterMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
+                </div>
+              </button>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.01"
+                value={masterMuted ? 0 : masterVolume}
+                onChange={(e) => handleVolumeChange(0, Number(e.target.value))}
+                disabled={masterMuted}
+                className="panel-slider"
+                style={{ flex: 1, maxWidth: 200 }}
+                aria-label="Master volume"
+                data-testid="master-volume"
+              />
+              <span style={{ fontSize: "var(--text-sm)", fontWeight: 500, color: "var(--text)", minWidth: "48px", textAlign: "right" }}>
+                {Math.round((masterMuted ? 0 : masterVolume) * 100)}%
+              </span>
             </div>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: "var(--space-4)", minWidth: 280 }}>
-            <button
-              className={`panel-button panel-button-secondary ${masterMuted ? "panel-button" : ""}`}
-              onClick={() => handleMuteToggle(0)}
-              aria-label={masterMuted ? "Unmute master" : "Mute master"}
-              aria-pressed={masterMuted}
-              data-testid="master-mute"
-            >
-              {masterMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
-            </button>
-            <input
-              type="range"
-              min="0"
-              max="1"
-              step="0.01"
-              value={masterMuted ? 0 : masterVolume}
-              onChange={(e) => handleVolumeChange(0, Number(e.target.value))}
-              disabled={masterMuted}
-              className="panel-slider"
-              style={{ flex: 1, maxWidth: 200 }}
-              aria-label="Master volume"
-              data-testid="master-volume"
-            />
-            <span style={{ fontSize: "var(--text-sm)", fontWeight: 500, color: "var(--text)", minWidth: "48px", textAlign: "right" }}>
-              {Math.round((masterMuted ? 0 : masterVolume) * 100)}%
-            </span>
           </div>
         </section>
 
         {/* Output device selector */}
-        <section>
-          <h4 style={{ fontSize: "var(--text-base)", fontWeight: 600, color: "var(--text)", margin: "0 0 var(--space-3)" }}>Output Device</h4>
-          <select
-            className="panel-input"
-            value={selectedOutput}
-            onChange={(e) => setSelectedOutput(e.target.value)}
-            style={{ maxWidth: 320 }}
-            data-testid="output-device"
-          >
-            <option value="default">Default (System)</option>
-            <option value="speakers">Built-in Speakers</option>
-            <option value="headphones">Headphones (3.5mm)</option>
-            <option value="bluetooth">Zyntrix Aurora Buds</option>
-            <option value="hdmi">HDMI Display Audio</option>
-          </select>
+        <section className="liquid-glass liquid-glass--regular panel-card--glass">
+          <div className="liquid-glass__content" style={{ padding: "var(--space-6)" }}>
+            <h4 style={{ fontSize: "var(--text-base)", fontWeight: 600, color: "var(--text)", margin: "0 0 var(--space-3)" }}>Output Device</h4>
+            <select
+              className="panel-input"
+              value={selectedOutput}
+              onChange={(e) => setSelectedOutput(e.target.value)}
+              style={{ maxWidth: 320 }}
+              data-testid="output-device"
+            >
+              <option value="default">Default (System)</option>
+              <option value="speakers">Built-in Speakers</option>
+              <option value="headphones">Headphones (3.5mm)</option>
+              <option value="bluetooth">Zyntrix Aurora Buds</option>
+              <option value="hdmi">HDMI Display Audio</option>
+            </select>
+          </div>
         </section>
 
         {/* Per-stream mixer */}
@@ -376,44 +435,56 @@ export function AudioPanel(): React.ReactElement {
             <span style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)" }}>{streams.length} active streams</span>
           </div>
           {streams.length === 0 ? (
-            <div className="panel-empty" style={{ padding: "var(--space-8)" }}>
-              <Volume2 className="panel-empty-icon" size={48} />
-              <h3 className="panel-empty-title">No audio streams</h3>
-              <p className="panel-empty-description">Play audio in an application to see per-app volume controls.</p>
+            <div className="liquid-glass liquid-glass--clear glass-empty" style={{ padding: "var(--space-12)" }}>
+              <div className="liquid-glass__refract" style={{ borderRadius: "var(--radius-xl)" }} />
+              <div className="liquid-glass__tint" style={{ borderRadius: "var(--radius-xl)" }} />
+              <div className="liquid-glass__specular" style={{ borderRadius: "var(--radius-xl)" }} />
+              <div className="liquid-glass__content">
+                <Volume2 className="glass-empty__icon" size={48} />
+                <h3 className="glass-empty__title">No audio streams</h3>
+                <p className="glass-empty__description">Play audio in an application to see per-app volume controls.</p>
+              </div>
             </div>
           ) : (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "var(--space-4)" }}>
+            <div className="glass-grid glass-grid--auto-fill">
               {streams.map(renderStreamCard)}
             </div>
           )}
         </section>
 
         {/* Equalizer */}
-        <section>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "var(--space-3)", marginBottom: "var(--space-4)" }}>
-            <h4 style={{ fontSize: "var(--text-base)", fontWeight: 600, color: "var(--text)", margin: 0 }}>10-Band Equalizer</h4>
-            <div style={{ display: "flex", gap: "var(--space-2)", alignItems: "center" }}>
-              <select
-                className="panel-input"
-                value={eqPreset}
-                onChange={(e) => handleEqPresetChange(Number(e.target.value))}
-                style={{ maxWidth: 160 }}
-                data-testid="eq-preset"
-              >
-                {EQ_PRESETS.map((p, i) => (
-                  <option key={i} value={i}>{p.name}</option>
-                ))}
-              </select>
-              <button className="panel-button panel-button-secondary" onClick={handleEqReset} data-testid="eq-reset">
-                <RotateCcw size={16} /> Reset
-              </button>
+        <section className="liquid-glass liquid-glass--regular panel-card--glass">
+          <div className="liquid-glass__content" style={{ padding: "var(--space-6)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "var(--space-3)", marginBottom: "var(--space-4)" }}>
+              <h4 style={{ fontSize: "var(--text-base)", fontWeight: 600, color: "var(--text)", margin: 0 }}>10-Band Equalizer</h4>
+              <div className="glass-container" style={{ display: "flex", gap: "var(--space-2)", alignItems: "center" }}>
+                <select
+                  className="panel-input"
+                  value={eqPreset}
+                  onChange={(e) => handleEqPresetChange(Number(e.target.value))}
+                  style={{ maxWidth: 160 }}
+                  data-testid="eq-preset"
+                >
+                  {EQ_PRESETS.map((p, i) => (
+                    <option key={i} value={i}>{p.name}</option>
+                  ))}
+                </select>
+                <button className="liquid-glass-button liquid-glass--regular" onClick={handleEqReset} data-testid="eq-reset" style={{ padding: "var(--space-2) var(--space-3)", borderRadius: "var(--radius-md)", display: "inline-flex", alignItems: "center", gap: "var(--space-2)" }}>
+                  <div className="liquid-glass__refract" style={{ borderRadius: "var(--radius-md)" }} />
+                  <div className="liquid-glass__tint" style={{ borderRadius: "var(--radius-md)" }} />
+                  <div className="liquid-glass__specular" style={{ borderRadius: "var(--radius-md)" }} />
+                  <div className="liquid-glass__content" style={{ display: "inline-flex", alignItems: "center", gap: "var(--space-2)" }}>
+                    <RotateCcw size={16} /> Reset
+                  </div>
+                </button>
+              </div>
             </div>
-          </div>
-          <div style={{ display: "flex", gap: "var(--space-3)", overflowX: "auto", paddingBottom: "var(--space-4)" }}>
-            {EQ_BANDS.map(renderEqBand)}
-          </div>
-          <div style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)" }}>
-            Gains applied to PipeWire filter chain. Presets are starting points — adjust to taste.
+            <div style={{ display: "flex", gap: "var(--space-3)", overflowX: "auto", paddingBottom: "var(--space-4)" }}>
+              {EQ_BANDS.map(renderEqBand)}
+            </div>
+            <div style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)" }}>
+              Gains applied to PipeWire filter chain. Presets are starting points — adjust to taste.
+            </div>
           </div>
         </section>
       </div>

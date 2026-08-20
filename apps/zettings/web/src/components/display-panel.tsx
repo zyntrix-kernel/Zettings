@@ -19,7 +19,6 @@ import { invoke } from "@tauri-apps/api/core";
 import type { DisplayListOutputsResult, DisplayOutputDto, DisplayModeDto } from "@zettings/bindings";
 import { PanelShell } from "./panel-shell.js";
 import { Monitor, RotateCcw, Sun, Moon, Maximize, Minimize } from "lucide-react";
-import { generateSquirclePath } from "../lib/zdl-motion.js";
 import { useSpring, ZDL_SPRINGS } from "../lib/zdl-motion-hooks.js";
 
 interface PositionedMonitor {
@@ -43,14 +42,6 @@ interface SnapGuide {
 const CANVAS_PADDING = 60;
 const MIN_MONITOR_W = 160;
 const SNAP_THRESHOLD = 12; // px
-
-/** Build a squircle clip-path CSS value without using a hook. */
-function buildClipPath(width: number, height: number, radius: number): string {
-  const path = generateSquirclePath(width, height, radius, 4);
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" preserveAspectRatio="none"><path d="${path}" /></svg>`;
-  const encoded = encodeURIComponent(svg).replace(/'/g, "%27").replace(/"/g, "%22");
-  return `path("data:image/svg+xml,${encoded}")`;
-}
 
 export function DisplayPanel(): React.ReactElement {
   const [outputs, setOutputs] = useState<DisplayOutputDto[]>([]);
@@ -245,40 +236,47 @@ export function DisplayPanel(): React.ReactElement {
     return Math.max(0.6, Math.min(1.3, mode.width / baseW));
   };
 
-  // Render monitor card (sidebar)
+  // Glass monitor card (sidebar) with liquid glass effect
   const renderMonitorCard = (monitor: PositionedMonitor, idx: number) => {
     const isDragging = draggingId === monitor.outputId || keyboardDraggingId === monitor.outputId;
     const isKeyboardDragging = keyboardDraggingId === monitor.outputId;
+    const cardSpring = useSpring(isDragging ? 0.85 : 1, ZDL_SPRINGS.slider);
 
     return (
       <div
         key={monitor.outputId}
-        className="panel-card"
-        style={{ opacity: isDragging ? 0.6 : 1, transform: isKeyboardDragging ? "scale(1.02)" : undefined }}
+        className="liquid-glass liquid-glass--regular panel-card--glass"
+        style={{
+          opacity: cardSpring.position,
+          transform: isKeyboardDragging ? `scale(${1.02 * cardSpring.position})` : `scale(${cardSpring.position})`,
+          transition: "opacity var(--motion-duration-fast) var(--motion-ease-out), transform var(--motion-duration-fast) var(--motion-ease-out)",
+        }}
         tabIndex={0}
         onKeyDown={(e) => handleKeyDown(e, monitor)}
         onMouseDown={(e) => handleMouseDown(e, monitor)}
         data-testid={`display-card-${idx}`}
       >
-        <div className="panel-card-header">
+        <div className="liquid-glass__content panel-card-header" style={{ padding: "var(--space-4)", paddingBottom: 0 }}>
           <div>
-            <h3 className="panel-card-title">{monitor.outputId}</h3>
+            <h3 className="panel-card-title" style={{ marginBottom: "var(--space-1)" }}>{monitor.outputId}</h3>
             <p className="panel-card-subtitle">
               {monitor.selectedMode.width}×{monitor.selectedMode.height} @{monitor.selectedMode.refresh_hz}Hz
             </p>
           </div>
           <div className="panel-card-actions">
             <button
-              className="panel-button panel-button-secondary"
+              className="liquid-glass-button liquid-glass--clear"
               onClick={(e) => { e.stopPropagation(); handleNightLightToggle(monitor.outputId); }}
               aria-label={monitor.nightLightEnabled ? "Disable night light" : "Enable night light"}
+              aria-pressed={monitor.nightLightEnabled}
               data-testid={`night-light-toggle-${idx}`}
+              style={{ width: 40, height: 40, borderRadius: "var(--radius-md)", display: "flex", alignItems: "center", justifyContent: "center" }}
             >
-              {monitor.nightLightEnabled ? <Moon size={16} /> : <Sun size={16} />}
+              {monitor.nightLightEnabled ? <Moon size={18} color="var(--accent)" /> : <Sun size={18} color="var(--text-muted)" />}
             </button>
           </div>
         </div>
-        <div className="panel-card-body">
+        <div className="liquid-glass__content panel-card-body" style={{ padding: "var(--space-4)", paddingTop: 0 }}>
           <div className="panel-field">
             <label className="panel-field-label" htmlFor={`mode-${idx}`}>Resolution & Refresh Rate</label>
             <select
@@ -329,17 +327,17 @@ export function DisplayPanel(): React.ReactElement {
     );
   };
 
-  // Canvas monitor visual
+  // Canvas monitor visual with liquid glass
   const renderCanvasMonitor = (monitor: PositionedMonitor, idx: number) => {
     const isDragging = draggingId === monitor.outputId || keyboardDraggingId === monitor.outputId;
     const scale = getMonitorScale(monitor.selectedMode);
     const w = monitor.width * scale;
     const h = monitor.height * scale;
-    const clipPath = buildClipPath(w, h, 12 * scale);
 
     return (
       <div
         key={monitor.outputId}
+        className="liquid-glass liquid-glass--regular"
         style={{
           position: "absolute",
           left: monitor.x,
@@ -351,26 +349,18 @@ export function DisplayPanel(): React.ReactElement {
           opacity: isDragging ? 0.85 : 1,
           filter: monitor.nightLightEnabled ? `sepia(${monitor.nightLightIntensity * 0.6}) saturate(1.2) hue-rotate(-10deg)` : "none",
           transition: draggingId ? "none" : "transform 100ms ease-out, opacity 100ms ease-out",
+          borderRadius: "12px",
         }}
         onMouseDown={(e) => handleMouseDown(e, monitor)}
         tabIndex={0}
         onKeyDown={(e) => handleKeyDown(e, monitor)}
         data-testid={`canvas-monitor-${idx}`}
       >
-        <div style={clipPath ? { clipPath, width: "100%", height: "100%" } : {}}>
-          <div style={{
-            width: "100%",
-            height: "100%",
-            background: "linear-gradient(135deg, var(--surface-elevated) 0%, var(--surface-muted) 100%)",
-            border: "2px solid var(--border)",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: "8px",
-            fontSize: "11px",
-            color: "var(--text-muted)",
-          }}>
+        <div className="liquid-glass__refract" style={{ borderRadius: "12px" }} />
+        <div className="liquid-glass__tint" style={{ borderRadius: "12px", background: monitor.nightLightEnabled ? "rgba(255, 200, 100, 0.15)" : "rgba(255, 255, 255, 0.10)" }} />
+        <div className="liquid-glass__specular" style={{ borderRadius: "12px" }} />
+        <div className="liquid-glass__content" style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "8px" }}>
+          <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "8px", fontSize: "11px", color: "var(--text-muted)" }}>
             <Monitor size={20} style={{ marginBottom: "4px", color: "var(--accent)" }} />
             <strong style={{ color: "var(--text)" }}>{monitor.outputId}</strong>
             <span>{monitor.selectedMode.width}×{monitor.selectedMode.height}</span>
@@ -379,22 +369,29 @@ export function DisplayPanel(): React.ReactElement {
         </div>
         {/* Resize handle - bottom right */}
         <div
+          className="liquid-glass liquid-glass--prominent"
           style={{
             position: "absolute",
             right: -6,
             bottom: -6,
             width: 12,
             height: 12,
-            background: "var(--accent)",
-            border: "2px solid var(--surface)",
             borderRadius: "50%",
             cursor: "se-resize",
             opacity: isDragging ? 1 : 0,
             transition: "opacity 100ms",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
           }}
           onMouseDown={(e) => { e.stopPropagation(); /* TODO: resize drag */ }}
           aria-label={`Resize ${monitor.outputId}`}
-        />
+        >
+          <div className="liquid-glass__refract" style={{ borderRadius: "50%" }} />
+          <div className="liquid-glass__tint" style={{ borderRadius: "50%", background: "rgba(88, 174, 188, 0.3)" }} />
+          <div className="liquid-glass__specular" style={{ borderRadius: "50%" }} />
+          <div className="liquid-glass__content" />
+        </div>
       </div>
     );
   };
@@ -412,7 +409,7 @@ export function DisplayPanel(): React.ReactElement {
               [g.axis === "x" ? "left" : "top"]: g.position,
               [g.axis === "x" ? "width" : "height"]: 2,
               [g.axis === "x" ? "height" : "width"]: "100%",
-              background: "var(--accent)",
+              background: "linear-gradient(180deg, var(--accent), var(--accent-secondary))",
               opacity: 0.6,
               pointerEvents: "none",
             }}
@@ -430,13 +427,18 @@ export function DisplayPanel(): React.ReactElement {
       dataTestId="display-panel"
     >
       <div className="panel-grid" style={{ display: "grid", gridTemplateColumns: "280px 1fr", gap: "var(--space-8)", alignItems: "start" }}>
-        {/* Sidebar - monitor list */}
-        <aside style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)", maxHeight: "calc(100vh - 280px)", overflow: "auto" }}>
+        {/* Sidebar - monitor list with glass container for morphing */}
+        <aside className="glass-container" style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)", maxHeight: "calc(100vh - 280px)", overflow: "auto" }}>
           {positioned.length === 0 ? (
-            <div className="panel-empty" style={{ padding: "var(--space-8)" }}>
-              <Monitor className="panel-empty-icon" size={48} />
-              <h3 className="panel-empty-title">No displays detected</h3>
-              <p className="panel-empty-description">Connect a monitor or enable the mock backend to see sample displays.</p>
+            <div className="liquid-glass liquid-glass--clear glass-empty" style={{ padding: "var(--space-12)" }}>
+              <div className="liquid-glass__refract" style={{ borderRadius: "var(--radius-xl)" }} />
+              <div className="liquid-glass__tint" style={{ borderRadius: "var(--radius-xl)" }} />
+              <div className="liquid-glass__specular" style={{ borderRadius: "var(--radius-xl)" }} />
+              <div className="liquid-glass__content">
+                <Monitor className="glass-empty__icon" size={48} />
+                <h3 className="glass-empty__title">No displays detected</h3>
+                <p className="glass-empty__description">Connect a monitor or enable the mock backend to see sample displays.</p>
+              </div>
             </div>
           ) : (
             positioned.map(renderMonitorCard)
@@ -447,30 +449,49 @@ export function DisplayPanel(): React.ReactElement {
         <div style={{ position: "relative", minHeight: "500px" }}>
           <div
             ref={canvasRef}
+            className="liquid-glass liquid-glass--clear"
             style={{
               position: "relative",
               width: canvasBounds.width,
               height: canvasBounds.height,
-              background: "var(--surface-muted)",
-              border: "1px dashed var(--border)",
               borderRadius: "12px",
               overflow: "hidden",
             }}
             data-testid="display-canvas"
           >
-            {renderSnapGuides()}
-            {positioned.map(renderCanvasMonitor)}
+            <div className="liquid-glass__refract" style={{ borderRadius: "12px" }} />
+            <div className="liquid-glass__tint" style={{ borderRadius: "12px", background: "rgba(0, 0, 0, 0.05)" }} />
+            <div className="liquid-glass__specular" style={{ borderRadius: "12px" }} />
+            <div className="liquid-glass__content" style={{ width: "100%", height: "100%" }}>
+              {renderSnapGuides()}
+              {positioned.map(renderCanvasMonitor)}
+            </div>
           </div>
-          {/* Canvas controls */}
-          <div style={{ display: "flex", gap: "var(--space-2)", marginTop: "var(--space-4)", flexWrap: "wrap" }}>
-            <button className="panel-button panel-button-secondary" data-testid="reset-layout">
-              <RotateCcw size={16} /> Reset Layout
+          {/* Canvas controls with glass buttons */}
+          <div className="glass-container" style={{ display: "flex", gap: "var(--space-2)", marginTop: "var(--space-4)", flexWrap: "wrap" }}>
+            <button className="liquid-glass-button liquid-glass--regular" data-testid="reset-layout" style={{ padding: "var(--space-3) var(--space-4)", borderRadius: "var(--radius-md)", display: "inline-flex", alignItems: "center", gap: "var(--space-2)" }}>
+              <div className="liquid-glass__refract" style={{ borderRadius: "var(--radius-md)" }} />
+              <div className="liquid-glass__tint" style={{ borderRadius: "var(--radius-md)" }} />
+              <div className="liquid-glass__specular" style={{ borderRadius: "var(--radius-md)" }} />
+              <div className="liquid-glass__content" style={{ display: "inline-flex", alignItems: "center", gap: "var(--space-2)" }}>
+                <RotateCcw size={16} /> Reset Layout
+              </div>
             </button>
-            <button className="panel-button panel-button-secondary" data-testid="auto-arrange">
-              <Maximize size={16} /> Auto Arrange
+            <button className="liquid-glass-button liquid-glass--regular" data-testid="auto-arrange" style={{ padding: "var(--space-3) var(--space-4)", borderRadius: "var(--radius-md)", display: "inline-flex", alignItems: "center", gap: "var(--space-2)" }}>
+              <div className="liquid-glass__refract" style={{ borderRadius: "var(--radius-md)" }} />
+              <div className="liquid-glass__tint" style={{ borderRadius: "var(--radius-md)" }} />
+              <div className="liquid-glass__specular" style={{ borderRadius: "var(--radius-md)" }} />
+              <div className="liquid-glass__content" style={{ display: "inline-flex", alignItems: "center", gap: "var(--space-2)" }}>
+                <Maximize size={16} /> Auto Arrange
+              </div>
             </button>
-            <button className="panel-button panel-button-secondary" data-testid="mirror-displays">
-              <Minimize size={16} /> Mirror Displays
+            <button className="liquid-glass-button liquid-glass--regular" data-testid="mirror-displays" style={{ padding: "var(--space-3) var(--space-4)", borderRadius: "var(--radius-md)", display: "inline-flex", alignItems: "center", gap: "var(--space-2)" }}>
+              <div className="liquid-glass__refract" style={{ borderRadius: "var(--radius-md)" }} />
+              <div className="liquid-glass__tint" style={{ borderRadius: "var(--radius-md)" }} />
+              <div className="liquid-glass__specular" style={{ borderRadius: "var(--radius-md)" }} />
+              <div className="liquid-glass__content" style={{ display: "inline-flex", alignItems: "center", gap: "var(--space-2)" }}>
+                <Minimize size={16} /> Mirror Displays
+              </div>
             </button>
           </div>
         </div>
