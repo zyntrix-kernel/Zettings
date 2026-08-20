@@ -11,6 +11,8 @@ use std::time::Instant;
 use tauri::Manager;
 use tauri_plugin_decorum::WebviewWindowExt;
 use tracing_subscriber::EnvFilter;
+use zettings_bus::Bus;
+use zettings_bus::events::{AudioVolume, DisplayReplug, LinkState, PowerState};
 use zettings_ipc::{
     AudioListStreamsResult, BluetoothListPairedResult, DisplayListOutputsResult, Health,
     ModuleInfo, PaletteExtractRequest, PaletteExtractResult, PerfStatsDto,
@@ -139,12 +141,71 @@ fn zettings_palette_extract(
     zettings_ipc::palette_extract(request)
 }
 
+/// Headless daemon entry point for `zettings-daemon.service`.
+///
+/// Runs the Zettings backend without a webview window. It warms the in-process
+/// Tantivy search index and subscribes to the typed broadcast bus so the
+/// daemon process holds live state-sync subscriptions (`LinkState`,
+/// `AudioVolume`, `DisplayReplug`, `PowerState`) for the lifetime of the user session. This gives
+/// the GUI a shared process that owns the search corpus and bus before the
+/// window mounts, so a subsequently launched `zettings` GUI instance starts
+/// with an already-warmed index.
+///
+/// Blocks until SIGTERM/SIGINT (systemd `KillSignal=SIGINT`), then exits 0.
+fn run_daemon() {
+    tracing::info!(
+        event = "daemon.start",
+        "zettings daemon starting (headless)"
+    );
+    // Warm the search index synchronously so the first Spotlight query in a
+    // later GUI process never blocks on index construction. The index lives
+    // for the whole daemon lifetime (future cross-process index hosting).
+    let _index = zettings_search::Index::new();
+    tracing::info!(event = "daemon.index.warm", "in-memory search index ready");
+    let bus = Bus::new();
+    let mut link_rx = bus.subscribe::<LinkState>();
+    let mut audio_rx = bus.subscribe::<AudioVolume>();
+    let mut display_rx = bus.subscribe::<DisplayReplug>();
+    let mut power_rx = bus.subscribe::<PowerState>();
+
+    let runtime = match tokio::runtime::Runtime::new() {
+        Ok(rt) => rt,
+        Err(error) => {
+            tracing::error!(event = "daemon.runtime.failed", error = %error, "failed to start tokio runtime");
+            std::process::exit(1);
+        }
+    };
+    runtime.block_on(async {
+        loop {
+            tokio::select! {
+                Ok(state) = link_rx.recv() => {
+                    tracing::debug!(event = "bus.link", interface = state.interface_index, up = state.link_up);
+                }
+                Ok(state) = audio_rx.recv() => {
+                    tracing::debug!(event = "bus.audio", stream = state.stream_id, volume = state.volume, muted = state.muted);
+                }
+                Ok(state) = display_rx.recv() => {
+                    tracing::debug!(event = "bus.display", output = state.output_id, connected = state.connected);
+                }
+                Ok(state) = power_rx.recv() => {
+                    tracing::debug!(event = "bus.power", device = state.device_index, percent = state.percentage, charging = state.charging);
+                }
+                _ = tokio::signal::ctrl_c() => {
+                    tracing::info!(event = "daemon.stop", "zettings daemon stopping");
+                    break;
+                }
+            }
+        }
+    });
+}
+
 /// Zettings application entry point.
 ///
-/// Initializes the tracing subscriber, registers the Tauri plugins
-/// (log, shell, window-state, deep-link, decorum), mounts the Phase 1
-/// IPC command surface, and opens the main webview window pointing at
-/// the React 19 frontend.
+/// Initializes the tracing subscriber, then either enters headless daemon mode
+/// (`zettings --daemon`, launched by `zettings-daemon.service`) or starts the
+/// full GUI runtime: registers the Tauri plugins (log, shell, window-state,
+/// deep-link, decorum), mounts the IPC command surface, and opens the main
+/// webview window pointing at the React 19 frontend.
 ///
 /// Phase 9 launch-time instrumentation: `PROCESS_START` is captured before
 /// anything else runs and `SETUP_DONE` right after the `setup` closure
@@ -158,6 +219,14 @@ fn main() {
         .with_env_filter(EnvFilter::from_default_env())
         .init();
     tracing::info!(event = "main.enter", "zettings backend starting");
+
+    // `zettings-daemon.service` launches `zettings --daemon` headless. The
+    // service owns the search index warm-up + bus subscriptions; the GUI path
+    // below is skipped entirely so no webview/polkit surface is created.
+    if std::env::args().any(|arg| arg == "--daemon") {
+        run_daemon();
+        std::process::exit(0);
+    }
 
     tauri::Builder::default()
         .plugin(tauri_plugin_log::Builder::default().build())

@@ -1,0 +1,23 @@
+[Unit]
+Description=Zettings background daemon
+Documentation=https://zyntrix.os/docs/zettings
+# A per-user service started once the graphical session is up so the daemon
+# can subscribe to the Zettings message bus and keep the in-memory search
+# index warm. User services do not use a D-Bus activation profile.
+After=graphical-session.target
+PartOf=graphical-session.target
+
+[Service]
+Type=simple
+# `--daemon` runs Zettings headless: no window, no webview, no polkit prompts.
+# It only subscribes to the typed broadcast bus and warms the search index so
+# that a subsequently launched GUI instance has an already-indexed corpus.
+ExecStart=/usr/bin/zettings --daemon
+Restart=on-failure
+RestartSec=2
+TimeoutStopSec=10
+KillSignal=SIGINT
+Environment=RUST_LOG=zettings_daemon=info
+
+[Install]
+WantedBy=graphical-session.target

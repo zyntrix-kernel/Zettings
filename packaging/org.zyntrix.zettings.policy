@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE policyconfig PUBLIC
+ "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN"
+ "http://www.freedesktop.org/standards/PolicyKit/1/policyconfig.dtd">
+<policyconfig>
+  <vendor>Zyntrix OS</vendor>
+  <vendor_url>https://zyntrix.os</vendor_url>
+  <icon_name>preferences-system</icon_name>
+
+  <!--
+    Zettings privileged actions.
+
+    These mirror the five `ActionId` variants gated by the `zettings-polkit`
+    crate (`crates/zettings-polkit/src/lib.rs`) and invoked by the read-write
+    IPC commands in `crates/zettings-ipc/src/lib.rs`. Read-only commands never
+    reach PolicyKit; only mutating system state requires authorization here.
+
+    Each action uses the local active-session idiom: `auth_admin_keep` while a
+    user holds an active graphical session (a settings UI context), and the
+    stricter `auth_admin` for inactive sessions so no background process can
+    mutate system configuration without an explicit administrator prompt.
+  -->
+
+  <action id="org.zyntrix.zettings.network.set-hostname">
+    <description>Set the system hostname</description>
+    <description xml:lang="en">Set the system hostname</description>
+    <message>Authentication is required to set the system hostname.</message>
+    <message xml:lang="en">Authentication is required to set the system hostname.</message>
+    <icon_name>network-wired</icon_name>
+    <defaults>
+      <allow_any>auth_admin_keep</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/bin/hostnamectl</annotate>
+    <annotate key="org.freedesktop.policykit.exec.allow_gui">true</annotate>
+  </action>
+
+  <action id="org.zyntrix.zettings.display.apply-mode">
+    <description>Apply a display mode</description>
+    <description xml:lang="en">Apply a display mode</description>
+    <message>Authentication is required to apply a display mode.</message>
+    <message xml:lang="en">Authentication is required to apply a display mode.</message>
+    <icon_name>video-display</icon_name>
+    <defaults>
+      <allow_any>auth_admin_keep</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/bin/kscreen-doctor</annotate>
+    <annotate key="org.freedesktop.policykit.exec.allow_gui">true</annotate>
+  </action>
+
+  <action id="org.zyntrix.zettings.audio.set-volume">
+    <description>Set the system output volume</description>
+    <description xml:lang="en">Set the system output volume</description>
+    <message>Authentication is required to set the system output volume.</message>
+    <message xml:lang="en">Authentication is required to set the system output volume.</message>
+    <icon_name>audio-volume-high</icon_name>
+    <defaults>
+      <allow_any>auth_admin_keep</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/bin/pactl</annotate>
+    <annotate key="org.freedesktop.policykit.exec.allow_gui">true</annotate>
+  </action>
+
+  <action id="org.zyntrix.zettings.network.scan-wifi">
+    <description>Scan for available Wi-Fi networks</description>
+    <description xml:lang="en">Scan for available Wi-Fi networks</description>
+    <message>Authentication is required to scan for Wi-Fi networks.</message>
+    <message xml:lang="en">Authentication is required to scan for Wi-Fi networks.</message>
+    <icon_name>network-wireless</icon_name>
+    <defaults>
+      <allow_any>auth_admin_keep</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/bin/nmcli</annotate>
+    <annotate key="org.freedesktop.policykit.exec.allow_gui">true</annotate>
+  </action>
+
+  <action id="org.zyntrix.zettings.power.set-profile">
+    <description>Change the power profile</description>
+    <description xml:lang="en">Change the power profile</description>
+    <message>Authentication is required to change the power profile.</message>
+    <message xml:lang="en">Authentication is required to change the power profile.</message>
+    <icon_name>preferences-system-power</icon_name>
+    <defaults>
+      <allow_any>auth_admin_keep</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/bin/powerprofilesctl</annotate>
+    <annotate key="org.freedesktop.policykit.exec.allow_gui">true</annotate>
+  </action>
+
+</policyconfig>

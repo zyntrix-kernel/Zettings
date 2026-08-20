@@ -1,0 +1,18 @@
+[Desktop Entry]
+Categories={{categories}};System;
+Comment={{comment}}
+Exec={{exec}}
+Icon={{icon}}
+Name={{name}}
+# StartupWMClass must match the window class so Plasma can group and map
+# windows to the launcher entry reliably.
+StartupWMClass=zettings
+Terminal=false
+Type=Application
+Version=1.0
+X-DBUS-StartupType=none
+X-KDE-SubstituteUID=false
+X-KDE-StartupNotify=true
+# Register as a System Settings module category so the entry surfaces in
+# KDE Plasma's "System Settings" discoverability surface.
+X-KDE-System-Settings-Categories=System;

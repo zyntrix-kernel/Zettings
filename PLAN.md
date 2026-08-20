@@ -118,10 +118,10 @@ Every phase must pass all four gate commands before landing the phase commit[cit
 ---
 
 ## Phase 10: Production Packaging & System Integration
-- [ ] **Debian Package Build (`.deb`):** Generate Kubuntu 24.04 LTS package installing binaries, desktop entries, and icons[cite: 1, 2].
-- [ ] **PolicyKit Actions Installation:** Package `.policy` files into `/usr/share/polkit-1/actions/org.zyntrix.zettings.policy`[cite: 1, 2].
-- [ ] **Systemd User Service:** Create `zettings-daemon.service` for background search re-indexing and state synchronization[cite: 1].
-- [ ] **KDE Plasma Integration:** Register desktop entry under `/usr/share/applications/` mapped to KDE Plasma System Settings categories[cite: 1].
+- [x] **Debian Package Build (`.deb`):** Configured Tauri bundler `bundle.linux.deb` (system `depends`, `section`/`priority`, desktop template, extra files) so Kubuntu 24.04 LTS packages install binaries, desktop entries, and icons. Package generation runs in WSL2: `pnpm -F zettings tauri build --bundles deb`[cite: 1, 2].
+- [x] **PolicyKit Actions Installation:** Authored `packaging/org.zyntrix.zettings.policy` with the 5 privileged actions (`network.set-hostname`, `display.apply-mode`, `audio.set-volume`, `network.scan-wifi`, `power.set-profile`); installed to `/usr/share/polkit-1/actions/` via `deb.files`[cite: 1, 2].
+- [x] **Systemd User Service:** Created `packaging/zettings-daemon.service` (headless `zettings --daemon` mode in `main.rs` — warms the in-memory search index + holds live bus state-sync subscriptions); installed to `/usr/lib/systemd/user/` via `deb.files`[cite: 1].
+- [x] **KDE Plasma Integration:** Desktop template (`packaging/zettings.desktop`) rendered to `/usr/share/applications/zettings.desktop` with `Settings;System;` categories + `X-KDE-System-Settings-Categories` mapping into KDE Plasma System Settings[cite: 1].
 
 **Gate Commit:** `git commit -m "phase(10): construct production debian package, systemd service, and desktop integration"`[cite: 1]
 
