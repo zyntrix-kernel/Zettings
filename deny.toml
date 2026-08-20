@@ -12,7 +12,32 @@ db-path = "~/.cargo/advisory-dbs"
 db-urls = ["https://github.com/rustsec/advisory-db"]
 yanked = "deny"
 ignore = [
-    # Add advisory IDs here ONLY with a written justification, attached to a tracked security issue.
+    # RUSTSEC-2024-0370: proc-macro-error is unmaintained. Transitive via glib-macros
+    # (GTK3 stack, pulled by tauri's Linux runtime). No safe upgrade exists.
+    # Unmaintained only, no active CVE. Tracked: Zyntrix security review 2026-08.
+    "RUSTSEC-2024-0370",
+    # RUSTSEC-2024-0411..0420: gtk-rs GTK3 bindings (atk/gdk/gdkx11/gtk families) are
+    # archived upstream. Transitive via tauri -> muda/tao/wry/webkit2gtk on Linux.
+    # No safe upgrade (Tauri v2 still depends on GTK3). Unmaintained only, no active CVE.
+    # Tracked: Zyntrix security review 2026-08.
+    "RUSTSEC-2024-0411",
+    "RUSTSEC-2024-0412",
+    "RUSTSEC-2024-0413",
+    "RUSTSEC-2024-0414",
+    "RUSTSEC-2024-0415",
+    "RUSTSEC-2024-0416",
+    "RUSTSEC-2024-0417",
+    "RUSTSEC-2024-0418",
+    "RUSTSEC-2024-0419",
+    "RUSTSEC-2024-0420",
+    # RUSTSEC-2025-0075, 0080, 0081, 0098, 0100: rust-unic crates are unmaintained.
+    # Transitive via urlpattern in tauri-utils. No safe upgrade exists.
+    # Unmaintained only, no active CVE. Tracked: Zyntrix security review 2026-08.
+    "RUSTSEC-2025-0075",
+    "RUSTSEC-2025-0080",
+    "RUSTSEC-2025-0081",
+    "RUSTSEC-2025-0098",
+    "RUSTSEC-2025-0100",
 ]
 
 [licenses]
