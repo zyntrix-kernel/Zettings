@@ -17,4 +17,8 @@ signal_dbm: number,
 /**
  * `true` when the AP requires authentication.
  */
-secured: boolean, };
+secured: boolean, 
+/**
+ * `true` when the device is currently associated with this AP.
+ */
+connected: boolean, };

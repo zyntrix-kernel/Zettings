@@ -13,15 +13,27 @@
  * - Profile buttons have ARIA pressed state
  * - All controls keyboard operable
  * - Reduced motion collapses graph animations
+ *
+ * Hooks rules: each profile card is its own `PowerProfileCard` component so
+ * hooks run unconditionally (never inside a `.map()` callback).
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import type { PowerActiveProfileResult, PowerBatteriesResult, BatteryStateDto } from "@zettings/bindings";
+import type {
+  PowerActiveProfileResult,
+  PowerBatteriesResult,
+  PowerSetChargeThresholdRequest,
+  PowerSetProfileRequest,
+  PowerProfileDto,
+  BatteryStateDto,
+} from "@zettings/bindings";
 import { PanelShell } from "./panel-shell.js";
+import { GlassCard } from "./glass-card.js";
+import { GlassButton } from "./glass-button.js";
 import { Battery, BatteryCharging, Bolt, Leaf, Zap, Check } from "lucide-react";
-import { useSpring, ZDL_SPRINGS } from "../lib/zdl-motion-hooks.js";
+import { useToggleSpring } from "../lib/zdl-motion-hooks.js";
 
-type PowerProfileName = "balanced" | "performance" | "power-saver";
+type PowerProfileName = PowerProfileDto;
 
 interface PowerProfileExtended {
   id: PowerProfileName;
@@ -55,6 +67,160 @@ const DISCHARGE_POINTS = [
   { time: "14h", percent: 0 },
 ];
 
+/** Profile card — extracted so `useToggleSpring` runs unconditionally. */
+function PowerProfileCard({
+  profile,
+  isActive,
+  onSelect,
+}: {
+  profile: PowerProfileExtended;
+  isActive: boolean;
+  onSelect: (id: PowerProfileName) => void;
+}): React.ReactElement {
+  const spring = useToggleSpring(isActive);
+  const iconColor = isActive ? "var(--accent)" : "var(--text-muted)";
+
+  return (
+    <GlassButton
+      variant={isActive ? "prominent" : "regular"}
+      aria-pressed={isActive}
+      onClick={() => onSelect(profile.id)}
+      dataTestId={`profile-${profile.id}`}
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "flex-start",
+        gap: "var(--space-3)",
+        padding: "var(--space-5)",
+        minWidth: 0,
+        textAlign: "left",
+        opacity: 0.7 + 0.3 * spring,
+        transform: `scale(${0.98 + 0.02 * spring})`,
+        border: isActive ? "2px solid var(--accent)" : "1px solid var(--glass-panel-border)",
+      }}
+    >
+      <div
+        style={{
+          width: 40,
+          height: 40,
+          borderRadius: "10px",
+          background: isActive
+            ? "color-mix(in srgb, var(--accent) 18%, transparent)"
+            : "color-mix(in srgb, var(--glass-panel-tint) 45%, transparent)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <profile.icon size={20} color={iconColor} />
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)" }}>
+          <h4 style={{ fontSize: "var(--text-base)", fontWeight: 600, color: "var(--text)", margin: 0 }}>{profile.label}</h4>
+          {isActive && <Check size={16} color="var(--accent)" aria-label="Active" />}
+        </div>
+        <p style={{ fontSize: "var(--text-sm)", color: "var(--text-muted)", margin: 0 }}>{profile.description}</p>
+      </div>
+    </GlassButton>
+  );
+}
+
+/** Battery card — no hooks, so it is a plain render helper kept as a component for clarity. */
+function BatteryCard({
+  battery,
+  idx,
+}: {
+  battery: BatteryStateDto;
+  idx: number;
+}): React.ReactElement {
+  const isCharging = battery.charging;
+  const capacity = battery.percentage;
+
+  return (
+    <GlassCard dataTestId={`battery-${idx}`} style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
+        <div
+          style={{
+            width: 48,
+            height: 48,
+            borderRadius: "12px",
+            background: isCharging
+              ? "color-mix(in srgb, var(--accent) 18%, transparent)"
+              : "color-mix(in srgb, var(--glass-panel-tint) 45%, transparent)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          {isCharging ? <BatteryCharging size={24} color="var(--accent)" /> : <Battery size={24} color="var(--text)" />}
+        </div>
+        <div>
+          <h3 style={{ fontSize: "var(--text-base)", fontWeight: 600, color: "var(--text)", margin: 0 }}>
+            Battery {battery.device_index}
+          </h3>
+          <p style={{ fontSize: "var(--text-sm)", color: "var(--text-muted)", margin: "var(--space-1) 0 0" }}>
+            Device Index: {battery.device_index}
+          </p>
+        </div>
+      </div>
+
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <span
+          style={{
+            fontSize: "var(--text-2xl)",
+            fontWeight: 700,
+            color: "var(--text)",
+            fontVariantNumeric: "tabular-nums",
+          }}
+        >
+          {capacity}%
+        </span>
+        {isCharging && <Zap size={20} color="var(--accent)" aria-label="Charging" />}
+      </div>
+
+      <div style={{ height: 12, borderRadius: 9999, background: "var(--surface-muted)", overflow: "hidden", position: "relative" }}>
+        <div
+          className="glass-progress__fill"
+          style={{
+            height: "100%",
+            width: "100%",
+            borderRadius: "inherit",
+            background:
+              capacity > 20
+                ? "linear-gradient(90deg, var(--accent), var(--accent-secondary))"
+                : "linear-gradient(90deg, #ff6b6b, #ff8e8e)",
+            transform: `scaleX(${Math.max(0, Math.min(1, capacity / 100))})`,
+            transformOrigin: "left",
+          }}
+        />
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: "var(--space-3)" }}>
+        <div className="liquid-glass liquid-glass--clear" style={{ padding: "var(--space-3)", borderRadius: "var(--radius-md)" }}>
+          <div className="liquid-glass__refract" style={{ borderRadius: "var(--radius-md)" }} />
+          <div className="liquid-glass__tint" style={{ borderRadius: "var(--radius-md)" }} />
+          <div className="liquid-glass__specular" style={{ borderRadius: "var(--radius-md)" }} />
+          <div className="liquid-glass__content" style={{ textAlign: "center" }}>
+            <p style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)", margin: "0 0 var(--space-1)" }}>Status</p>
+            <p style={{ fontSize: "var(--text-sm)", fontWeight: 500, color: "var(--text)", margin: 0, textTransform: "capitalize" }}>
+              {isCharging ? "charging" : "discharging"}
+            </p>
+          </div>
+        </div>
+        <div className="liquid-glass liquid-glass--clear" style={{ padding: "var(--space-3)", borderRadius: "var(--radius-md)" }}>
+          <div className="liquid-glass__refract" style={{ borderRadius: "var(--radius-md)" }} />
+          <div className="liquid-glass__tint" style={{ borderRadius: "var(--radius-md)" }} />
+          <div className="liquid-glass__specular" style={{ borderRadius: "var(--radius-md)" }} />
+          <div className="liquid-glass__content" style={{ textAlign: "center" }}>
+            <p style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)", margin: "0 0 var(--space-1)" }}>Charge</p>
+            <p style={{ fontSize: "var(--text-sm)", fontWeight: 500, color: "var(--text)", margin: 0 }}>{capacity}%</p>
+          </div>
+        </div>
+      </div>
+    </GlassCard>
+  );
+}
+
 export function PowerPanel(): React.ReactElement {
   const [activeProfile, setActiveProfile] = useState<PowerProfileName>("balanced");
   const [batteries, setBatteries] = useState<BatteryStateDto[]>([]);
@@ -73,19 +239,19 @@ export function PowerPanel(): React.ReactElement {
 
   const handleProfileChange = useCallback((profile: PowerProfileName) => {
     setActiveProfile(profile);
-    // TODO: invoke zettings_power_set_profile
+    const payload: PowerSetProfileRequest = { profile };
+    invoke("zettings_power_set_profile", { request: payload }).catch((e) =>
+      console.error("Failed to set power profile:", e)
+    );
   }, []);
 
   const handleThresholdChange = useCallback((value: number) => {
     setChargeThreshold(value);
-    // TODO: invoke zettings_power_set_charge_threshold
+    const payload: PowerSetChargeThresholdRequest = { percent: value };
+    invoke("zettings_power_set_charge_threshold", { request: payload }).catch((e) =>
+      console.error("Failed to set charge threshold:", e)
+    );
   }, []);
-
-  // Profile button spring (moved outside render function for performance)
-  const profileButtonSprings = POWER_PROFILES.map(profile => ({
-    id: profile.id,
-    spring: useSpring(activeProfile === profile.id ? 1 : 0, ZDL_SPRINGS.slider)
-  }));
 
   // Memoize discharge graph as it's completely static
   const dischargeGraph = useMemo(() => {
@@ -102,216 +268,58 @@ export function PowerPanel(): React.ReactElement {
     }).join(" ");
 
     return (
-      <div className="liquid-glass liquid-glass--clear panel-card--glass" style={{ padding: "var(--space-6)" }}>
-        <div className="liquid-glass__content">
-          <h4 style={{ fontSize: "var(--text-base)", fontWeight: 600, color: "var(--text)", margin: "0 0 var(--space-4)" }}>Discharge History (Last 24h)</h4>
-          <div style={{ position: "relative", width: width, height: height }}>
-            <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} style={{ width: "100%", height: "auto", maxWidth: "100%" }}>
-              {/* Grid lines */}
-              <g stroke="var(--border)" strokeWidth="1" opacity="0.5">
-                {[0, 25, 50, 75, 100].map((p) => (
-                  <line key={p} x1={padding} y1={padding + graphHeight * (1 - p / 100)} x2={width - padding} y2={padding + graphHeight * (1 - p / 100)} />
-                ))}
-                {[0, 25, 50, 75, 100].map((p) => (
-                  <line key={`v-${p}`} x1={padding + graphWidth * (p / 100)} y1={padding} x2={padding + graphWidth * (p / 100)} y2={height - padding} />
-                ))}
-              </g>
-              {/* Area fill */}
-              <path
-                d={`M${padding},${height - padding} L${points} L${width - padding},${height - padding} Z`}
-                fill="url(#discharge-gradient)"
-                opacity={0.3}
-              />
-              {/* Line */}
-              <path
-                d={`M${points}`}
-                stroke="var(--accent)"
-                strokeWidth="2"
-                fill="none"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              {/* Points */}
-              {DISCHARGE_POINTS.map((p, i) => {
-                const x = padding + (i / (DISCHARGE_POINTS.length - 1)) * graphWidth;
-                const y = padding + graphHeight - (p.percent / 100) * graphHeight;
-                return (
-                  <circle
-                    key={i}
-                    cx={x}
-                    cy={y}
-                    r={4}
-                    fill="var(--accent)"
-                    stroke="var(--surface)"
-                    strokeWidth="2"
-                    style={{ cursor: "pointer" }}
-                  />
-                );
-              })}
-              <defs>
-                <linearGradient id="discharge-gradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="var(--accent)" />
-                  <stop offset="100%" stopColor="var(--accent-secondary)" />
-                </linearGradient>
-              </defs>
-            </svg>
-          </div>
-          <div style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)", marginTop: "var(--space-3)", display: "flex", justifyContent: "space-between" }}>
-            <span>100%</span>
-            <span>75%</span>
-            <span>50%</span>
-            <span>25%</span>
-            <span>0%</span>
-          </div>
-        </div>
-      </div>
-    );
-  }, []); // Empty deps because all values are static
-
-  // Battery card with liquid glass
-  const renderBatteryCard = (battery: BatteryStateDto, idx: number) => {
-    const isCharging = battery.charging;
-    const capacity = battery.percentage;
-
-    return (
-      <div
-        key={battery.device_index}
-        className="liquid-glass liquid-glass--regular panel-card--glass"
-        style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}
-        data-testid={`battery-${idx}`}
-      >
-        <div className="liquid-glass__content panel-card-header" style={{ padding: "var(--space-4)", paddingBottom: 0, flexDirection: "row", alignItems: "center" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
-            <div
-              className={`liquid-glass liquid-glass--${isCharging ? "prominent" : "regular"}`}
-              style={{ width: 48, height: 48, borderRadius: "12px", display: "flex", alignItems: "center", justifyContent: "center" }}
-            >
-              <div className="liquid-glass__refract" style={{ borderRadius: "12px" }} />
-              <div className="liquid-glass__tint" style={{ borderRadius: "12px" }} />
-              <div className="liquid-glass__specular" style={{ borderRadius: "12px" }} />
-              <div className="liquid-glass__content" style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
-                {isCharging ? <BatteryCharging size={24} color="var(--accent)" /> : <Battery size={24} color="var(--text)" />}
-              </div>
-            </div>
-            <div>
-              <h3 className="panel-card-title" style={{ marginBottom: "var(--space-1)" }}>Battery {battery.device_index}</h3>
-              <p className="panel-card-subtitle">Device Index: {battery.device_index}</p>
-            </div>
-          </div>
-          <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: "var(--space-2)" }}>
-            <span
-              style={{
-                fontSize: "var(--text-2xl)",
-                fontWeight: 700,
-                color: "var(--text)",
-                fontVariantNumeric: "tabular-nums",
-              }}
-            >
-              {capacity}%
-            </span>
-            {isCharging && <Zap size={20} color="var(--accent)" aria-label="Charging" />}
-          </div>
-        </div>
-
-        <div className="liquid-glass__content" style={{ padding: "var(--space-4)", paddingTop: 0, display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
-          {/* Battery level bar with liquid glass */}
-          <div style={{ height: 12, borderRadius: 9999, background: "var(--surface-muted)", overflow: "hidden", position: "relative" }}>
-            <div
-              className="glass-progress__fill"
-              style={{
-                height: "100%",
-                width: "100%",
-                borderRadius: "inherit",
-                background: isCharging
-                  ? "linear-gradient(90deg, var(--accent), var(--accent-secondary))"
-                  : capacity > 20
-                  ? "linear-gradient(90deg, var(--accent), var(--accent-secondary))"
-                  : "linear-gradient(90deg, #ff6b6b, #ff8e8e)",
-                // Phase 9: scaleX keeps the battery level on the compositor
-                // thread (width would force a layout pass per frame).
-                transform: `scaleX(${Math.max(0, Math.min(1, capacity / 100))})`,
-                transformOrigin: "left",
-                transition: "transform var(--motion-duration-base) var(--motion-ease-out)",
-              }}
+      <GlassCard style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
+        <h4 style={{ fontSize: "var(--text-base)", fontWeight: 600, color: "var(--text)", margin: "0 0 var(--space-4)" }}>
+          Discharge History (Last 24h)
+        </h4>
+        <div style={{ position: "relative", width: width, height: height }}>
+          <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} style={{ width: "100%", height: "auto", maxWidth: "100%" }}>
+            <g stroke="var(--border)" strokeWidth="1" opacity="0.5">
+              {[0, 25, 50, 75, 100].map((p) => (
+                <line key={p} x1={padding} y1={padding + graphHeight * (1 - p / 100)} x2={width - padding} y2={padding + graphHeight * (1 - p / 100)} />
+              ))}
+              {[0, 25, 50, 75, 100].map((p) => (
+                <line key={`v-${p}`} x1={padding + graphWidth * (p / 100)} y1={padding} x2={padding + graphWidth * (p / 100)} y2={height - padding} />
+              ))}
+            </g>
+            <path
+              d={`M${padding},${height - padding} L${points} L${width - padding},${height - padding} Z`}
+              fill="url(#discharge-gradient)"
+              opacity={0.3}
             />
-          </div>
-
-          {/* Battery details */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: "var(--space-3)" }}>
-            <div className="liquid-glass liquid-glass--clear" style={{ padding: "var(--space-3)", borderRadius: "var(--radius-md)" }}>
-              <div className="liquid-glass__refract" style={{ borderRadius: "var(--radius-md)" }} />
-              <div className="liquid-glass__tint" style={{ borderRadius: "var(--radius-md)" }} />
-              <div className="liquid-glass__specular" style={{ borderRadius: "var(--radius-md)" }} />
-              <div className="liquid-glass__content" style={{ textAlign: "center" }}>
-                <p style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)", margin: "0 0 var(--space-1)" }}>Status</p>
-                <p style={{ fontSize: "var(--text-sm)", fontWeight: 500, color: "var(--text)", margin: 0, textTransform: "capitalize" }}>{isCharging ? "charging" : "discharging"}</p>
-              </div>
-            </div>
-            <div className="liquid-glass liquid-glass--clear" style={{ padding: "var(--space-3)", borderRadius: "var(--radius-md)" }}>
-              <div className="liquid-glass__refract" style={{ borderRadius: "var(--radius-md)" }} />
-              <div className="liquid-glass__tint" style={{ borderRadius: "var(--radius-md)" }} />
-              <div className="liquid-glass__specular" style={{ borderRadius: "var(--radius-md)" }} />
-              <div className="liquid-glass__content" style={{ textAlign: "center" }}>
-                <p style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)", margin: "0 0 var(--space-1)" }}>Charge</p>
-                <p style={{ fontSize: "var(--text-sm)", fontWeight: 500, color: "var(--text)", margin: 0 }}>{capacity}%</p>
-              </div>
-            </div>
-          </div>
+            <path
+              d={`M${points}`}
+              stroke="var(--accent)"
+              strokeWidth="2"
+              fill="none"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            {DISCHARGE_POINTS.map((p, i) => {
+              const x = padding + (i / (DISCHARGE_POINTS.length - 1)) * graphWidth;
+              const y = padding + graphHeight - (p.percent / 100) * graphHeight;
+              return (
+                <circle key={i} cx={x} cy={y} r={4} fill="var(--accent)" stroke="var(--surface)" strokeWidth="2" />
+              );
+            })}
+            <defs>
+              <linearGradient id="discharge-gradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="var(--accent)" />
+                <stop offset="100%" stopColor="var(--accent-secondary)" />
+              </linearGradient>
+            </defs>
+          </svg>
         </div>
-      </div>
-    );
-  };
-
-  // Power profile button with liquid glass
-  const renderProfileButton = (profile: PowerProfileExtended) => {
-    const isActive = activeProfile === profile.id;
-    const buttonSpring = profileButtonSprings.find(s => s.id === profile.id)?.spring;
-    // Fallback in case spring is not found (shouldn't happen)
-    const springPosition = buttonSpring ? buttonSpring.position : (isActive ? 1 : 0);
-
-    return (
-      <button
-        key={profile.id}
-        className="liquid-glass liquid-glass--regular panel-card--glass"
-        onClick={() => handleProfileChange(profile.id)}
-        aria-pressed={isActive}
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          gap: "var(--space-3)",
-          padding: "var(--space-5)",
-          flex: 1,
-          minWidth: 0,
-          opacity: 0.7 + 0.3 * springPosition,
-          transform: `scale(${0.98 + 0.02 * springPosition})`,
-          border: isActive ? "2px solid var(--accent)" : "none",
-          transition: "opacity var(--motion-duration-fast) var(--motion-ease-out), transform var(--motion-duration-fast) var(--motion-ease-out), border-color var(--motion-duration-fast) var(--motion-ease-out)",
-        }}
-        data-testid={`profile-${profile.id}`}
-      >
-        <div className="liquid-glass__content" style={{ display: "flex", flexDirection: "column", gap: "var(--space-3)", alignItems: "flex-start" }}>
-          <div
-            className={`liquid-glass liquid-glass--${isActive ? "prominent" : "clear"}`}
-            style={{ width: 40, height: 40, borderRadius: "10px", display: "flex", alignItems: "center", justifyContent: "center" }}
-          >
-            <div className="liquid-glass__refract" style={{ borderRadius: "10px" }} />
-            <div className="liquid-glass__tint" style={{ borderRadius: "10px" }} />
-            <div className="liquid-glass__specular" style={{ borderRadius: "10px" }} />
-            <div className="liquid-glass__content" style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <profile.icon size={20} color={isActive ? "var(--accent)" : "var(--text-muted)"} />
-            </div>
-          </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)" }}>
-              <h4 style={{ fontSize: "var(--text-base)", fontWeight: 600, color: "var(--text)", margin: 0 }}>{profile.label}</h4>
-              {isActive && <Check size={16} color="var(--accent)" aria-label="Active" />}
-            </div>
-            <p style={{ fontSize: "var(--text-sm)", color: "var(--text-muted)", margin: 0 }}>{profile.description}</p>
-          </div>
+        <div style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)", display: "flex", justifyContent: "space-between" }}>
+          <span>100%</span>
+          <span>75%</span>
+          <span>50%</span>
+          <span>25%</span>
+          <span>0%</span>
         </div>
-      </button>
+      </GlassCard>
     );
-  };
+  }, []);
 
   return (
     <PanelShell
@@ -321,43 +329,46 @@ export function PowerPanel(): React.ReactElement {
       dataTestId="power-panel"
     >
       <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-8)" }}>
-        {/* Battery overview */}
         <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-6)" }}>
           {batteries.length === 0 ? (
-            <div className="liquid-glass liquid-glass--clear glass-empty" style={{ padding: "var(--space-12)" }}>
-              <div className="liquid-glass__refract" style={{ borderRadius: "var(--radius-xl)" }} />
-              <div className="liquid-glass__tint" style={{ borderRadius: "var(--radius-xl)" }} />
-              <div className="liquid-glass__specular" style={{ borderRadius: "var(--radius-xl)" }} />
-              <div className="liquid-glass__content">
-                <Battery className="glass-empty__icon" size={48} />
-                <h3 className="glass-empty__title">No batteries detected</h3>
-                <p className="glass-empty__description">Connect a battery-powered device or enable the mock backend to see battery status.</p>
-              </div>
-            </div>
+            <GlassCard elevation={1} className="glass-empty" style={{ padding: "var(--space-12)", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
+              <Battery className="glass-empty__icon" size={48} />
+              <h3 className="glass-empty__title">No batteries detected</h3>
+              <p className="glass-empty__description">Connect a battery-powered device or enable the mock backend to see battery status.</p>
+            </GlassCard>
           ) : (
             <div className="glass-grid glass-grid--auto-fill">
-              {batteries.map(renderBatteryCard)}
+              {batteries.map((battery, idx) => (
+                <BatteryCard key={battery.device_index} battery={battery} idx={idx} />
+              ))}
             </div>
           )}
 
-          {/* Discharge graph */}
           {dischargeGraph}
 
-          {/* Power profiles */}
           <section>
-            <h4 style={{ fontSize: "var(--text-base)", fontWeight: 600, color: "var(--text)", margin: "0 0 var(--space-4)" }}>Power Profile</h4>
+            <h4 style={{ fontSize: "var(--text-base)", fontWeight: 600, color: "var(--text)", margin: "0 0 var(--space-4)" }}>
+              Power Profile
+            </h4>
             <div className="glass-grid glass-grid--3" style={{ gap: "var(--space-4)" }}>
-              {POWER_PROFILES.map(renderProfileButton)}
+              {POWER_PROFILES.map((profile) => (
+                <PowerProfileCard
+                  key={profile.id}
+                  profile={profile}
+                  isActive={activeProfile === profile.id}
+                  onSelect={handleProfileChange}
+                />
+              ))}
             </div>
           </section>
 
-          {/* Charge threshold */}
-          <section className="liquid-glass liquid-glass--regular panel-card--glass">
-            <div className="liquid-glass__content" style={{ padding: "var(--space-6)", display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "var(--space-4)" }}>
+          <GlassCard elevation={1} style={{ padding: "var(--space-6)", display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "var(--space-4)" }}>
                 <div>
                   <h4 style={{ fontSize: "var(--text-base)", fontWeight: 600, color: "var(--text)", margin: 0 }}>Charge Threshold</h4>
-                  <p style={{ fontSize: "var(--text-sm)", color: "var(--text-muted)", margin: "var(--space-1) 0 0" }}>Stop charging at this percentage to extend battery lifespan</p>
+                  <p style={{ fontSize: "var(--text-sm)", color: "var(--text-muted)", margin: "var(--space-1) 0 0" }}>
+                    Stop charging at this percentage to extend battery lifespan
+                  </p>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: "var(--space-4)", minWidth: 200 }}>
                   <input
@@ -386,12 +397,9 @@ export function PowerPanel(): React.ReactElement {
                   <span>Conservation mode helps preserve battery health by limiting maximum charge</span>
                 </div>
               </div>
-            </div>
-          </section>
+          </GlassCard>
         </section>
       </div>
     </PanelShell>
   );
 }
-
-

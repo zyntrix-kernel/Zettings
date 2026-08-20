@@ -197,7 +197,7 @@ export function GlassPanel({
     position: "absolute",
     inset: 0,
     borderRadius: radius !== undefined ? `${radius}px` : "inherit",
-    background: "var(--glass-panel-tint, rgba(255, 255, 255, 0.08))",
+    background: "var(--glass-panel-tint)",
     pointerEvents: "none",
   };
 
@@ -206,7 +206,8 @@ export function GlassPanel({
     position: "absolute",
     inset: 0,
     borderRadius: radius !== undefined ? `${radius}px` : "inherit",
-    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.5), inset 0 -1px 0 rgba(255,255,255,0.08)",
+    boxShadow:
+      "inset 0 1px 0 var(--glass-panel-border), inset 0 -1px 0 rgba(255,255,255,0.08)",
     pointerEvents: "none",
   };
 

@@ -14,10 +14,18 @@ use tracing_subscriber::EnvFilter;
 use zettings_bus::Bus;
 use zettings_bus::events::{AudioVolume, DisplayReplug, LinkState, PowerState};
 use zettings_ipc::{
-    AudioListStreamsResult, BluetoothListPairedResult, DisplayListOutputsResult, Health,
-    ModuleInfo, PaletteExtractRequest, PaletteExtractResult, PerfStatsDto,
-    PowerActiveProfileResult, PowerBatteriesResult, SearchQueryRequest,
-    SearchRegisterEntriesRequest, SearchRegisterEntriesResult,
+    AudioListStreamsResult, AudioSetVolumeRequest, AudioSetVolumeResult, BluetoothConnectRequest,
+    BluetoothConnectResult, BluetoothDisconnectRequest, BluetoothDisconnectResult,
+    BluetoothListPairedResult, BluetoothRemoveRequest, BluetoothRemoveResult,
+    BluetoothScanDevicesResult, DisplayApplyModeRequest, DisplayApplyModeResult,
+    DisplayListOutputsResult, Health, ModuleInfo, NetworkConnectWifiRequest,
+    NetworkConnectWifiResult, NetworkDisconnectWifiRequest, NetworkDisconnectWifiResult,
+    NetworkForgetWifiRequest, NetworkForgetWifiResult, NetworkScanWifiResult,
+    PaletteExtractRequest, PaletteExtractResult, PerfStatsDto, PowerActiveProfileResult,
+    PowerBatteriesResult, PowerSetChargeThresholdRequest, PowerSetChargeThresholdResult,
+    PowerSetProfileRequest, PowerSetProfileResult, SearchQueryRequest,
+    SearchRegisterEntriesRequest, SearchRegisterEntriesResult, SetHostnameRequest,
+    SetHostnameResult,
 };
 use zettings_search::SearchHit;
 
@@ -141,6 +149,132 @@ fn zettings_palette_extract(
     zettings_ipc::palette_extract(request)
 }
 
+/// `zettings_network_set_hostname` — write-side hostname mutation. Mock
+/// backend validates + applies; the real `NetworkManager` `SetHostname`
+/// `DBus` call lands in Phase 5.
+#[tauri::command]
+fn zettings_network_set_hostname(
+    request: SetHostnameRequest,
+) -> Result<SetHostnameResult, zettings_ipc::IpcError> {
+    zettings_ipc::network_set_hostname(request)
+}
+
+/// `zettings_display_apply_mode` — write-side display-mode application. Mock
+/// backend applies to its output registry; real `KScreen` `DBus` integration
+/// lands in Phase 5.
+#[tauri::command]
+fn zettings_display_apply_mode(
+    request: DisplayApplyModeRequest,
+) -> Result<DisplayApplyModeResult, zettings_ipc::IpcError> {
+    zettings_ipc::display_apply_mode(request)
+}
+
+/// `zettings_audio_set_volume` — write-side per-stream volume/mute mutation.
+/// Mock backend updates its stream registry; real `PipeWire`/`PulseAudio`
+/// integration lands in Phase 5.
+#[tauri::command]
+fn zettings_audio_set_volume(
+    request: AudioSetVolumeRequest,
+) -> Result<AudioSetVolumeResult, zettings_ipc::IpcError> {
+    zettings_ipc::audio_set_volume(request)
+}
+
+/// `zettings_network_scan_wifi` — privileged Wi-Fi scan surface. Mock backend
+/// returns three sample APs; real `NetworkManager` `DBus` integration lands in
+/// Phase 5.
+#[tauri::command]
+fn zettings_network_scan_wifi() -> Result<NetworkScanWifiResult, zettings_ipc::IpcError> {
+    zettings_ipc::network_scan_wifi()
+}
+
+/// `zettings_power_set_profile` — write-side power-profile switch. Mock
+/// backend swaps its stored profile; real `power-profiles-daemon` `DBus`
+/// integration lands in Phase 5.
+#[tauri::command]
+fn zettings_power_set_profile(
+    request: PowerSetProfileRequest,
+) -> Result<PowerSetProfileResult, zettings_ipc::IpcError> {
+    zettings_ipc::power_set_profile(request)
+}
+
+/// `zettings_network_connect_wifi` — connects to a Wi-Fi network. Mock
+/// backend records the association; real `NetworkManager` `DBus` integration
+/// lands in Phase 5.
+#[tauri::command]
+fn zettings_network_connect_wifi(
+    request: NetworkConnectWifiRequest,
+) -> Result<NetworkConnectWifiResult, zettings_ipc::IpcError> {
+    zettings_ipc::network_connect_wifi(request)
+}
+
+/// `zettings_network_disconnect_wifi` — disconnects from a Wi-Fi network.
+/// Mock backend clears the association; real `NetworkManager` `DBus`
+/// integration lands in Phase 5.
+#[tauri::command]
+fn zettings_network_disconnect_wifi(
+    request: NetworkDisconnectWifiRequest,
+) -> Result<NetworkDisconnectWifiResult, zettings_ipc::IpcError> {
+    zettings_ipc::network_disconnect_wifi(request)
+}
+
+/// `zettings_network_forget_wifi` — forgets a saved Wi-Fi network. Mock
+/// backend drops the SSID from its known set; real `NetworkManager` `DBus`
+/// integration lands in Phase 5.
+#[tauri::command]
+fn zettings_network_forget_wifi(
+    request: NetworkForgetWifiRequest,
+) -> Result<NetworkForgetWifiResult, zettings_ipc::IpcError> {
+    zettings_ipc::network_forget_wifi(request)
+}
+
+/// `zettings_bluetooth_scan_devices` — privileged Bluetooth discovery scan.
+/// Mock backend returns the paired device set; real `BlueZ` `DBus` integration
+/// lands in Phase 5.
+#[tauri::command]
+fn zettings_bluetooth_scan_devices() -> Result<BluetoothScanDevicesResult, zettings_ipc::IpcError> {
+    zettings_ipc::bluetooth_scan_devices()
+}
+
+/// `zettings_bluetooth_connect` — connects a paired Bluetooth device. Mock
+/// backend marks the device connected; real `BlueZ` `DBus` integration lands
+/// in Phase 5.
+#[tauri::command]
+fn zettings_bluetooth_connect(
+    request: BluetoothConnectRequest,
+) -> Result<BluetoothConnectResult, zettings_ipc::IpcError> {
+    zettings_ipc::bluetooth_connect(request)
+}
+
+/// `zettings_bluetooth_disconnect` — disconnects a Bluetooth device. Mock
+/// backend clears the connected flag; real `BlueZ` `DBus` integration lands in
+/// Phase 5.
+#[tauri::command]
+fn zettings_bluetooth_disconnect(
+    request: BluetoothDisconnectRequest,
+) -> Result<BluetoothDisconnectResult, zettings_ipc::IpcError> {
+    zettings_ipc::bluetooth_disconnect(request)
+}
+
+/// `zettings_bluetooth_remove` — removes (forgets) a paired Bluetooth device.
+/// Mock backend drops it from the device list; real `BlueZ` `DBus` integration
+/// lands in Phase 5.
+#[tauri::command]
+fn zettings_bluetooth_remove(
+    request: BluetoothRemoveRequest,
+) -> Result<BluetoothRemoveResult, zettings_ipc::IpcError> {
+    zettings_ipc::bluetooth_remove(request)
+}
+
+/// `zettings_power_set_charge_threshold` — write-side charge-threshold
+/// (charge limiter) mutation. Mock backend stores the percent; real `UPower`
+/// `DBus` integration lands in Phase 5.
+#[tauri::command]
+fn zettings_power_set_charge_threshold(
+    request: PowerSetChargeThresholdRequest,
+) -> Result<PowerSetChargeThresholdResult, zettings_ipc::IpcError> {
+    zettings_ipc::power_set_charge_threshold(request)
+}
+
 /// Headless daemon entry point for `zettings-daemon.service`.
 ///
 /// Runs the Zettings backend without a webview window. It warms the in-process
@@ -246,6 +380,19 @@ fn main() {
             zettings_power_batteries,
             zettings_palette_extract,
             zettings_perf_stats,
+            zettings_network_set_hostname,
+            zettings_display_apply_mode,
+            zettings_audio_set_volume,
+            zettings_network_scan_wifi,
+            zettings_power_set_profile,
+            zettings_network_connect_wifi,
+            zettings_network_disconnect_wifi,
+            zettings_network_forget_wifi,
+            zettings_bluetooth_scan_devices,
+            zettings_bluetooth_connect,
+            zettings_bluetooth_disconnect,
+            zettings_bluetooth_remove,
+            zettings_power_set_charge_threshold,
         ])
         .setup(|app| {
             let window = app.get_webview_window("main").expect("main window");

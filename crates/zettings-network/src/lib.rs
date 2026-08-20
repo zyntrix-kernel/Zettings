@@ -8,6 +8,7 @@
 #![warn(missing_docs)]
 
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 use thiserror::Error;
 use zettings_bus::Bus;
 use zettings_bus::events::LinkState;
@@ -28,6 +29,8 @@ pub struct AccessPoint {
     pub signal_dbm: i8,
     /// `true` when the AP requires authentication.
     pub secured: bool,
+    /// `true` when the device is currently associated with this AP.
+    pub connected: bool,
 }
 
 impl AccessPoint {
@@ -43,6 +46,7 @@ impl AccessPoint {
             ssid_len: u8::try_from(len).unwrap_or(u8::MAX),
             signal_dbm,
             secured,
+            connected: false,
         }
     }
 
@@ -80,6 +84,15 @@ pub enum NetworkError {
     /// Hostname validation failed (length, charset).
     #[error("invalid hostname: {0}")]
     InvalidHostname(String),
+    /// Wi-Fi SSID validation failed (empty or malformed).
+    #[error("invalid Wi-Fi SSID: {0}")]
+    InvalidSsid(String),
+    /// The requested Wi-Fi network is not known to the backend.
+    #[error("Wi-Fi network not found: {0}")]
+    SsidNotFound(String),
+    /// The requested Bluetooth device is not paired.
+    #[error("bluetooth device not found: {0}")]
+    DeviceNotFound(String),
     /// The underlying `NetworkManager`/`BlueZ` service was unreachable.
     #[error("network service unavailable: {0}")]
     ServiceUnavailable(String),
@@ -115,12 +128,112 @@ pub trait Backend: Send + Sync {
     /// Returns [`NetworkError::ServiceUnavailable`] when `BlueZ` is
     /// unreachable on the real target.
     fn list_paired_devices(&self) -> Result<Vec<PairedDevice>, NetworkError>;
+
+    /// Connect to a Wi-Fi network by SSID. `password` is `None` for open
+    /// networks and `Some` for WPA/WPA2-PSK secured ones.
+    ///
+    /// # Errors
+    /// - [`NetworkError::InvalidSsid`] when the SSID is empty.
+    /// - [`NetworkError::ServiceUnavailable`] when `NetworkManager` is
+    ///   unreachable on the real target.
+    fn connect_wifi(&self, ssid: &str, password: Option<&str>) -> Result<(), NetworkError>;
+
+    /// Disconnect from a Wi-Fi network by SSID.
+    ///
+    /// # Errors
+    /// - [`NetworkError::SsidNotFound`] when the SSID is not known.
+    /// - [`NetworkError::ServiceUnavailable`] when `NetworkManager` is
+    ///   unreachable on the real target.
+    fn disconnect_wifi(&self, ssid: &str) -> Result<(), NetworkError>;
+
+    /// Forget a saved Wi-Fi network by SSID.
+    ///
+    /// # Errors
+    /// - [`NetworkError::SsidNotFound`] when the SSID is not known.
+    /// - [`NetworkError::ServiceUnavailable`] when `NetworkManager` is
+    ///   unreachable on the real target.
+    fn forget_wifi(&self, ssid: &str) -> Result<(), NetworkError>;
+
+    /// Discover nearby `BlueZ` peripherals (including unpaired devices).
+    ///
+    /// # Errors
+    /// Returns [`NetworkError::ServiceUnavailable`] when `BlueZ` is
+    /// unreachable on the real target.
+    fn scan_devices(&self) -> Result<Vec<PairedDevice>, NetworkError>;
+
+    /// Connect to a paired `BlueZ` device by address.
+    ///
+    /// # Errors
+    /// - [`NetworkError::DeviceNotFound`] when the address is not paired.
+    /// - [`NetworkError::ServiceUnavailable`] when `BlueZ` is unreachable.
+    fn connect_device(&self, address: &str) -> Result<(), NetworkError>;
+
+    /// Disconnect a connected `BlueZ` device by address.
+    ///
+    /// # Errors
+    /// - [`NetworkError::DeviceNotFound`] when the address is not paired.
+    /// - [`NetworkError::ServiceUnavailable`] when `BlueZ` is unreachable.
+    fn disconnect_device(&self, address: &str) -> Result<(), NetworkError>;
+
+    /// Remove a paired `BlueZ` device by address.
+    ///
+    /// # Errors
+    /// - [`NetworkError::DeviceNotFound`] when the address is not paired.
+    /// - [`NetworkError::ServiceUnavailable`] when `BlueZ` is unreachable.
+    fn remove_device(&self, address: &str) -> Result<(), NetworkError>;
 }
 
-/// In-memory mock backend. Holds the current hostname and a fixed set of
-/// simulated access points so the frontend rendering paths can be exercised.
+/// In-memory mock backend. Holds the current hostname, Wi-Fi connection
+/// state (connected SSID + the set of known networks), and a fixed set of
+/// paired devices so the frontend rendering paths can be exercised.
 pub struct MockBackend {
-    state: parking_lot::Mutex<String>,
+    state: parking_lot::Mutex<MockState>,
+}
+
+/// Mutable state machine behind [`MockBackend`].
+struct MockState {
+    hostname: String,
+    connected_wifi: Option<String>,
+    known_wifi: HashSet<String>,
+    devices: Vec<PairedDevice>,
+}
+
+impl MockState {
+    /// Seed the mock with the default hostname, the three sample networks
+    /// surfaced by [`Backend::scan_wifi`], and three paired peripherals.
+    fn new() -> Self {
+        Self {
+            hostname: "zettings-mock".to_string(),
+            connected_wifi: None,
+            known_wifi: ["Zyntrix-Aurora", "open-guest", "Hidden"]
+                .into_iter()
+                .map(str::to_owned)
+                .collect(),
+            devices: vec![
+                PairedDevice {
+                    address: "AA:BB:CC:11:22:33".into(),
+                    name: "Zyntrix Aurora Buds".into(),
+                    connected: true,
+                    battery_percent: Some(78),
+                    device_class: "Audio".into(),
+                },
+                PairedDevice {
+                    address: "DD:EE:FF:44:55:66".into(),
+                    name: "Zyntrix Trackpad".into(),
+                    connected: true,
+                    battery_percent: Some(42),
+                    device_class: "Peripheral".into(),
+                },
+                PairedDevice {
+                    address: "11:22:33:AA:BB:CC".into(),
+                    name: "Snowpeak Keyboard".into(),
+                    connected: false,
+                    battery_percent: None,
+                    device_class: "Peripheral".into(),
+                },
+            ],
+        }
+    }
 }
 
 impl MockBackend {
@@ -128,7 +241,7 @@ impl MockBackend {
     #[must_use]
     pub fn new() -> Self {
         Self {
-            state: parking_lot::Mutex::new("zettings-mock".to_string()),
+            state: parking_lot::Mutex::new(MockState::new()),
         }
     }
 }
@@ -141,14 +254,14 @@ impl Default for MockBackend {
 
 impl Backend for MockBackend {
     fn hostname(&self) -> Result<String, NetworkError> {
-        Ok(self.state.lock().clone())
+        Ok(self.state.lock().hostname.clone())
     }
 
     fn set_hostname(&self, hostname: &str, bus: &Bus) -> Result<(), NetworkError> {
         if !is_valid_hostname(hostname) {
             return Err(NetworkError::InvalidHostname(hostname.to_string()));
         }
-        *self.state.lock() = hostname.to_string();
+        self.state.lock().hostname = hostname.to_string();
         let _ = bus.publish(LinkState {
             interface_index: 0,
             link_up: true,
@@ -157,37 +270,92 @@ impl Backend for MockBackend {
     }
 
     fn scan_wifi(&self) -> Result<Vec<AccessPoint>, NetworkError> {
-        Ok(vec![
+        let state = self.state.lock();
+        let mut aps = vec![
             AccessPoint::from_ssid(b"Zyntrix-Aurora", -42, true),
             AccessPoint::from_ssid(b"open-guest", -67, false),
             AccessPoint::from_ssid(b"Hidden", -88, true),
-        ])
+        ];
+        // Mark whichever AP the mock is currently associated with so the
+        // frontend can highlight the connected network in the scan list.
+        if let Some(connected) = state.connected_wifi.as_deref() {
+            for ap in &mut aps {
+                ap.connected = ap.ssid_bytes() == connected.as_bytes();
+            }
+        }
+        Ok(aps)
     }
 
     fn list_paired_devices(&self) -> Result<Vec<PairedDevice>, NetworkError> {
-        Ok(vec![
-            PairedDevice {
-                address: "AA:BB:CC:11:22:33".into(),
-                name: "Zyntrix Aurora Buds".into(),
-                connected: true,
-                battery_percent: Some(78),
-                device_class: "Audio".into(),
-            },
-            PairedDevice {
-                address: "DD:EE:FF:44:55:66".into(),
-                name: "Zyntrix Trackpad".into(),
-                connected: true,
-                battery_percent: Some(42),
-                device_class: "Peripheral".into(),
-            },
-            PairedDevice {
-                address: "11:22:33:AA:BB:CC".into(),
-                name: "Snowpeak Keyboard".into(),
-                connected: false,
-                battery_percent: None,
-                device_class: "Peripheral".into(),
-            },
-        ])
+        Ok(self.state.lock().devices.clone())
+    }
+
+    fn connect_wifi(&self, ssid: &str, _password: Option<&str>) -> Result<(), NetworkError> {
+        if ssid.is_empty() {
+            return Err(NetworkError::InvalidSsid(ssid.to_string()));
+        }
+        let mut state = self.state.lock();
+        state.known_wifi.insert(ssid.to_string());
+        state.connected_wifi = Some(ssid.to_string());
+        Ok(())
+    }
+
+    fn disconnect_wifi(&self, ssid: &str) -> Result<(), NetworkError> {
+        let mut state = self.state.lock();
+        if !state.known_wifi.contains(ssid) {
+            return Err(NetworkError::SsidNotFound(ssid.to_string()));
+        }
+        if state.connected_wifi.as_deref() == Some(ssid) {
+            state.connected_wifi = None;
+        }
+        Ok(())
+    }
+
+    fn forget_wifi(&self, ssid: &str) -> Result<(), NetworkError> {
+        let mut state = self.state.lock();
+        if !state.known_wifi.remove(ssid) {
+            return Err(NetworkError::SsidNotFound(ssid.to_string()));
+        }
+        if state.connected_wifi.as_deref() == Some(ssid) {
+            state.connected_wifi = None;
+        }
+        Ok(())
+    }
+
+    fn scan_devices(&self) -> Result<Vec<PairedDevice>, NetworkError> {
+        Ok(self.state.lock().devices.clone())
+    }
+
+    fn connect_device(&self, address: &str) -> Result<(), NetworkError> {
+        let mut state = self.state.lock();
+        let device = state
+            .devices
+            .iter_mut()
+            .find(|d| d.address == address)
+            .ok_or_else(|| NetworkError::DeviceNotFound(address.to_string()))?;
+        device.connected = true;
+        Ok(())
+    }
+
+    fn disconnect_device(&self, address: &str) -> Result<(), NetworkError> {
+        let mut state = self.state.lock();
+        let device = state
+            .devices
+            .iter_mut()
+            .find(|d| d.address == address)
+            .ok_or_else(|| NetworkError::DeviceNotFound(address.to_string()))?;
+        device.connected = false;
+        Ok(())
+    }
+
+    fn remove_device(&self, address: &str) -> Result<(), NetworkError> {
+        let mut state = self.state.lock();
+        let before = state.devices.len();
+        state.devices.retain(|d| d.address != address);
+        if state.devices.len() == before {
+            return Err(NetworkError::DeviceNotFound(address.to_string()));
+        }
+        Ok(())
     }
 }
 
@@ -229,6 +397,48 @@ impl Backend for LinuxBackend {
     }
 
     fn list_paired_devices(&self) -> Result<Vec<PairedDevice>, NetworkError> {
+        Err(NetworkError::ServiceUnavailable(
+            "BlueZ zbus integration pending".into(),
+        ))
+    }
+
+    fn connect_wifi(&self, _ssid: &str, _password: Option<&str>) -> Result<(), NetworkError> {
+        Err(NetworkError::ServiceUnavailable(
+            "NetworkManager zbus integration pending".into(),
+        ))
+    }
+
+    fn disconnect_wifi(&self, _ssid: &str) -> Result<(), NetworkError> {
+        Err(NetworkError::ServiceUnavailable(
+            "NetworkManager zbus integration pending".into(),
+        ))
+    }
+
+    fn forget_wifi(&self, _ssid: &str) -> Result<(), NetworkError> {
+        Err(NetworkError::ServiceUnavailable(
+            "NetworkManager zbus integration pending".into(),
+        ))
+    }
+
+    fn scan_devices(&self) -> Result<Vec<PairedDevice>, NetworkError> {
+        Err(NetworkError::ServiceUnavailable(
+            "BlueZ zbus integration pending".into(),
+        ))
+    }
+
+    fn connect_device(&self, _address: &str) -> Result<(), NetworkError> {
+        Err(NetworkError::ServiceUnavailable(
+            "BlueZ zbus integration pending".into(),
+        ))
+    }
+
+    fn disconnect_device(&self, _address: &str) -> Result<(), NetworkError> {
+        Err(NetworkError::ServiceUnavailable(
+            "BlueZ zbus integration pending".into(),
+        ))
+    }
+
+    fn remove_device(&self, _address: &str) -> Result<(), NetworkError> {
         Err(NetworkError::ServiceUnavailable(
             "BlueZ zbus integration pending".into(),
         ))
@@ -300,5 +510,120 @@ mod tests {
             .expect("keyboard present");
         assert!(!kb.connected);
         assert_eq!(kb.battery_percent, None);
+    }
+
+    #[tokio::test]
+    async fn mock_connect_wifi_marks_connected_ap() {
+        let b = MockBackend::new();
+        b.connect_wifi("open-guest", Some("wifi-pass"))
+            .expect("connect");
+        let aps = b.scan_wifi().expect("scan");
+        let connected = aps
+            .iter()
+            .find(|ap| ap.ssid_bytes() == b"open-guest")
+            .expect("open-guest present");
+        assert!(connected.connected);
+        // No other AP may be reported as associated.
+        assert_eq!(aps.iter().filter(|ap| ap.connected).count(), 1);
+    }
+
+    #[tokio::test]
+    async fn mock_connect_wifi_rejects_empty_ssid() {
+        let b = MockBackend::new();
+        let err = b.connect_wifi("", None).unwrap_err();
+        assert!(matches!(err, NetworkError::InvalidSsid(_)));
+    }
+
+    #[tokio::test]
+    async fn mock_disconnect_wifi_clears_connection() {
+        let b = MockBackend::new();
+        b.connect_wifi("open-guest", None).expect("connect");
+        b.disconnect_wifi("open-guest").expect("disconnect");
+        let aps = b.scan_wifi().expect("scan");
+        assert!(aps.iter().all(|ap| !ap.connected));
+    }
+
+    #[tokio::test]
+    async fn mock_disconnect_wifi_rejects_unknown_ssid() {
+        let b = MockBackend::new();
+        let err = b.disconnect_wifi("not-a-network").unwrap_err();
+        assert!(matches!(err, NetworkError::SsidNotFound(_)));
+    }
+
+    #[tokio::test]
+    async fn mock_forget_wifi_removes_known_ssid() {
+        let b = MockBackend::new();
+        b.forget_wifi("Zyntrix-Aurora").expect("forget");
+        // A second forget of the same SSID must fail: it is no longer known.
+        let err = b.forget_wifi("Zyntrix-Aurora").unwrap_err();
+        assert!(matches!(err, NetworkError::SsidNotFound(_)));
+    }
+
+    #[tokio::test]
+    async fn mock_forget_wifi_rejects_unknown_ssid() {
+        let b = MockBackend::new();
+        let err = b.forget_wifi("bogus-network").unwrap_err();
+        assert!(matches!(err, NetworkError::SsidNotFound(_)));
+    }
+
+    #[tokio::test]
+    async fn mock_scan_devices_returns_paired_list() {
+        let b = MockBackend::new();
+        let devices = b.scan_devices().expect("scan");
+        assert_eq!(devices.len(), 3);
+    }
+
+    #[tokio::test]
+    async fn mock_connect_device_marks_connected() {
+        let b = MockBackend::new();
+        b.connect_device("11:22:33:AA:BB:CC").expect("connect");
+        let devices = b.list_paired_devices().expect("list");
+        let kb = devices
+            .iter()
+            .find(|d| d.address == "11:22:33:AA:BB:CC")
+            .expect("keyboard present");
+        assert!(kb.connected);
+    }
+
+    #[tokio::test]
+    async fn mock_connect_device_rejects_unknown_address() {
+        let b = MockBackend::new();
+        let err = b.connect_device("00:00:00:00:00:00").unwrap_err();
+        assert!(matches!(err, NetworkError::DeviceNotFound(_)));
+    }
+
+    #[tokio::test]
+    async fn mock_disconnect_device_clears_connected() {
+        let b = MockBackend::new();
+        b.disconnect_device("AA:BB:CC:11:22:33")
+            .expect("disconnect");
+        let devices = b.list_paired_devices().expect("list");
+        let buds = devices
+            .iter()
+            .find(|d| d.address == "AA:BB:CC:11:22:33")
+            .expect("buds present");
+        assert!(!buds.connected);
+    }
+
+    #[tokio::test]
+    async fn mock_disconnect_device_rejects_unknown_address() {
+        let b = MockBackend::new();
+        let err = b.disconnect_device("00:00:00:00:00:00").unwrap_err();
+        assert!(matches!(err, NetworkError::DeviceNotFound(_)));
+    }
+
+    #[tokio::test]
+    async fn mock_remove_device_removes_from_list() {
+        let b = MockBackend::new();
+        b.remove_device("11:22:33:AA:BB:CC").expect("remove");
+        let devices = b.list_paired_devices().expect("list");
+        assert_eq!(devices.len(), 2);
+    }
+
+    #[tokio::test]
+    async fn mock_remove_device_rejects_unknown_address() {
+        let b = MockBackend::new();
+        let err = b.remove_device("00:00:00:00:00:00").unwrap_err();
+        assert!(matches!(err, NetworkError::DeviceNotFound(_)));
     }
 }

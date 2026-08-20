@@ -2,6 +2,15 @@ import { useQuery } from "@tanstack/react-query";
 import { invoke } from "@tauri-apps/api/core";
 import { Suspense, useEffect, useRef, useState, lazy } from "react";
 import type { Health } from "@zettings/bindings";
+import {
+  Battery,
+  Bluetooth,
+  Contrast,
+  Monitor,
+  Palette,
+  Volume2,
+  Wifi,
+} from "lucide-react";
 import { Breadcrumbs } from "../components/breadcrumbs.js";
 import { PerfMonitor } from "../components/perf-monitor.js";
 import { ShellFrame } from "../components/shell-frame.js";
@@ -11,12 +20,16 @@ import { useHashRoute } from "../lib/hash-route.js";
 import { PERF_MARKS, perfMark } from "../lib/perf.js";
 import { useSpotlightStore } from "../stores/spotlight-store.js";
 
-// Shared icon mappings for sidebar and quick actions
+// Shared icon mappings for sidebar and quick actions (lucide-react)
 const ICONS: Record<string, React.FC<{ size?: number; color?: string }>> = {
-  Wifi: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 13a10 10 0 0 1 14 0M5 17a14 14 0 0 1 14 0"/></svg>,
-  Bluetooth: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6.5 6.5 17.5 17.5 12 23 12 1 17.5 6.5 6.5 17.5"/></svg>,
-  Battery: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="1" y="4" width="18" height="16" rx="2"/><line x1="23" y1="9" x2="23" y2="11"/></svg>,
-  Palette: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/><circle cx="8.5" cy="15.5" r=".5"/><circle cx="4.5" cy="11.5" r=".5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.12.324.403.89.727 1.534.727 1.043 0 1.534-.982 1.534-2.188 0-1.145-.825-1.93-1.714-1.93-.877 0-1.516.671-1.516 1.5 0 1.027.706 1.543 1.564 1.737A4.97 4.97 0 0 1 13 21.5c3.59 0 6.5-2.91 6.5-6.5S15.59 2 12 2z"/></svg>,
+  Display: (props) => <Monitor size={props.size ?? 16} color={props.color ?? "currentColor"} strokeWidth={2} />,
+  Sound: (props) => <Volume2 size={props.size ?? 16} color={props.color ?? "currentColor"} strokeWidth={2} />,
+  Network: (props) => <Wifi size={props.size ?? 16} color={props.color ?? "currentColor"} strokeWidth={2} />,
+  Bluetooth: (props) => <Bluetooth size={props.size ?? 16} color={props.color ?? "currentColor"} strokeWidth={2} />,
+  Power: (props) => <Battery size={props.size ?? 16} color={props.color ?? "currentColor"} strokeWidth={2} />,
+  Personalization: (props) => <Palette size={props.size ?? 16} color={props.color ?? "currentColor"} strokeWidth={2} />,
+  Contrast: (props) => <Contrast size={props.size ?? 16} color={props.color ?? "currentColor"} strokeWidth={2} />,
+  Wifi: (props) => <Wifi size={props.size ?? 16} color={props.color ?? "currentColor"} strokeWidth={2} />,
 };
 
 // Lazy-loaded panel components (code splitting per route - ui-ux-pro-max Medium)
@@ -180,12 +193,12 @@ function QuickAction({ label, icon: IconName, onClick }: QuickActionProps): Reac
 }
 
 const MODULE_CARDS = [
-  { route: "/display", title: "Displays", description: "Arrange monitors, resolution, refresh rate, night light", icon: "Wifi", keywords: ["monitor", "screen", "arrange", "resolution", "night light"] },
-  { route: "/audio", title: "Sound", description: "Master volume, per-app mixer, equalizer, output device", icon: "Bluetooth", keywords: ["volume", "mixer", "equalizer", "output", "bluetooth audio"] },
-  { route: "/network", title: "Network", description: "Wi-Fi networks, ethernet, known networks, VPN", icon: "Battery", keywords: ["wifi", "ethernet", "scan", "connect", "password"] },
-  { route: "/bluetooth", title: "Bluetooth", description: "Paired devices, battery levels, connect/disconnect", icon: "Palette", keywords: ["pair", "headphones", "mouse", "keyboard", "battery"] },
-  { route: "/power", title: "Power", description: "Battery health, discharge graph, performance profiles", icon: "Wifi", keywords: ["battery", "profile", "performance", "power saver", "cycles"] },
-  { route: "/personalization", title: "Personalization", description: "Accent colors, corner roundness, glass blur, themes", icon: "Bluetooth", keywords: ["accent", "theme", "dark mode", "squircle", "glass", "blur"] },
+  { route: "/display", title: "Displays", description: "Arrange monitors, resolution, refresh rate, night light", icon: "Display", keywords: ["monitor", "screen", "arrange", "resolution", "night light"] },
+  { route: "/audio", title: "Sound", description: "Master volume, per-app mixer, equalizer, output device", icon: "Sound", keywords: ["volume", "mixer", "equalizer", "output", "bluetooth audio"] },
+  { route: "/network", title: "Network", description: "Wi-Fi networks, ethernet, known networks, VPN", icon: "Network", keywords: ["wifi", "ethernet", "scan", "connect", "password"] },
+  { route: "/bluetooth", title: "Bluetooth", description: "Paired devices, battery levels, connect/disconnect", icon: "Bluetooth", keywords: ["pair", "headphones", "mouse", "keyboard", "battery"] },
+  { route: "/power", title: "Power", description: "Battery health, discharge graph, performance profiles", icon: "Power", keywords: ["battery", "profile", "performance", "power saver", "cycles"] },
+  { route: "/personalization", title: "Personalization", description: "Accent colors, corner roundness, glass blur, themes", icon: "Personalization", keywords: ["accent", "theme", "dark mode", "squircle", "glass", "blur"] },
 ];
 
 function isSpotlightShortcut(event: KeyboardEvent): boolean {

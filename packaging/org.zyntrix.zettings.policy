@@ -10,7 +10,7 @@
   <!--
     Zettings privileged actions.
 
-    These mirror the five `ActionId` variants gated by the `zettings-polkit`
+    These mirror the `ActionId` variants gated by the `zettings-polkit`
     crate (`crates/zettings-polkit/src/lib.rs`) and invoked by the read-write
     IPC commands in `crates/zettings-ipc/src/lib.rs`. Read-only commands never
     reach PolicyKit; only mutating system state requires authorization here.
@@ -81,6 +81,111 @@
     <annotate key="org.freedesktop.policykit.exec.allow_gui">true</annotate>
   </action>
 
+  <action id="org.zyntrix.zettings.network.connect-wifi">
+    <description>Connect to a Wi-Fi network</description>
+    <description xml:lang="en">Connect to a Wi-Fi network</description>
+    <message>Authentication is required to connect to a Wi-Fi network.</message>
+    <message xml:lang="en">Authentication is required to connect to a Wi-Fi network.</message>
+    <icon_name>network-wireless</icon_name>
+    <defaults>
+      <allow_any>auth_admin_keep</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/bin/nmcli</annotate>
+    <annotate key="org.freedesktop.policykit.exec.allow_gui">true</annotate>
+  </action>
+
+  <action id="org.zyntrix.zettings.network.disconnect-wifi">
+    <description>Disconnect from a Wi-Fi network</description>
+    <description xml:lang="en">Disconnect from a Wi-Fi network</description>
+    <message>Authentication is required to disconnect from a Wi-Fi network.</message>
+    <message xml:lang="en">Authentication is required to disconnect from a Wi-Fi network.</message>
+    <icon_name>network-wireless</icon_name>
+    <defaults>
+      <allow_any>auth_admin_keep</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/bin/nmcli</annotate>
+    <annotate key="org.freedesktop.policykit.exec.allow_gui">true</annotate>
+  </action>
+
+  <action id="org.zyntrix.zettings.network.forget-wifi">
+    <description>Forget a saved Wi-Fi network</description>
+    <description xml:lang="en">Forget a saved Wi-Fi network</description>
+    <message>Authentication is required to forget a saved Wi-Fi network.</message>
+    <message xml:lang="en">Authentication is required to forget a saved Wi-Fi network.</message>
+    <icon_name>network-wireless</icon_name>
+    <defaults>
+      <allow_any>auth_admin_keep</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/bin/nmcli</annotate>
+    <annotate key="org.freedesktop.policykit.exec.allow_gui">true</annotate>
+  </action>
+
+  <action id="org.zyntrix.zettings.bluetooth.scan">
+    <description>Scan for Bluetooth devices</description>
+    <description xml:lang="en">Scan for Bluetooth devices</description>
+    <message>Authentication is required to scan for Bluetooth devices.</message>
+    <message xml:lang="en">Authentication is required to scan for Bluetooth devices.</message>
+    <icon_name>bluetooth</icon_name>
+    <defaults>
+      <allow_any>auth_admin_keep</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/bin/bluetoothctl</annotate>
+    <annotate key="org.freedesktop.policykit.exec.allow_gui">true</annotate>
+  </action>
+
+  <action id="org.zyntrix.zettings.bluetooth.connect">
+    <description>Connect a Bluetooth device</description>
+    <description xml:lang="en">Connect a Bluetooth device</description>
+    <message>Authentication is required to connect a Bluetooth device.</message>
+    <message xml:lang="en">Authentication is required to connect a Bluetooth device.</message>
+    <icon_name>bluetooth</icon_name>
+    <defaults>
+      <allow_any>auth_admin_keep</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/bin/bluetoothctl</annotate>
+    <annotate key="org.freedesktop.policykit.exec.allow_gui">true</annotate>
+  </action>
+
+  <action id="org.zyntrix.zettings.bluetooth.disconnect">
+    <description>Disconnect a Bluetooth device</description>
+    <description xml:lang="en">Disconnect a Bluetooth device</description>
+    <message>Authentication is required to disconnect a Bluetooth device.</message>
+    <message xml:lang="en">Authentication is required to disconnect a Bluetooth device.</message>
+    <icon_name>bluetooth</icon_name>
+    <defaults>
+      <allow_any>auth_admin_keep</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/bin/bluetoothctl</annotate>
+    <annotate key="org.freedesktop.policykit.exec.allow_gui">true</annotate>
+  </action>
+
+  <action id="org.zyntrix.zettings.bluetooth.remove">
+    <description>Remove a paired Bluetooth device</description>
+    <description xml:lang="en">Remove a paired Bluetooth device</description>
+    <message>Authentication is required to remove a paired Bluetooth device.</message>
+    <message xml:lang="en">Authentication is required to remove a paired Bluetooth device.</message>
+    <icon_name>bluetooth</icon_name>
+    <defaults>
+      <allow_any>auth_admin_keep</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/bin/bluetoothctl</annotate>
+    <annotate key="org.freedesktop.policykit.exec.allow_gui">true</annotate>
+  </action>
+
   <action id="org.zyntrix.zettings.power.set-profile">
     <description>Change the power profile</description>
     <description xml:lang="en">Change the power profile</description>
@@ -93,6 +198,21 @@
       <allow_active>auth_admin_keep</allow_active>
     </defaults>
     <annotate key="org.freedesktop.policykit.exec.path">/usr/bin/powerprofilesctl</annotate>
+    <annotate key="org.freedesktop.policykit.exec.allow_gui">true</annotate>
+  </action>
+
+  <action id="org.zyntrix.zettings.power.set-charge-threshold">
+    <description>Set the battery charge threshold</description>
+    <description xml:lang="en">Set the battery charge threshold</description>
+    <message>Authentication is required to set the battery charge threshold.</message>
+    <message xml:lang="en">Authentication is required to set the battery charge threshold.</message>
+    <icon_name>preferences-system-power</icon_name>
+    <defaults>
+      <allow_any>auth_admin_keep</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/bin/echo</annotate>
     <annotate key="org.freedesktop.policykit.exec.allow_gui">true</annotate>
   </action>
 

@@ -132,6 +132,15 @@ impl From<NetworkError> for IpcError {
             NetworkError::InvalidHostname(msg) => {
                 Self::InvalidPayload(format!("invalid hostname: {msg}"))
             }
+            NetworkError::InvalidSsid(msg) => {
+                Self::InvalidPayload(format!("invalid Wi-Fi SSID: {msg}"))
+            }
+            NetworkError::SsidNotFound(msg) => {
+                Self::InvalidPayload(format!("Wi-Fi network not found: {msg}"))
+            }
+            NetworkError::DeviceNotFound(msg) => {
+                Self::InvalidPayload(format!("bluetooth device not found: {msg}"))
+            }
             NetworkError::ServiceUnavailable(msg) => Self::ServiceUnavailable(msg),
         }
     }
@@ -142,6 +151,9 @@ impl From<PowerError> for IpcError {
         match e {
             PowerError::ProfileNotAvailable(p) => {
                 Self::InvalidPayload(format!("power profile not available: {p:?}"))
+            }
+            PowerError::InvalidThreshold(p) => {
+                Self::InvalidPayload(format!("invalid charge threshold: {p}"))
             }
             PowerError::ServiceUnavailable(msg) => Self::ServiceUnavailable(msg),
         }
@@ -268,6 +280,8 @@ pub struct AccessPointDto {
     pub signal_dbm: i8,
     /// `true` when the AP requires authentication.
     pub secured: bool,
+    /// `true` when the device is currently associated with this AP.
+    pub connected: bool,
 }
 
 impl From<AccessPoint> for AccessPointDto {
@@ -276,6 +290,7 @@ impl From<AccessPoint> for AccessPointDto {
             ssid: String::from_utf8_lossy(ap.ssid_bytes()).into_owned(),
             signal_dbm: ap.signal_dbm,
             secured: ap.secured,
+            connected: ap.connected,
         }
     }
 }
@@ -286,6 +301,58 @@ impl From<AccessPoint> for AccessPointDto {
 pub struct NetworkScanWifiResult {
     /// Discovered access points, sorted by descending signal strength.
     pub access_points: Vec<AccessPointDto>,
+}
+
+/// Request payload to connect to a Wi-Fi network.
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "network_connect_wifi_request.ts")]
+pub struct NetworkConnectWifiRequest {
+    /// Target network SSID.
+    pub ssid: String,
+    /// Network password. `None` for open (unsecured) networks.
+    pub password: Option<String>,
+}
+
+/// Response payload for a Wi-Fi connection.
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "network_connect_wifi_result.ts")]
+pub struct NetworkConnectWifiResult {
+    /// Whether the connection was successfully established.
+    pub success: bool,
+    /// The active SSID after the operation (echo-back for UI confirmation).
+    pub active_ssid: String,
+}
+
+/// Request payload to disconnect from a Wi-Fi network.
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "network_disconnect_wifi_request.ts")]
+pub struct NetworkDisconnectWifiRequest {
+    /// SSID of the network to disconnect from.
+    pub ssid: String,
+}
+
+/// Response payload for a Wi-Fi disconnection.
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "network_disconnect_wifi_result.ts")]
+pub struct NetworkDisconnectWifiResult {
+    /// Whether the disconnection was successfully applied.
+    pub success: bool,
+}
+
+/// Request payload to forget a saved Wi-Fi network.
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "network_forget_wifi_request.ts")]
+pub struct NetworkForgetWifiRequest {
+    /// SSID of the saved network to forget.
+    pub ssid: String,
+}
+
+/// Response payload for forgetting a saved Wi-Fi network.
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "network_forget_wifi_result.ts")]
+pub struct NetworkForgetWifiResult {
+    /// Whether the network was successfully forgotten.
+    pub success: bool,
 }
 
 /// Request payload to switch the active power profile.
@@ -302,6 +369,24 @@ pub struct PowerSetProfileRequest {
 pub struct PowerSetProfileResult {
     /// Whether the profile was successfully applied.
     pub applied: bool,
+}
+
+/// Request payload to set the battery charge threshold (charge limiter).
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "power_set_charge_threshold_request.ts")]
+pub struct PowerSetChargeThresholdRequest {
+    /// Charge threshold percentage in `[0, 100]`. `0` disables the limiter.
+    pub percent: u8,
+}
+
+/// Response payload for a charge-threshold mutation.
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "power_set_charge_threshold_result.ts")]
+pub struct PowerSetChargeThresholdResult {
+    /// Whether the threshold was successfully applied.
+    pub success: bool,
+    /// The active threshold after the operation (echo-back for UI state).
+    pub threshold: u8,
 }
 
 /// Request payload for batch-registering settings entries with the search
@@ -423,6 +508,64 @@ impl From<zettings_network::PairedDevice> for PairedDeviceDto {
 pub struct BluetoothListPairedResult {
     /// Paired devices, in stable `BlueZ` enumeration order.
     pub devices: Vec<PairedDeviceDto>,
+}
+
+/// Response payload for `bluetooth_scan_devices`. Mirrors
+/// [`BluetoothListPairedResult`] so the panel renders discovered devices
+/// through the same [`PairedDeviceDto`] descriptor.
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "bluetooth_scan_devices_result.ts")]
+pub struct BluetoothScanDevicesResult {
+    /// Discovered devices, in stable `BlueZ` enumeration order.
+    pub devices: Vec<PairedDeviceDto>,
+}
+
+/// Request payload to connect a Bluetooth device.
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "bluetooth_connect_request.ts")]
+pub struct BluetoothConnectRequest {
+    /// `BlueZ` device address (object-path-leaf identifier).
+    pub address: String,
+}
+
+/// Response payload for a Bluetooth device connection.
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "bluetooth_connect_result.ts")]
+pub struct BluetoothConnectResult {
+    /// Whether the device was successfully connected.
+    pub success: bool,
+}
+
+/// Request payload to disconnect a Bluetooth device.
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "bluetooth_disconnect_request.ts")]
+pub struct BluetoothDisconnectRequest {
+    /// `BlueZ` device address (object-path-leaf identifier).
+    pub address: String,
+}
+
+/// Response payload for a Bluetooth device disconnection.
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "bluetooth_disconnect_result.ts")]
+pub struct BluetoothDisconnectResult {
+    /// Whether the device was successfully disconnected.
+    pub success: bool,
+}
+
+/// Request payload to remove (forget) a paired Bluetooth device.
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "bluetooth_remove_request.ts")]
+pub struct BluetoothRemoveRequest {
+    /// `BlueZ` device address (object-path-leaf identifier).
+    pub address: String,
+}
+
+/// Response payload for removing a paired Bluetooth device.
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "bluetooth_remove_result.ts")]
+pub struct BluetoothRemoveResult {
+    /// Whether the device was successfully removed.
+    pub success: bool,
 }
 
 /// Response payload for `power_active_profile`. The current power profile
@@ -779,6 +922,191 @@ fn network_scan_wifi_with_authorizer(
     ))
 }
 
+/// Connects to a Wi-Fi network after verifying `PolicyKit`.
+///
+/// Action ID: `org.zyntrix.zettings.network.connect-wifi`.
+///
+/// # Errors
+/// - [`IpcError::PolkitDenied`] when authorization is denied.
+/// - [`IpcError::InvalidPayload`] when the SSID is empty or the network
+///   cannot be joined.
+/// - [`IpcError::ServiceUnavailable`] on the non-mock target until Phase 5+.
+#[allow(clippy::needless_pass_by_value)]
+pub fn network_connect_wifi(
+    request: NetworkConnectWifiRequest,
+) -> Result<NetworkConnectWifiResult, IpcError> {
+    network_connect_wifi_impl(&request)
+}
+
+fn network_connect_wifi_impl(
+    request: &NetworkConnectWifiRequest,
+) -> Result<NetworkConnectWifiResult, IpcError> {
+    if request.ssid.trim().is_empty() {
+        return Err(IpcError::InvalidPayload(
+            "Wi-Fi SSID must not be empty".into(),
+        ));
+    }
+    let action = ActionId::zettings("network", "connect-wifi");
+    network_connect_wifi_with_authorizer(request, &action)
+}
+
+#[cfg(feature = "zettings-mock")]
+fn network_connect_wifi_with_authorizer(
+    request: &NetworkConnectWifiRequest,
+    action: &ActionId,
+) -> Result<NetworkConnectWifiResult, IpcError> {
+    let authorizer = MockAuthorizer;
+    let bus = Bus::new();
+    let outcome = zettings_polkit::check_authorization_gateway(&authorizer, &bus, action)
+        .map_err(|e| IpcError::PolkitDenied(e.to_string()))?;
+    if !matches!(
+        outcome,
+        Authorization::Authorized | Authorization::Challenge
+    ) {
+        return Err(IpcError::PolkitDenied(
+            "User denied authorization to connect to Wi-Fi".into(),
+        ));
+    }
+    let backend = zettings_network::MockBackend::new();
+    backend
+        .connect_wifi(&request.ssid, request.password.as_deref())
+        .map_err(IpcError::from)?;
+    Ok(NetworkConnectWifiResult {
+        success: true,
+        active_ssid: request.ssid.clone(),
+    })
+}
+
+#[cfg(not(feature = "zettings-mock"))]
+fn network_connect_wifi_with_authorizer(
+    _request: &NetworkConnectWifiRequest,
+    _action: &ActionId,
+) -> Result<NetworkConnectWifiResult, IpcError> {
+    Err(IpcError::ServiceUnavailable(
+        "Real NetworkManager DBus integration lands in Phase 5".into(),
+    ))
+}
+
+/// Disconnects from a Wi-Fi network after verifying `PolicyKit`.
+///
+/// Action ID: `org.zyntrix.zettings.network.disconnect-wifi`.
+///
+/// # Errors
+/// - [`IpcError::PolkitDenied`] when authorization is denied.
+/// - [`IpcError::InvalidPayload`] when the SSID is empty or not known.
+/// - [`IpcError::ServiceUnavailable`] on the non-mock target until Phase 5+.
+#[allow(clippy::needless_pass_by_value)]
+pub fn network_disconnect_wifi(
+    request: NetworkDisconnectWifiRequest,
+) -> Result<NetworkDisconnectWifiResult, IpcError> {
+    network_disconnect_wifi_impl(&request)
+}
+
+fn network_disconnect_wifi_impl(
+    request: &NetworkDisconnectWifiRequest,
+) -> Result<NetworkDisconnectWifiResult, IpcError> {
+    if request.ssid.trim().is_empty() {
+        return Err(IpcError::InvalidPayload(
+            "Wi-Fi SSID must not be empty".into(),
+        ));
+    }
+    let action = ActionId::zettings("network", "disconnect-wifi");
+    network_disconnect_wifi_with_authorizer(request, &action)
+}
+
+#[cfg(feature = "zettings-mock")]
+fn network_disconnect_wifi_with_authorizer(
+    request: &NetworkDisconnectWifiRequest,
+    action: &ActionId,
+) -> Result<NetworkDisconnectWifiResult, IpcError> {
+    let authorizer = MockAuthorizer;
+    let bus = Bus::new();
+    let outcome = zettings_polkit::check_authorization_gateway(&authorizer, &bus, action)
+        .map_err(|e| IpcError::PolkitDenied(e.to_string()))?;
+    if !matches!(
+        outcome,
+        Authorization::Authorized | Authorization::Challenge
+    ) {
+        return Err(IpcError::PolkitDenied(
+            "User denied authorization to disconnect from Wi-Fi".into(),
+        ));
+    }
+    let backend = zettings_network::MockBackend::new();
+    backend
+        .disconnect_wifi(&request.ssid)
+        .map_err(IpcError::from)?;
+    Ok(NetworkDisconnectWifiResult { success: true })
+}
+
+#[cfg(not(feature = "zettings-mock"))]
+fn network_disconnect_wifi_with_authorizer(
+    _request: &NetworkDisconnectWifiRequest,
+    _action: &ActionId,
+) -> Result<NetworkDisconnectWifiResult, IpcError> {
+    Err(IpcError::ServiceUnavailable(
+        "Real NetworkManager DBus integration lands in Phase 5".into(),
+    ))
+}
+
+/// Forgets a saved Wi-Fi network after verifying `PolicyKit`.
+///
+/// Action ID: `org.zyntrix.zettings.network.forget-wifi`.
+///
+/// # Errors
+/// - [`IpcError::PolkitDenied`] when authorization is denied.
+/// - [`IpcError::InvalidPayload`] when the SSID is empty or not known.
+/// - [`IpcError::ServiceUnavailable`] on the non-mock target until Phase 5+.
+#[allow(clippy::needless_pass_by_value)]
+pub fn network_forget_wifi(
+    request: NetworkForgetWifiRequest,
+) -> Result<NetworkForgetWifiResult, IpcError> {
+    network_forget_wifi_impl(&request)
+}
+
+fn network_forget_wifi_impl(
+    request: &NetworkForgetWifiRequest,
+) -> Result<NetworkForgetWifiResult, IpcError> {
+    if request.ssid.trim().is_empty() {
+        return Err(IpcError::InvalidPayload(
+            "Wi-Fi SSID must not be empty".into(),
+        ));
+    }
+    let action = ActionId::zettings("network", "forget-wifi");
+    network_forget_wifi_with_authorizer(request, &action)
+}
+
+#[cfg(feature = "zettings-mock")]
+fn network_forget_wifi_with_authorizer(
+    request: &NetworkForgetWifiRequest,
+    action: &ActionId,
+) -> Result<NetworkForgetWifiResult, IpcError> {
+    let authorizer = MockAuthorizer;
+    let bus = Bus::new();
+    let outcome = zettings_polkit::check_authorization_gateway(&authorizer, &bus, action)
+        .map_err(|e| IpcError::PolkitDenied(e.to_string()))?;
+    if !matches!(
+        outcome,
+        Authorization::Authorized | Authorization::Challenge
+    ) {
+        return Err(IpcError::PolkitDenied(
+            "User denied authorization to forget a Wi-Fi network".into(),
+        ));
+    }
+    let backend = zettings_network::MockBackend::new();
+    backend.forget_wifi(&request.ssid).map_err(IpcError::from)?;
+    Ok(NetworkForgetWifiResult { success: true })
+}
+
+#[cfg(not(feature = "zettings-mock"))]
+fn network_forget_wifi_with_authorizer(
+    _request: &NetworkForgetWifiRequest,
+    _action: &ActionId,
+) -> Result<NetworkForgetWifiResult, IpcError> {
+    Err(IpcError::ServiceUnavailable(
+        "Real NetworkManager DBus integration lands in Phase 5".into(),
+    ))
+}
+
 /// Switches the active power profile after verifying `PolicyKit`.
 ///
 /// Action ID: `org.zyntrix.zettings.power.set-profile`.
@@ -832,6 +1160,72 @@ fn power_set_profile_with_authorizer(
 ) -> Result<PowerSetProfileResult, IpcError> {
     Err(IpcError::ServiceUnavailable(
         "Real UPower/power-profiles DBus integration lands in Phase 5".into(),
+    ))
+}
+
+/// Sets the battery charge threshold (charge limiter) after verifying
+/// `PolicyKit`.
+///
+/// Action ID: `org.zyntrix.zettings.power.set-charge-threshold`.
+///
+/// # Errors
+/// - [`IpcError::PolkitDenied`] when authorization is denied.
+/// - [`IpcError::InvalidPayload`] when the percent is outside `[0, 100]`.
+/// - [`IpcError::ServiceUnavailable`] on the non-mock target until Phase 5+.
+#[allow(clippy::needless_pass_by_value)]
+pub fn power_set_charge_threshold(
+    request: PowerSetChargeThresholdRequest,
+) -> Result<PowerSetChargeThresholdResult, IpcError> {
+    power_set_charge_threshold_impl(&request)
+}
+
+fn power_set_charge_threshold_impl(
+    request: &PowerSetChargeThresholdRequest,
+) -> Result<PowerSetChargeThresholdResult, IpcError> {
+    if request.percent > 100 {
+        return Err(IpcError::InvalidPayload(format!(
+            "charge threshold must be within [0, 100], got {}",
+            request.percent
+        )));
+    }
+    let action = ActionId::zettings("power", "set-charge-threshold");
+    power_set_charge_threshold_with_authorizer(request, &action)
+}
+
+#[cfg(feature = "zettings-mock")]
+fn power_set_charge_threshold_with_authorizer(
+    request: &PowerSetChargeThresholdRequest,
+    action: &ActionId,
+) -> Result<PowerSetChargeThresholdResult, IpcError> {
+    let authorizer = MockAuthorizer;
+    let bus = Bus::new();
+    let outcome = zettings_polkit::check_authorization_gateway(&authorizer, &bus, action)
+        .map_err(|e| IpcError::PolkitDenied(e.to_string()))?;
+    if !matches!(
+        outcome,
+        Authorization::Authorized | Authorization::Challenge
+    ) {
+        return Err(IpcError::PolkitDenied(
+            "User denied authorization to change the charge threshold".into(),
+        ));
+    }
+    let backend = zettings_power::MockBackend::new();
+    backend
+        .set_charge_threshold(request.percent)
+        .map_err(IpcError::from)?;
+    Ok(PowerSetChargeThresholdResult {
+        success: true,
+        threshold: request.percent,
+    })
+}
+
+#[cfg(not(feature = "zettings-mock"))]
+fn power_set_charge_threshold_with_authorizer(
+    _request: &PowerSetChargeThresholdRequest,
+    _action: &ActionId,
+) -> Result<PowerSetChargeThresholdResult, IpcError> {
+    Err(IpcError::ServiceUnavailable(
+        "Real UPower DBus integration lands in Phase 5".into(),
     ))
 }
 
@@ -1024,6 +1418,238 @@ fn bluetooth_list_paired_with_authorizer(
     ))
 }
 
+/// Scans for nearby `BlueZ` devices after verifying `PolicyKit`.
+///
+/// Action ID: `org.zyntrix.zettings.bluetooth.scan`. Unlike the read-only
+/// [`bluetooth_list_paired`] surface, an active discovery scan toggles radio
+/// state and is treated as a privileged mutation.
+///
+/// # Errors
+/// - [`IpcError::PolkitDenied`] when authorization is denied.
+/// - [`IpcError::ServiceUnavailable`] on the non-mock target until Phase 5+.
+pub fn bluetooth_scan_devices() -> Result<BluetoothScanDevicesResult, IpcError> {
+    bluetooth_scan_devices_impl()
+}
+
+fn bluetooth_scan_devices_impl() -> Result<BluetoothScanDevicesResult, IpcError> {
+    let action = ActionId::zettings("bluetooth", "scan");
+    bluetooth_scan_devices_with_authorizer(&action)
+}
+
+#[cfg(feature = "zettings-mock")]
+fn bluetooth_scan_devices_with_authorizer(
+    action: &ActionId,
+) -> Result<BluetoothScanDevicesResult, IpcError> {
+    let authorizer = MockAuthorizer;
+    let bus = Bus::new();
+    let outcome = zettings_polkit::check_authorization_gateway(&authorizer, &bus, action)
+        .map_err(|e| IpcError::PolkitDenied(e.to_string()))?;
+    if !matches!(
+        outcome,
+        Authorization::Authorized | Authorization::Challenge
+    ) {
+        return Err(IpcError::PolkitDenied(
+            "User denied authorization to scan Bluetooth devices".into(),
+        ));
+    }
+    let backend = zettings_network::MockBackend::new();
+    let devices = backend.scan_devices().map_err(IpcError::from)?;
+    let dtos = devices.into_iter().map(PairedDeviceDto::from).collect();
+    Ok(BluetoothScanDevicesResult { devices: dtos })
+}
+
+#[cfg(not(feature = "zettings-mock"))]
+fn bluetooth_scan_devices_with_authorizer(
+    _action: &ActionId,
+) -> Result<BluetoothScanDevicesResult, IpcError> {
+    Err(IpcError::ServiceUnavailable(
+        "Real BlueZ DBus integration lands in Phase 5".into(),
+    ))
+}
+
+/// Connects a paired `BlueZ` device after verifying `PolicyKit`.
+///
+/// Action ID: `org.zyntrix.zettings.bluetooth.connect`.
+///
+/// # Errors
+/// - [`IpcError::PolkitDenied`] when authorization is denied.
+/// - [`IpcError::InvalidPayload`] when the address is empty or not paired.
+/// - [`IpcError::ServiceUnavailable`] on the non-mock target until Phase 5+.
+#[allow(clippy::needless_pass_by_value)]
+pub fn bluetooth_connect(
+    request: BluetoothConnectRequest,
+) -> Result<BluetoothConnectResult, IpcError> {
+    bluetooth_connect_impl(&request)
+}
+
+fn bluetooth_connect_impl(
+    request: &BluetoothConnectRequest,
+) -> Result<BluetoothConnectResult, IpcError> {
+    if request.address.trim().is_empty() {
+        return Err(IpcError::InvalidPayload(
+            "Bluetooth device address must not be empty".into(),
+        ));
+    }
+    let action = ActionId::zettings("bluetooth", "connect");
+    bluetooth_connect_with_authorizer(request, &action)
+}
+
+#[cfg(feature = "zettings-mock")]
+fn bluetooth_connect_with_authorizer(
+    request: &BluetoothConnectRequest,
+    action: &ActionId,
+) -> Result<BluetoothConnectResult, IpcError> {
+    let authorizer = MockAuthorizer;
+    let bus = Bus::new();
+    let outcome = zettings_polkit::check_authorization_gateway(&authorizer, &bus, action)
+        .map_err(|e| IpcError::PolkitDenied(e.to_string()))?;
+    if !matches!(
+        outcome,
+        Authorization::Authorized | Authorization::Challenge
+    ) {
+        return Err(IpcError::PolkitDenied(
+            "User denied authorization to connect a Bluetooth device".into(),
+        ));
+    }
+    let backend = zettings_network::MockBackend::new();
+    backend
+        .connect_device(&request.address)
+        .map_err(IpcError::from)?;
+    Ok(BluetoothConnectResult { success: true })
+}
+
+#[cfg(not(feature = "zettings-mock"))]
+fn bluetooth_connect_with_authorizer(
+    _request: &BluetoothConnectRequest,
+    _action: &ActionId,
+) -> Result<BluetoothConnectResult, IpcError> {
+    Err(IpcError::ServiceUnavailable(
+        "Real BlueZ DBus integration lands in Phase 5".into(),
+    ))
+}
+
+/// Disconnects a `BlueZ` device after verifying `PolicyKit`.
+///
+/// Action ID: `org.zyntrix.zettings.bluetooth.disconnect`.
+///
+/// # Errors
+/// - [`IpcError::PolkitDenied`] when authorization is denied.
+/// - [`IpcError::InvalidPayload`] when the address is empty or not paired.
+/// - [`IpcError::ServiceUnavailable`] on the non-mock target until Phase 5+.
+#[allow(clippy::needless_pass_by_value)]
+pub fn bluetooth_disconnect(
+    request: BluetoothDisconnectRequest,
+) -> Result<BluetoothDisconnectResult, IpcError> {
+    bluetooth_disconnect_impl(&request)
+}
+
+fn bluetooth_disconnect_impl(
+    request: &BluetoothDisconnectRequest,
+) -> Result<BluetoothDisconnectResult, IpcError> {
+    if request.address.trim().is_empty() {
+        return Err(IpcError::InvalidPayload(
+            "Bluetooth device address must not be empty".into(),
+        ));
+    }
+    let action = ActionId::zettings("bluetooth", "disconnect");
+    bluetooth_disconnect_with_authorizer(request, &action)
+}
+
+#[cfg(feature = "zettings-mock")]
+fn bluetooth_disconnect_with_authorizer(
+    request: &BluetoothDisconnectRequest,
+    action: &ActionId,
+) -> Result<BluetoothDisconnectResult, IpcError> {
+    let authorizer = MockAuthorizer;
+    let bus = Bus::new();
+    let outcome = zettings_polkit::check_authorization_gateway(&authorizer, &bus, action)
+        .map_err(|e| IpcError::PolkitDenied(e.to_string()))?;
+    if !matches!(
+        outcome,
+        Authorization::Authorized | Authorization::Challenge
+    ) {
+        return Err(IpcError::PolkitDenied(
+            "User denied authorization to disconnect a Bluetooth device".into(),
+        ));
+    }
+    let backend = zettings_network::MockBackend::new();
+    backend
+        .disconnect_device(&request.address)
+        .map_err(IpcError::from)?;
+    Ok(BluetoothDisconnectResult { success: true })
+}
+
+#[cfg(not(feature = "zettings-mock"))]
+fn bluetooth_disconnect_with_authorizer(
+    _request: &BluetoothDisconnectRequest,
+    _action: &ActionId,
+) -> Result<BluetoothDisconnectResult, IpcError> {
+    Err(IpcError::ServiceUnavailable(
+        "Real BlueZ DBus integration lands in Phase 5".into(),
+    ))
+}
+
+/// Removes (forgets) a paired `BlueZ` device after verifying `PolicyKit`.
+///
+/// Action ID: `org.zyntrix.zettings.bluetooth.remove`.
+///
+/// # Errors
+/// - [`IpcError::PolkitDenied`] when authorization is denied.
+/// - [`IpcError::InvalidPayload`] when the address is empty or not paired.
+/// - [`IpcError::ServiceUnavailable`] on the non-mock target until Phase 5+.
+#[allow(clippy::needless_pass_by_value)]
+pub fn bluetooth_remove(
+    request: BluetoothRemoveRequest,
+) -> Result<BluetoothRemoveResult, IpcError> {
+    bluetooth_remove_impl(&request)
+}
+
+fn bluetooth_remove_impl(
+    request: &BluetoothRemoveRequest,
+) -> Result<BluetoothRemoveResult, IpcError> {
+    if request.address.trim().is_empty() {
+        return Err(IpcError::InvalidPayload(
+            "Bluetooth device address must not be empty".into(),
+        ));
+    }
+    let action = ActionId::zettings("bluetooth", "remove");
+    bluetooth_remove_with_authorizer(request, &action)
+}
+
+#[cfg(feature = "zettings-mock")]
+fn bluetooth_remove_with_authorizer(
+    request: &BluetoothRemoveRequest,
+    action: &ActionId,
+) -> Result<BluetoothRemoveResult, IpcError> {
+    let authorizer = MockAuthorizer;
+    let bus = Bus::new();
+    let outcome = zettings_polkit::check_authorization_gateway(&authorizer, &bus, action)
+        .map_err(|e| IpcError::PolkitDenied(e.to_string()))?;
+    if !matches!(
+        outcome,
+        Authorization::Authorized | Authorization::Challenge
+    ) {
+        return Err(IpcError::PolkitDenied(
+            "User denied authorization to remove a Bluetooth device".into(),
+        ));
+    }
+    let backend = zettings_network::MockBackend::new();
+    backend
+        .remove_device(&request.address)
+        .map_err(IpcError::from)?;
+    Ok(BluetoothRemoveResult { success: true })
+}
+
+#[cfg(not(feature = "zettings-mock"))]
+fn bluetooth_remove_with_authorizer(
+    _request: &BluetoothRemoveRequest,
+    _action: &ActionId,
+) -> Result<BluetoothRemoveResult, IpcError> {
+    Err(IpcError::ServiceUnavailable(
+        "Real BlueZ DBus integration lands in Phase 5".into(),
+    ))
+}
+
 /// Reads the currently-active power profile.
 ///
 /// Action ID: `org.zyntrix.zettings.power.active-profile`. Read-only, no
@@ -1181,8 +1807,11 @@ fn palette_extract_impl(request: &PaletteExtractRequest) -> Result<PaletteExtrac
 #[cfg(test)]
 mod tests {
     //! Cross-target correctness checks for the IPC command surface.
-    //! All cases run under the `zettings-mock` feature (the Windows dev loop
-    //! default), so they exercise the mock-state backend paths.
+    //!
+    //! The mock-state backend paths are exercised only when the
+    //! `zettings-mock` feature is enabled (the Windows dev loop default), so
+    //! the same test binary also passes under `--features export-bindings`
+    //! where the command surfaces return `IpcError::ServiceUnavailable`.
 
     use super::*;
 
@@ -1194,108 +1823,262 @@ mod tests {
         assert_eq!(dto.is_mock, cfg!(feature = "zettings-mock"));
     }
 
-    #[test]
-    fn set_hostname_mock_succeeds() {
-        let result = network_set_hostname(SetHostnameRequest {
-            hostname: "aurora-dev".into(),
-        })
-        .expect("mock set-hostname");
-        assert!(result.success);
-        assert_eq!(result.active_hostname, "aurora-dev");
-    }
+    #[cfg(feature = "zettings-mock")]
+    mod mock {
+        use super::*;
 
-    #[test]
-    fn set_hostname_rejects_invalid_payload() {
-        let err = network_set_hostname(SetHostnameRequest {
-            hostname: "bad_host!".into(),
-        })
-        .unwrap_err();
-        assert!(matches!(err, IpcError::InvalidPayload(_)));
-    }
-
-    #[test]
-    fn display_apply_mode_mock_succeeds() {
-        let result = display_apply_mode(DisplayApplyModeRequest {
-            output: "HDMI-A-1".into(),
-            mode: DisplayModeDto {
-                width: 1920,
-                height: 1080,
-                refresh_hz: 60.0,
-            },
-            scale: 1.0,
-        })
-        .expect("mock display apply");
-        assert!(result.applied);
-    }
-
-    #[test]
-    fn display_apply_mode_rejects_unknown_output() {
-        let err = display_apply_mode(DisplayApplyModeRequest {
-            output: "VGA-1".into(),
-            mode: DisplayModeDto {
-                width: 1024,
-                height: 768,
-                refresh_hz: 60.0,
-            },
-            scale: 1.0,
-        })
-        .unwrap_err();
-        assert!(matches!(err, IpcError::InvalidPayload(_)));
-    }
-
-    #[test]
-    fn audio_set_volume_mock_succeeds() {
-        let result = audio_set_volume(AudioSetVolumeRequest {
-            stream_id: 1,
-            volume: 0.5,
-            muted: false,
-        })
-        .expect("mock audio set");
-        assert!(result.applied);
-    }
-
-    #[test]
-    fn audio_set_volume_clamps_out_of_range() {
-        // volume > 1.0 should clamp, not error.
-        let result = audio_set_volume(AudioSetVolumeRequest {
-            stream_id: 0,
-            volume: 2.0,
-            muted: true,
-        })
-        .expect("clamped mock audio set");
-        assert!(result.applied);
-    }
-
-    #[test]
-    fn audio_set_volume_rejects_unknown_stream() {
-        let err = audio_set_volume(AudioSetVolumeRequest {
-            stream_id: 99,
-            volume: 0.3,
-            muted: false,
-        })
-        .unwrap_err();
-        assert!(matches!(err, IpcError::InvalidPayload(_)));
-    }
-
-    #[test]
-    fn network_scan_wifi_returns_sorted_aps() {
-        let result = network_scan_wifi().expect("mock scan");
-        assert!(!result.access_points.is_empty());
-        // Sorted by descending signal_dbm.
-        let mut prev = i8::MAX;
-        for ap in &result.access_points {
-            assert!(ap.signal_dbm <= prev);
-            prev = ap.signal_dbm;
+        #[test]
+        fn set_hostname_mock_succeeds() {
+            let result = network_set_hostname(SetHostnameRequest {
+                hostname: "aurora-dev".into(),
+            })
+            .expect("mock set-hostname");
+            assert!(result.success);
+            assert_eq!(result.active_hostname, "aurora-dev");
         }
-    }
 
-    #[test]
-    fn power_set_profile_mock_succeeds() {
-        let result = power_set_profile(PowerSetProfileRequest {
-            profile: PowerProfileDto::Performance,
-        })
-        .expect("mock power set");
-        assert!(result.applied);
+        #[test]
+        fn set_hostname_rejects_invalid_payload() {
+            let err = network_set_hostname(SetHostnameRequest {
+                hostname: "bad_host!".into(),
+            })
+            .unwrap_err();
+            assert!(matches!(err, IpcError::InvalidPayload(_)));
+        }
+
+        #[test]
+        fn display_apply_mode_mock_succeeds() {
+            let result = display_apply_mode(DisplayApplyModeRequest {
+                output: "HDMI-A-1".into(),
+                mode: DisplayModeDto {
+                    width: 1920,
+                    height: 1080,
+                    refresh_hz: 60.0,
+                },
+                scale: 1.0,
+            })
+            .expect("mock display apply");
+            assert!(result.applied);
+        }
+
+        #[test]
+        fn display_apply_mode_rejects_unknown_output() {
+            let err = display_apply_mode(DisplayApplyModeRequest {
+                output: "VGA-1".into(),
+                mode: DisplayModeDto {
+                    width: 1024,
+                    height: 768,
+                    refresh_hz: 60.0,
+                },
+                scale: 1.0,
+            })
+            .unwrap_err();
+            assert!(matches!(err, IpcError::InvalidPayload(_)));
+        }
+
+        #[test]
+        fn audio_set_volume_mock_succeeds() {
+            let result = audio_set_volume(AudioSetVolumeRequest {
+                stream_id: 1,
+                volume: 0.5,
+                muted: false,
+            })
+            .expect("mock audio set");
+            assert!(result.applied);
+        }
+
+        #[test]
+        fn audio_set_volume_clamps_out_of_range() {
+            // volume > 1.0 should clamp, not error.
+            let result = audio_set_volume(AudioSetVolumeRequest {
+                stream_id: 0,
+                volume: 2.0,
+                muted: true,
+            })
+            .expect("clamped mock audio set");
+            assert!(result.applied);
+        }
+
+        #[test]
+        fn audio_set_volume_rejects_unknown_stream() {
+            let err = audio_set_volume(AudioSetVolumeRequest {
+                stream_id: 99,
+                volume: 0.3,
+                muted: false,
+            })
+            .unwrap_err();
+            assert!(matches!(err, IpcError::InvalidPayload(_)));
+        }
+
+        #[test]
+        fn network_scan_wifi_returns_sorted_aps() {
+            let result = network_scan_wifi().expect("mock scan");
+            assert!(!result.access_points.is_empty());
+            // Sorted by descending signal_dbm.
+            let mut prev = i8::MAX;
+            for ap in &result.access_points {
+                assert!(ap.signal_dbm <= prev);
+                prev = ap.signal_dbm;
+            }
+        }
+
+        #[test]
+        fn power_set_profile_mock_succeeds() {
+            let result = power_set_profile(PowerSetProfileRequest {
+                profile: PowerProfileDto::Performance,
+            })
+            .expect("mock power set");
+            assert!(result.applied);
+        }
+
+        #[test]
+        fn network_connect_wifi_mock_succeeds() {
+            let result = network_connect_wifi(NetworkConnectWifiRequest {
+                ssid: "open-guest".into(),
+                password: Some("wifi-pass".into()),
+            })
+            .expect("mock wifi connect");
+            assert!(result.success);
+            assert_eq!(result.active_ssid, "open-guest");
+        }
+
+        #[test]
+        fn network_connect_wifi_rejects_empty_ssid() {
+            let err = network_connect_wifi(NetworkConnectWifiRequest {
+                ssid: String::new(),
+                password: None,
+            })
+            .unwrap_err();
+            assert!(matches!(err, IpcError::InvalidPayload(_)));
+        }
+
+        #[test]
+        fn network_disconnect_wifi_mock_succeeds() {
+            let result = network_disconnect_wifi(NetworkDisconnectWifiRequest {
+                ssid: "Zyntrix-Aurora".into(),
+            })
+            .expect("mock wifi disconnect");
+            assert!(result.success);
+        }
+
+        #[test]
+        fn network_disconnect_wifi_rejects_unknown_ssid() {
+            let err = network_disconnect_wifi(NetworkDisconnectWifiRequest {
+                ssid: "ghost-network".into(),
+            })
+            .unwrap_err();
+            assert!(matches!(err, IpcError::InvalidPayload(_)));
+        }
+
+        #[test]
+        fn network_forget_wifi_mock_succeeds() {
+            let result = network_forget_wifi(NetworkForgetWifiRequest {
+                ssid: "Zyntrix-Aurora".into(),
+            })
+            .expect("mock wifi forget");
+            assert!(result.success);
+        }
+
+        #[test]
+        fn network_forget_wifi_rejects_unknown_ssid() {
+            let err = network_forget_wifi(NetworkForgetWifiRequest {
+                ssid: "ghost-network".into(),
+            })
+            .unwrap_err();
+            assert!(matches!(err, IpcError::InvalidPayload(_)));
+        }
+
+        #[test]
+        fn bluetooth_scan_devices_returns_paired_list() {
+            let result = bluetooth_scan_devices().expect("mock bt scan");
+            assert_eq!(result.devices.len(), 3);
+        }
+
+        #[test]
+        fn bluetooth_connect_mock_succeeds() {
+            let result = bluetooth_connect(BluetoothConnectRequest {
+                address: "11:22:33:AA:BB:CC".into(),
+            })
+            .expect("mock bt connect");
+            assert!(result.success);
+        }
+
+        #[test]
+        fn bluetooth_connect_rejects_empty_address() {
+            let err = bluetooth_connect(BluetoothConnectRequest {
+                address: String::new(),
+            })
+            .unwrap_err();
+            assert!(matches!(err, IpcError::InvalidPayload(_)));
+        }
+
+        #[test]
+        fn bluetooth_connect_rejects_unknown_device() {
+            let err = bluetooth_connect(BluetoothConnectRequest {
+                address: "00:00:00:00:00:00".into(),
+            })
+            .unwrap_err();
+            assert!(matches!(err, IpcError::InvalidPayload(_)));
+        }
+
+        #[test]
+        fn bluetooth_disconnect_mock_succeeds() {
+            let result = bluetooth_disconnect(BluetoothDisconnectRequest {
+                address: "AA:BB:CC:11:22:33".into(),
+            })
+            .expect("mock bt disconnect");
+            assert!(result.success);
+        }
+
+        #[test]
+        fn bluetooth_disconnect_rejects_unknown_device() {
+            let err = bluetooth_disconnect(BluetoothDisconnectRequest {
+                address: "00:00:00:00:00:00".into(),
+            })
+            .unwrap_err();
+            assert!(matches!(err, IpcError::InvalidPayload(_)));
+        }
+
+        #[test]
+        fn bluetooth_remove_mock_succeeds() {
+            let result = bluetooth_remove(BluetoothRemoveRequest {
+                address: "11:22:33:AA:BB:CC".into(),
+            })
+            .expect("mock bt remove");
+            assert!(result.success);
+        }
+
+        #[test]
+        fn bluetooth_remove_rejects_unknown_device() {
+            let err = bluetooth_remove(BluetoothRemoveRequest {
+                address: "00:00:00:00:00:00".into(),
+            })
+            .unwrap_err();
+            assert!(matches!(err, IpcError::InvalidPayload(_)));
+        }
+
+        #[test]
+        fn power_set_charge_threshold_mock_succeeds() {
+            let result = power_set_charge_threshold(PowerSetChargeThresholdRequest { percent: 80 })
+                .expect("mock charge threshold");
+            assert!(result.success);
+            assert_eq!(result.threshold, 80);
+        }
+
+        #[test]
+        fn power_set_charge_threshold_zero_disables() {
+            let result = power_set_charge_threshold(PowerSetChargeThresholdRequest { percent: 0 })
+                .expect("mock disable threshold");
+            assert!(result.success);
+            assert_eq!(result.threshold, 0);
+        }
+
+        #[test]
+        fn power_set_charge_threshold_rejects_over_100() {
+            let err = power_set_charge_threshold(PowerSetChargeThresholdRequest { percent: 101 })
+                .unwrap_err();
+            assert!(matches!(err, IpcError::InvalidPayload(_)));
+        }
     }
 
     #[test]
@@ -1431,9 +2214,24 @@ mod bindings_export {
         AudioSetVolumeResult::export_all(&cfg).expect("export AudioSetVolumeResult bindings");
         AccessPointDto::export_all(&cfg).expect("export AccessPointDto bindings");
         NetworkScanWifiResult::export_all(&cfg).expect("export NetworkScanWifiResult bindings");
+        NetworkConnectWifiRequest::export_all(&cfg)
+            .expect("export NetworkConnectWifiRequest bindings");
+        NetworkConnectWifiResult::export_all(&cfg)
+            .expect("export NetworkConnectWifiResult bindings");
+        NetworkDisconnectWifiRequest::export_all(&cfg)
+            .expect("export NetworkDisconnectWifiRequest bindings");
+        NetworkDisconnectWifiResult::export_all(&cfg)
+            .expect("export NetworkDisconnectWifiResult bindings");
+        NetworkForgetWifiRequest::export_all(&cfg)
+            .expect("export NetworkForgetWifiRequest bindings");
+        NetworkForgetWifiResult::export_all(&cfg).expect("export NetworkForgetWifiResult bindings");
         PowerProfileDto::export_all(&cfg).expect("export PowerProfileDto bindings");
         PowerSetProfileRequest::export_all(&cfg).expect("export PowerSetProfileRequest bindings");
         PowerSetProfileResult::export_all(&cfg).expect("export PowerSetProfileResult bindings");
+        PowerSetChargeThresholdRequest::export_all(&cfg)
+            .expect("export PowerSetChargeThresholdRequest bindings");
+        PowerSetChargeThresholdResult::export_all(&cfg)
+            .expect("export PowerSetChargeThresholdResult bindings");
         SearchRegisterEntriesRequest::export_all(&cfg)
             .expect("export SearchRegisterEntriesRequest bindings");
         SearchRegisterEntriesResult::export_all(&cfg)
@@ -1453,6 +2251,16 @@ mod bindings_export {
         PairedDeviceDto::export_all(&cfg).expect("export PairedDeviceDto bindings");
         BluetoothListPairedResult::export_all(&cfg)
             .expect("export BluetoothListPairedResult bindings");
+        BluetoothScanDevicesResult::export_all(&cfg)
+            .expect("export BluetoothScanDevicesResult bindings");
+        BluetoothConnectRequest::export_all(&cfg).expect("export BluetoothConnectRequest bindings");
+        BluetoothConnectResult::export_all(&cfg).expect("export BluetoothConnectResult bindings");
+        BluetoothDisconnectRequest::export_all(&cfg)
+            .expect("export BluetoothDisconnectRequest bindings");
+        BluetoothDisconnectResult::export_all(&cfg)
+            .expect("export BluetoothDisconnectResult bindings");
+        BluetoothRemoveRequest::export_all(&cfg).expect("export BluetoothRemoveRequest bindings");
+        BluetoothRemoveResult::export_all(&cfg).expect("export BluetoothRemoveResult bindings");
         PowerActiveProfileResult::export_all(&cfg)
             .expect("export PowerActiveProfileResult bindings");
         BatteryStateDto::export_all(&cfg).expect("export BatteryStateDto bindings");

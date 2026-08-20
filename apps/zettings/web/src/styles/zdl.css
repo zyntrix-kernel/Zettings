@@ -237,6 +237,7 @@
 
   /* Glass panel (multi-layered liquid glass) */
   --glass-panel-bg: var(--glass-tint);
+  --glass-panel-tint: var(--glass-tint);
   --glass-panel-blur: var(--glass-blur);
   --glass-panel-saturate: var(--glass-saturate);
   --glass-panel-border: var(--glass-specular);
@@ -822,23 +823,30 @@ body {
   accent-color: var(--accent);
 }
 
+.panel-slider::-webkit-slider-track {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--surface-muted);
+}
+
 .panel-slider::-webkit-slider-thumb {
   appearance: none;
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%; /* minor circular thumb */
   background: var(--accent);
   border: 2px solid var(--surface);
-  box-shadow: var(--shadow-2);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
   cursor: pointer;
   transition: transform var(--motion-duration-fast) var(--motion-ease-out),
     box-shadow var(--motion-duration-fast) var(--motion-ease-out);
+  margin-top: -8px;
 }
 
 .panel-slider::-webkit-slider-thumb:hover,
 .panel-slider:focus-visible::-webkit-slider-thumb {
-  transform: scale(1.15);
-  box-shadow: var(--shadow-3);
+  transform: scale(1.2);
+  box-shadow: 0 0 0 4px var(--ring), 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 .panel-slider::-moz-range-thumb {
@@ -849,6 +857,20 @@ body {
   border: 2px solid var(--surface);
   box-shadow: var(--shadow-2);
   cursor: pointer;
+}
+
+.panel-slider::-moz-range-track {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--surface-muted);
+}
+
+/* Vertical slider support via transform */
+.panel-slider--vertical {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+  transform-origin: bottom left;
 }
 
 .panel-toggle {
@@ -892,21 +914,23 @@ body {
   font-size: var(--text-sm);
   line-height: var(--text-sm-lh);
   color: var(--text);
-  background: var(--surface-elevated);
+  background: color-mix(in srgb, var(--glass-panel-tint) 40%, transparent);
   border: 1px solid var(--border);
   border-radius: 8px; /* minor input radius */
   outline: none;
   transition: border-color var(--motion-duration-fast) var(--motion-ease-out),
-    box-shadow var(--motion-duration-fast) var(--motion-ease-out);
+    box-shadow var(--motion-duration-fast) var(--motion-ease-out),
+    background var(--motion-duration-fast) var(--motion-ease-out);
 }
 
-.panel-input:focus-visible {
+.panel-input:focus-visible,
+.panel-input:focus {
   border-color: var(--ring);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--ring) 30%, transparent);
 }
 
 .panel-input::placeholder {
-  color: var(--text-muted);
+  color: var(--text-subtle);
 }
 
 .panel-input:disabled {
@@ -976,25 +1000,41 @@ body {
    (ui-ux-pro-max: Feedback/Empty States Medium — no blank, helpful message) */
 
 .panel-card {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
   padding: var(--space-4);
   background: var(--surface-muted);
   border: 1px solid var(--border);
-  border-radius: 12px; /* minor card radius — not panel chrome */
-  transition: border-color var(--motion-duration-fast) var(--motion-ease-out),
-    box-shadow var(--motion-duration-fast) var(--motion-ease-out);
+  border-radius: 12px; /* minor item card radius — panel chrome uses squircle */
+  overflow: hidden;
+  transition:
+    transform var(--motion-duration-base) var(--motion-ease-out),
+    box-shadow var(--motion-duration-base) var(--motion-ease-out),
+    border-color var(--motion-duration-fast) var(--motion-ease-out);
 }
 
 .panel-card:hover {
+  transform: translateY(-2px);
   border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
-  box-shadow: var(--shadow-1);
+  box-shadow: var(--shadow-2);
 }
 
 .panel-card:focus-within {
   border-color: var(--ring);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--ring) 20%, transparent);
+  box-shadow: var(--shadow-2), 0 0 0 2px color-mix(in srgb, var(--ring) 20%, transparent);
+}
+
+/* Liquid glass panel card variant — transparent material, glass layers
+   (`.liquid-glass__*`) render the tint/specular/refraction. */
+.panel-card--glass {
+  background: transparent;
+  border: none;
+}
+
+.panel-card--glass > .liquid-glass__content {
+  padding: var(--space-5);
 }
 
 .panel-card-header {
@@ -1140,24 +1180,25 @@ body {
   pointer-events: none;
 }
 
-/* Layer 0: Refraction backdrop (requires backdrop-filter + SVG filter URL) */
+/* Layer 0: Refraction backdrop (requires backdrop-filter + SVG filter URL).
+   Per DESIGN.md section 2: blur(24px) saturate(180%) via tokens. */
 .liquid-glass__refract {
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  backdrop-filter: blur(16px) url(#liquid-glass-refract) brightness(1.03) saturate(1.2);
-  -webkit-backdrop-filter: blur(16px) url(#liquid-glass-refract) brightness(1.03) saturate(1.2);
+  backdrop-filter: blur(var(--glass-panel-blur)) url(#liquid-glass-refract) brightness(1.03) saturate(var(--glass-panel-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-panel-blur)) url(#liquid-glass-refract) brightness(1.03) saturate(var(--glass-panel-saturate));
   isolation: isolate;
   pointer-events: none;
   transition: backdrop-filter var(--motion-duration-base) var(--motion-ease-out);
 }
 
-/* Layer 1: Glass tint — subtle white overlay */
+/* Layer 1: Glass tint — theme-aware translucent overlay (DESIGN.md section 2) */
 .liquid-glass__tint {
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background: rgba(255, 255, 255, 0.12);
+  background: var(--glass-panel-tint);
   pointer-events: none;
   transition: background var(--motion-duration-fast) var(--motion-ease-out);
 }
@@ -1186,11 +1227,11 @@ body {
 
 /* Regular glass — standard navigation chrome (sidebars, toolbars, cards) */
 .liquid-glass--regular .liquid-glass__refract {
-  backdrop-filter: blur(20px) url(#liquid-glass-refract) brightness(1.03) saturate(1.2);
-  -webkit-backdrop-filter: blur(20px) url(#liquid-glass-refract) brightness(1.03) saturate(1.2);
+  backdrop-filter: blur(var(--glass-panel-blur)) url(#liquid-glass-refract) brightness(1.03) saturate(var(--glass-panel-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-panel-blur)) url(#liquid-glass-refract) brightness(1.03) saturate(var(--glass-panel-saturate));
 }
 .liquid-glass--regular .liquid-glass__tint {
-  background: rgba(255, 255, 255, 0.10);
+  background: var(--glass-panel-tint);
 }
 .liquid-glass--regular .liquid-glass__specular {
   box-shadow:
@@ -1200,11 +1241,11 @@ body {
 
 /* Clear glass — lighter, more transparent (for overlays, sheets, popovers) */
 .liquid-glass--clear .liquid-glass__refract {
-  backdrop-filter: blur(12px) url(#liquid-glass-refract) brightness(1.02) saturate(1.1);
-  -webkit-backdrop-filter: blur(12px) url(#liquid-glass-refract) brightness(1.02) saturate(1.1);
+  backdrop-filter: blur(calc(var(--glass-panel-blur) * 0.5)) url(#liquid-glass-refract) brightness(1.02) saturate(var(--glass-panel-saturate));
+  -webkit-backdrop-filter: blur(calc(var(--glass-panel-blur) * 0.5)) url(#liquid-glass-refract) brightness(1.02) saturate(var(--glass-panel-saturate));
 }
 .liquid-glass--clear .liquid-glass__tint {
-  background: rgba(255, 255, 255, 0.06);
+  background: color-mix(in srgb, var(--glass-panel-tint) 50%, transparent);
 }
 .liquid-glass--clear .liquid-glass__specular {
   box-shadow:
@@ -1214,11 +1255,11 @@ body {
 
 /* Prominent glass — more opaque, for primary actions and key UI */
 .liquid-glass--prominent .liquid-glass__refract {
-  backdrop-filter: blur(28px) url(#liquid-glass-refract) brightness(1.05) saturate(1.3);
-  -webkit-backdrop-filter: blur(28px) url(#liquid-glass-refract) brightness(1.05) saturate(1.3);
+  backdrop-filter: blur(var(--glass-panel-blur)) url(#liquid-glass-refract) brightness(1.05) saturate(var(--glass-panel-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-panel-blur)) url(#liquid-glass-refract) brightness(1.05) saturate(var(--glass-panel-saturate));
 }
 .liquid-glass--prominent .liquid-glass__tint {
-  background: rgba(255, 255, 255, 0.18);
+  background: color-mix(in srgb, var(--glass-panel-tint) 150%, var(--accent-on));
 }
 .liquid-glass--prominent .liquid-glass__specular {
   box-shadow:
@@ -1272,45 +1313,66 @@ body {
 }
 
 /* ============================================================================
-   Panel Card Enhancements with Liquid Glass
+   ZDL GlassButton (squircle surface, token-driven)
+   Replaces the hand-rolled `.liquid-glass-button` stacks. All state changes
+   are transform/box-shadow only (compositor thread, per Phase 9 guidance).
    ============================================================================ */
 
-.panel-card {
-  position: relative;
-  overflow: hidden;
-  border-radius: var(--radius-xl);
-  background: transparent;
-  border: 1px solid transparent;
+.zdl-glass-button {
+  background: var(--glass-panel-tint);
+  color: var(--text);
+  backdrop-filter: blur(var(--glass-panel-blur)) saturate(var(--glass-panel-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-panel-blur)) saturate(var(--glass-panel-saturate));
+  border: 1px solid var(--glass-panel-border);
+  box-shadow: var(--shadow-1);
+  isolation: isolate;
   transition:
-    transform var(--motion-duration-base) var(--motion-ease-out),
-    box-shadow var(--motion-duration-base) var(--motion-ease-out);
+    transform var(--motion-duration-fast) var(--motion-ease-out),
+    box-shadow var(--motion-duration-fast) var(--motion-ease-out),
+    background var(--motion-duration-fast) var(--motion-ease-out);
 }
 
-.panel-card::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  z-index: -1;
+.zdl-glass-button__content {
+  position: relative;
+  z-index: 10;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  pointer-events: none;
 }
 
-.panel-card:hover {
-  transform: translateY(-2px);
+.zdl-glass-button--prominent {
+  background: color-mix(in srgb, var(--accent) 65%, var(--glass-panel-tint));
+  color: var(--accent-on);
+}
+
+.zdl-glass-button--clear {
+  background: color-mix(in srgb, var(--glass-panel-tint) 45%, transparent);
+}
+
+.zdl-glass-button--destructive {
+  background: color-mix(in srgb, var(--danger, #dc2626) 75%, var(--glass-panel-tint));
+  color: var(--text);
+}
+
+.zdl-glass-button:hover:not(:disabled) {
+  transform: scale(1.02);
   box-shadow: var(--shadow-2);
 }
 
-.panel-card:focus-within {
+.zdl-glass-button:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.zdl-glass-button:focus-visible {
+  outline: none;
   box-shadow: var(--shadow-2), 0 0 0 3px var(--ring);
 }
 
-/* Liquid glass panel card variant */
-.panel-card--glass {
-  background: transparent;
-  border: none;
-}
-
-.panel-card--glass > .liquid-glass__content {
-  padding: var(--space-5);
+.zdl-glass-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* ============================================================================
@@ -1327,80 +1389,6 @@ body {
   inset: -20px;
   border-radius: var(--radius-xl);
   pointer-events: none;
-}
-
-/* ============================================================================
-   Glass Slider Enhancements
-   ============================================================================ */
-
-.panel-slider {
-  appearance: none;
-  background: transparent;
-  cursor: pointer;
-}
-
-.panel-slider::-webkit-slider-track {
-  height: 4px;
-  border-radius: 2px;
-  background: var(--surface-muted);
-}
-
-.panel-slider::-webkit-slider-thumb {
-  appearance: none;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: var(--accent);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-  transition:
-    transform var(--motion-duration-fast) var(--motion-ease-out),
-    box-shadow var(--motion-duration-fast) var(--motion-ease-out);
-  margin-top: -8px;
-}
-
-.panel-slider::-webkit-slider-thumb:hover {
-  transform: scale(1.2);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-}
-
-.panel-slider:focus-visible::-webkit-slider-thumb {
-  box-shadow: 0 0 0 4px var(--ring), 0 2px 8px rgba(0, 0, 0, 0.2);
-}
-
-/* Vertical slider support via transform */
-.panel-slider--vertical {
-  width: 100%;
-  height: 100%;
-  transform: rotate(-90deg);
-  transform-origin: bottom left;
-}
-
-/* ============================================================================
-   Glass Input Enhancements
-   ============================================================================ */
-
-.panel-input {
-  position: relative;
-  z-index: 1;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  color: var(--text);
-  transition:
-    border-color var(--motion-duration-fast) var(--motion-ease-out),
-    box-shadow var(--motion-duration-fast) var(--motion-ease-out),
-    background var(--motion-duration-fast) var(--motion-ease-out);
-}
-
-.panel-input:focus {
-  outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 30%, transparent);
-  background: rgba(255, 255, 255, 0.08);
-}
-
-.panel-input::placeholder {
-  color: var(--text-subtle);
 }
 
 /* ============================================================================
@@ -1580,10 +1568,10 @@ body {
    ============================================================================ */
 
 .liquid-glass:hover .liquid-glass__tint {
-  background: rgba(255, 255, 255, 0.18);
+  background: color-mix(in srgb, var(--glass-panel-tint) 150%, var(--accent-on));
 }
 .liquid-glass:active .liquid-glass__tint {
-  background: rgba(255, 255, 255, 0.25);
+  background: color-mix(in srgb, var(--glass-panel-tint) 200%, var(--accent-on));
 }
 .liquid-glass:focus-visible .liquid-glass__specular {
   box-shadow:
@@ -1595,8 +1583,8 @@ body {
 /* Reduced motion: disable refraction animation if any */
 @media (prefers-reduced-motion: reduce) {
   .liquid-glass__refract {
-    backdrop-filter: blur(16px) brightness(1.03) saturate(1.2);
-    -webkit-backdrop-filter: blur(16px) brightness(1.03) saturate(1.2);
+    backdrop-filter: blur(var(--glass-panel-blur)) brightness(1.03) saturate(var(--glass-panel-saturate));
+    -webkit-backdrop-filter: blur(var(--glass-panel-blur)) brightness(1.03) saturate(var(--glass-panel-saturate));
     transition: none;
   }
   .liquid-glass__tint,

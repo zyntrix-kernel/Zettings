@@ -20,6 +20,10 @@ zettings-mock = [
     "zettings-core/zettings-mock",
     "zettings-polkit/zettings-mock",
     "zettings-search/zettings-mock",
+    # The IPC crate gates its mock authorizer + mock backend forwards behind
+    # this same flag; without it every write/read command returns
+    # ServiceUnavailable on the dev loop.
+    "zettings-ipc/zettings-mock",
 ]
 
 [build-dependencies]

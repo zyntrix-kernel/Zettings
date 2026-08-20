@@ -23,9 +23,10 @@ export { ZDL_SPRINGS, type SpringConfig, type SpringState } from "./zdl-motion.j
 /**
  * Reads `prefers-reduced-motion: reduce` once per hook instance. Used by all
  * motion hooks to short-circuit animation per the ui-ux-pro-max High-severity
- * "Reduced Motion" rule.
+ * "Reduced Motion" rule. Also exported so components can gate their own motion
+ * (e.g. VU meter rAF loops) on the OS-level preference.
  */
-function usePrefersReducedMotion(): boolean {
+export function usePrefersReducedMotion(): boolean {
   const [reduced, setReduced] = useState<boolean>(() => {
     if (typeof window === "undefined" || !window.matchMedia) return false;
     return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
