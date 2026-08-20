@@ -152,7 +152,9 @@ export function NetworkPanel(): React.ReactElement {
               height: `${i * 20}%`,
               background: i <= bars ? "linear-gradient(to top, var(--accent), var(--accent-secondary))" : "var(--border)",
               borderRadius: "2px 2px 0 0",
-              transition: "all var(--motion-duration-fast) var(--motion-ease-out)",
+              // Phase 9: `all` could animate layout properties (width/height);
+              // scope the transition to the paint-only `background` property.
+              transition: "background var(--motion-duration-fast) var(--motion-ease-out)",
             }}
           />
         ))}

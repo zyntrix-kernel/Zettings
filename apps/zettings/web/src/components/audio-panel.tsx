@@ -153,38 +153,48 @@ export function AudioPanel(): React.ReactElement {
   }, []);
 
   // VU meter bar component with liquid glass
+  // Phase 9: the bar/peak are driven by `transform` (scaleY/translateY) rather
+  // than `height`/`margin-bottom`, so they animate on the compositor thread
+  // with zero DOM reflow (DESIGN.md 120 FPS budget).
   const renderVuMeter = (stream: AudioStreamExtended) => {
     const vuSpring = useSpring(stream.vuLevel, ZDL_SPRINGS.slider);
     const peakSpring = useSpring(stream.peakLevel, ZDL_SPRINGS.slider);
 
     return (
       <div className="glass-vu-meter" role="img" aria-label={`Volume level ${Math.round(stream.vuLevel * 100)}%`} data-testid={`vu-${stream.stream_id}`} style={{ width: 24, height: 120, position: "relative", flexShrink: 0 }}>
-        <div className="liquid-glass liquid-glass--clear" style={{ width: "100%", height: "100%", borderRadius: "9999px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end", padding: 2 }}>
+        <div className="liquid-glass liquid-glass--clear" style={{ width: "100%", height: "100%", borderRadius: "9999px", position: "relative", padding: 2 }}>
           <div className="liquid-glass__refract" style={{ borderRadius: "9999px" }} />
           <div className="liquid-glass__tint" style={{ borderRadius: "9999px", background: "rgba(0, 0, 0, 0.2)" }} />
           <div className="liquid-glass__specular" style={{ borderRadius: "9999px" }} />
-          <div className="liquid-glass__content" style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end", gap: 2 }}>
+          <div className="liquid-glass__content" style={{ width: "100%", height: "100%", position: "relative" }}>
             <div
               className="glass-vu-meter__bar"
               style={{
+                position: "absolute",
+                inset: 0,
                 width: "100%",
-                height: `${vuSpring.position * 100}%`,
+                height: "100%",
                 background: `linear-gradient(to top, var(--accent) 0%, var(--accent-secondary) 100%)`,
                 borderRadius: "2px",
-                transition: reducedMotion ? "none" : "height 30ms linear",
-                minHeight: vuSpring.position > 0 ? "2px" : 0,
+                transform: `scaleY(${vuSpring.position})`,
+                transition: reducedMotion ? "none" : "transform 30ms linear",
+                willChange: "transform",
               }}
             />
             <div
               className="glass-vu-meter__peak"
               style={{
-                width: "100%",
+                position: "absolute",
+                left: 0,
+                right: 0,
+                bottom: 0,
                 height: 3,
                 background: "var(--text)",
                 borderRadius: "2px",
                 opacity: peakSpring.position > 0 ? 1 : 0,
-                marginBottom: `${peakSpring.position * 100}%`,
-                transition: reducedMotion ? "none" : "margin-bottom 100ms ease-out, opacity 100ms ease-out",
+                transform: `translateY(${-peakSpring.position * 113}px)`,
+                transition: reducedMotion ? "none" : "transform 100ms ease-out, opacity 100ms ease-out",
+                willChange: "transform",
               }}
             />
           </div>
@@ -326,14 +336,15 @@ export function AudioPanel(): React.ReactElement {
                   position: "absolute",
                   bottom: 0,
                   left: "50%",
-                  transform: "translateX(-50%)",
+                  transform: `translateX(-50%) scaleY(${Math.max(0, (gain + 12) / 24)})`,
+                  transformOrigin: "bottom",
                   width: "80%",
-                  height: `${((gain + 12) / 24) * 100}%`,
+                  height: "100%",
                   background: gain > 0 ? "var(--accent)" : "var(--text-muted)",
                   opacity: 0.3,
                   borderRadius: "4px 4px 0 0",
                   pointerEvents: "none",
-                  transition: "height var(--motion-duration-base) var(--motion-ease-out)",
+                  transition: "transform var(--motion-duration-base) var(--motion-ease-out)",
                 }}
               />
             </div>

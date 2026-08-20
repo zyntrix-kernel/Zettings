@@ -37,3 +37,4 @@ export type { PowerBatteriesResult } from "./generated/power_batteries_result";
 export type { AccentPaletteDto } from "./generated/accent_palette";
 export type { PaletteExtractRequest } from "./generated/palette_extract_request";
 export type { PaletteExtractResult } from "./generated/palette_extract_result";
+export type { PerfStatsDto } from "./generated/perf_stats";

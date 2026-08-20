@@ -1,12 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
 import { invoke } from "@tauri-apps/api/core";
-import { Suspense, useEffect, useState, lazy } from "react";
+import { Suspense, useEffect, useRef, useState, lazy } from "react";
 import type { Health } from "@zettings/bindings";
 import { Breadcrumbs } from "../components/breadcrumbs.js";
+import { PerfMonitor } from "../components/perf-monitor.js";
 import { ShellFrame } from "../components/shell-frame.js";
 import { SpotlightModal } from "../components/spotlight-modal.js";
 import { TargetHighlightBoundary } from "../components/target-highlight-boundary.js";
 import { useHashRoute } from "../lib/hash-route.js";
+import { PERF_MARKS, perfMark } from "../lib/perf.js";
 import { useSpotlightStore } from "../stores/spotlight-store.js";
 
 // Shared icon mappings for sidebar and quick actions
@@ -226,6 +228,22 @@ export function Zettings(): React.ReactElement {
   // Phase 6.4 — hash-route state driving breadcrumbs + target highlight
   const route = useHashRoute();
 
+  // Phase 9 hot-start tracing: mark the route dispatch and the first frame
+  // after the new panel commits. `requestAnimationFrame` posts the paint mark
+  // after the browser has produced a frame for the committed DOM, giving an
+  // upper-bound proxy for "new route visible" (see docs/performance/audit.md).
+  const prevRouteRef = useRef<string>(route.raw);
+  useEffect(() => {
+    const prev = prevRouteRef.current;
+    prevRouteRef.current = route.raw;
+    if (prev === route.raw) return;
+    perfMark(PERF_MARKS.routeStart);
+    const rafId = requestAnimationFrame(() => {
+      perfMark(PERF_MARKS.routePainted);
+    });
+    return () => cancelAnimationFrame(rafId);
+  }, [route.raw]);
+
   // Resolve panel component from route
   const PanelComponent = ((): React.ComponentType | null => {
     if (route.isRoot) return OverviewPage;
@@ -328,6 +346,7 @@ export function Zettings(): React.ReactElement {
         </main>
       </div>
       <SpotlightModal />
+      {import.meta.env.DEV ? <PerfMonitor /> : null}
     </ShellFrame>
   );
 }

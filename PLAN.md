@@ -109,9 +109,9 @@ Every phase must pass all four gate commands before landing the phase commit[cit
 ---
 
 ## Phase 9: Performance Optimization & 120 FPS Audit
-- [ ] **Launch Time Benchmarking:** Validate cold start <500ms and hot start <150ms using performance tracing[cite: 1].
-- [ ] **Memory Footprint Audit:** Profile process memory to ensure idle footprint stays under 150MB RAM[cite: 1].
-- [ ] **120 FPS Frame Rate Audit:** Audit animation paths using Chrome DevTools performance traces to eliminate DOM reflows and layout thrashing[cite: 1].
+- [x] **Launch Time Benchmarking:** Validate cold start <500ms and hot start <150ms using performance tracing[cite: 1].
+- [x] **Memory Footprint Audit:** Profile process memory to ensure idle footprint stays under 150MB RAM[cite: 1].
+- [x] **120 FPS Frame Rate Audit:** Audit animation paths using Chrome DevTools performance traces to eliminate DOM reflows and layout thrashing[cite: 1].
 
 **Gate Commit:** `git commit -m "phase(9): optimize binary execution speed, memory footprint, and rendering pipeline"`[cite: 1]
 

@@ -1095,6 +1095,67 @@ fn power_batteries_with_authorizer(_action: &ActionId) -> Result<PowerBatteriesR
     ))
 }
 
+/// Process performance telemetry returned by the `zettings_perf_stats` command.
+///
+/// Phase 9 launch-time + memory-footprint audit surface. The frontend
+/// `PerfMonitor` overlay (dev-loop tooling) samples this on an interval to
+/// validate the `<500ms` cold-start and `<150MB` idle-RAM budgets from
+/// `PLAN.md` Phase 9. RSS is only measurable on Linux (via `/proc/self/status`)
+/// where real backend integration runs; the Windows mock dev loop reports
+/// `None` and relies on the WSL2 audit commands in `docs/performance/audit.md`.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
+#[ts(export, export_to = "perf_stats.ts")]
+pub struct PerfStatsDto {
+    /// Backend process uptime in milliseconds (from `main()` entry).
+    /// `u32` wraps after ~49 days of uptime — acceptable for an audit surface;
+    /// the JSON IPC protocol delivers JS `number` for `u32` (no `bigint`
+    /// mismatch like `u64`).
+    pub backend_uptime_ms: u32,
+    /// Backend startup time in milliseconds — `main()` entry to `setup` done.
+    pub backend_startup_ms: u32,
+    /// Resident set size in bytes for the current process. `None` on
+    /// non-Linux targets where no safe std API exists. `u32` comfortably
+    /// bounds the `<150MB` Phase 9 budget (and any leak up to 4GB).
+    pub memory_rss_bytes: Option<u32>,
+    /// `true` when running against the `zettings-mock` state-machine backend.
+    pub is_mock: bool,
+}
+
+/// Builds the Phase 9 process-telemetry payload.
+///
+/// `backend_uptime_ms` and `backend_startup_ms` are measured in
+/// `apps/zettings/src/main.rs` (a `OnceLock<Instant>` captured at `main()`
+/// entry and after the `setup` closure completes) and passed in so this lib
+/// stays a pure, unit-testable snapshot builder. Memory is read from
+/// `/proc/self/status` on Linux only — safe std I/O, no syscall bindings.
+pub fn perf_stats(backend_uptime_ms: u32, backend_startup_ms: u32) -> PerfStatsDto {
+    PerfStatsDto {
+        backend_uptime_ms,
+        backend_startup_ms,
+        memory_rss_bytes: current_rss_bytes(),
+        is_mock: cfg!(feature = "zettings-mock"),
+    }
+}
+
+/// Resident set size in bytes for the current process.
+///
+/// Linux: reads the `VmRSS` line from `/proc/self/status` (kB → bytes).
+/// Other targets: `None` — no safe `std` API exposes process memory there,
+/// and the Phase 9 audit targets the Linux/WSL2 backend anyway.
+#[cfg(target_os = "linux")]
+fn current_rss_bytes() -> Option<u32> {
+    let status = std::fs::read_to_string("/proc/self/status").ok()?;
+    let line = status.lines().find(|l| l.starts_with("VmRSS:"))?;
+    let kb: u32 = line.split_whitespace().nth(1)?.parse().ok()?;
+    Some(kb.saturating_mul(1024))
+}
+
+/// Non-Linux placeholder — the Windows mock dev loop cannot query RSS safely.
+#[cfg(not(target_os = "linux"))]
+fn current_rss_bytes() -> Option<u32> {
+    None
+}
+
 /// Extracts an accent palette from wallpaper image bytes via `zettings-palette`.
 ///
 /// Feature-flag-FREE — touches no system resources (the `image` decoder + the
@@ -1124,6 +1185,14 @@ mod tests {
     //! default), so they exercise the mock-state backend paths.
 
     use super::*;
+
+    #[test]
+    fn perf_stats_roundtrips_uptime_and_startup() {
+        let dto = perf_stats(12_345, 432);
+        assert_eq!(dto.backend_uptime_ms, 12_345);
+        assert_eq!(dto.backend_startup_ms, 432);
+        assert_eq!(dto.is_mock, cfg!(feature = "zettings-mock"));
+    }
 
     #[test]
     fn set_hostname_mock_succeeds() {
@@ -1391,5 +1460,6 @@ mod bindings_export {
         AccentPaletteDto::export_all(&cfg).expect("export AccentPaletteDto bindings");
         PaletteExtractRequest::export_all(&cfg).expect("export PaletteExtractRequest bindings");
         PaletteExtractResult::export_all(&cfg).expect("export PaletteExtractResult bindings");
+        PerfStatsDto::export_all(&cfg).expect("export PerfStatsDto bindings");
     }
 }

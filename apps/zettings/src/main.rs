@@ -5,16 +5,44 @@
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
 
+use std::sync::OnceLock;
+use std::time::Instant;
+
 use tauri::Manager;
 use tauri_plugin_decorum::WebviewWindowExt;
 use tracing_subscriber::EnvFilter;
 use zettings_ipc::{
     AudioListStreamsResult, BluetoothListPairedResult, DisplayListOutputsResult, Health,
-    ModuleInfo, PaletteExtractRequest, PaletteExtractResult, PowerActiveProfileResult,
-    PowerBatteriesResult, SearchQueryRequest, SearchRegisterEntriesRequest,
-    SearchRegisterEntriesResult,
+    ModuleInfo, PaletteExtractRequest, PaletteExtractResult, PerfStatsDto,
+    PowerActiveProfileResult, PowerBatteriesResult, SearchQueryRequest,
+    SearchRegisterEntriesRequest, SearchRegisterEntriesResult,
 };
 use zettings_search::SearchHit;
+
+/// Process boot anchor. Captured on the first line of `main()` before the
+/// tracing subscriber initializes so `zettings_perf_stats` can report true
+/// backend uptime and startup latency (Phase 9 launch-time audit).
+static PROCESS_START: OnceLock<Instant> = OnceLock::new();
+
+/// Set at the end of the Tauri `setup` closure (after the titlebar overlay).
+/// The gap between `PROCESS_START` and this instant is the backend cold-start
+/// window that `zettings_perf_stats` reports as `backend_startup_ms`.
+static SETUP_DONE: OnceLock<Instant> = OnceLock::new();
+
+/// `zettings_perf_stats` — Phase 9 process-telemetry surface for the frontend
+/// `PerfMonitor` overlay. Reports backend uptime, startup latency, resident set
+/// size (Linux only; `None` on the Windows mock dev loop), and the mock flag.
+/// The overlay samples this on an interval to validate the PLAN.md Phase 9
+/// budgets (`<500ms` cold start, `<150MB` idle RAM).
+#[tauri::command]
+fn zettings_perf_stats() -> PerfStatsDto {
+    let start = PROCESS_START.get().copied().unwrap_or_else(Instant::now);
+    let startup = SETUP_DONE.get().map_or(0, |done| {
+        u32::try_from(done.duration_since(start).as_millis()).unwrap_or(u32::MAX)
+    });
+    let uptime = u32::try_from(start.elapsed().as_millis()).unwrap_or(u32::MAX);
+    zettings_ipc::perf_stats(uptime, startup)
+}
 
 /// `zettings_health` — frontend ping that returns backend version + mock flag.
 #[tauri::command]
@@ -117,10 +145,19 @@ fn zettings_palette_extract(
 /// (log, shell, window-state, deep-link, decorum), mounts the Phase 1
 /// IPC command surface, and opens the main webview window pointing at
 /// the React 19 frontend.
+///
+/// Phase 9 launch-time instrumentation: `PROCESS_START` is captured before
+/// anything else runs and `SETUP_DONE` right after the `setup` closure
+/// finishes. `zettings_perf_stats` turns that gap into `backend_startup_ms`
+/// for the `PerfMonitor` overlay, and `tracing::info!` emits the same numbers
+/// to the log channel for the WSL2 audit commands in
+/// `docs/performance/audit.md`.
 fn main() {
+    PROCESS_START.get_or_init(Instant::now);
     tracing_subscriber::fmt()
         .with_env_filter(EnvFilter::from_default_env())
         .init();
+    tracing::info!(event = "main.enter", "zettings backend starting");
 
     tauri::Builder::default()
         .plugin(tauri_plugin_log::Builder::default().build())
@@ -139,6 +176,7 @@ fn main() {
             zettings_power_active_profile,
             zettings_power_batteries,
             zettings_palette_extract,
+            zettings_perf_stats,
         ])
         .setup(|app| {
             let window = app.get_webview_window("main").expect("main window");
@@ -149,6 +187,17 @@ fn main() {
             // provides that container and a drag-region element so the
             // user can drag the window; decorum auto-appends the buttons.
             window.create_overlay_titlebar()?;
+            SETUP_DONE.get_or_init(Instant::now);
+            let startup_ms = SETUP_DONE
+                .get()
+                .expect("SETUP_DONE set above")
+                .duration_since(*PROCESS_START.get().expect("PROCESS_START set in main"))
+                .as_millis();
+            tracing::info!(
+                event = "setup.complete",
+                backend_startup_ms = u32::try_from(startup_ms).unwrap_or(u32::MAX),
+                "zettings backend ready"
+            );
             Ok(())
         })
         .run(tauri::generate_context!())

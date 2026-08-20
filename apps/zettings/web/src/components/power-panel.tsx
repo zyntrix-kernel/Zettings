@@ -220,14 +220,18 @@ export function PowerPanel(): React.ReactElement {
               className="glass-progress__fill"
               style={{
                 height: "100%",
+                width: "100%",
                 borderRadius: "inherit",
                 background: isCharging
                   ? "linear-gradient(90deg, var(--accent), var(--accent-secondary))"
                   : capacity > 20
                   ? "linear-gradient(90deg, var(--accent), var(--accent-secondary))"
                   : "linear-gradient(90deg, #ff6b6b, #ff8e8e)",
-                width: `${capacity}%`,
-                transition: "width var(--motion-duration-base) var(--motion-ease-out)",
+                // Phase 9: scaleX keeps the battery level on the compositor
+                // thread (width would force a layout pass per frame).
+                transform: `scaleX(${Math.max(0, Math.min(1, capacity / 100))})`,
+                transformOrigin: "left",
+                transition: "transform var(--motion-duration-base) var(--motion-ease-out)",
               }}
             />
           </div>
