@@ -1,143 +1,1281 @@
-# PLAN.md — ZETTINGS Enterprise 13-Phase Master Roadmap
+# PLAN.md — ZETTINGS Master Implementation Roadmap
 
-> **Target Platform:** Zyntrix OS (Kubuntu 24.04 LTS / KDE Plasma 5.27 / Frameworks 6)[cite: 1]
-> **Architecture:** Tauri v2 + Rust 1.97 Workspace + React 19 + TypeScript + Tailwind v4[cite: 1]
-> **Design Language:** Zyntrix Design Language (ZDL) — G2/G3 Continuous Squircles, Liquid Glass, Spring Physics Engine[cite: 1]
-
----
-
-## Strict Verification Gate Protocol
-Every phase must pass all four gate commands before landing the phase commit[cite: 1]:
-1. `cargo fmt --all --check`[cite: 1]
-2. `cargo clippy --workspace --all-targets -- -D warnings`[cite: 1]
-3. `cargo check --workspace`[cite: 1]
-4. `pnpm -r typecheck`[cite: 1]
+> **Status:** Authoritative implementation roadmap
+>
+> **Project:** ZETTINGS — Zyntrix OS Settings
+>
+> **Target:** Kubuntu 24.04 / KDE Plasma 5.27
+>
+> **Primary inputs:** `prompt.txt`, `ZETTINGS_Windows_11_Settings_Deep_UI_Spec(1).md`, `AGENTS.md`, `DESIGN.md`
+>
+> **Rule:** `prompt.txt` is a mandatory product requirement. The Windows 11 specification is the reference for information architecture, navigation, reusable settings patterns, search, and observable UX—not a license to copy Microsoft's proprietary implementation.
 
 ---
 
-## Phase 0: Research & System Architectural Benchmarking (COMPLETED)[cite: 1, 2]
-- [x] **Competitive Research:** Deep-dive analysis of navigation graph, search ranking, deep linking, and caching in Windows 11 Settings, macOS System Settings, GNOME Settings, and KDE System Settings[cite: 1].
-- [x] **Integration Matrix:** Mapped DBus system service interfaces (`zbus`) for NetworkManager, PipeWire, PulseAudio, BlueZ, UPower, AccountsService, KScreen, KWin, systemd, logind, and PolicyKit[cite: 1].
-- [x] **Performance Benchmarks:** Established target metrics: Cold start <500ms, Hot start <150ms, Idle RAM <150MB, 120 FPS compositor animation budget[cite: 1].
+# 0. PLAN AUTHORITY AND NON-NEGOTIABLES
+
+## 0.1 Source hierarchy
+
+When requirements conflict, use this order:
+
+1. Explicit user requirements.
+2. `AGENTS.md` repository safety, architecture, skill, and verification rules.
+3. `DESIGN.md` / Zyntrix Design Language (ZDL).
+4. `prompt.txt` product requirements.
+5. Windows 11 reconstruction specification as the reference model.
+6. Existing repository architecture and established implementation conventions.
+7. Loaded skills.
+8. Generic model assumptions.
+
+If two requirements genuinely conflict and cannot be resolved, **STOP** before implementation.
+
+## 0.2 Prompt compliance is continuous
+
+`prompt.txt` is not merely an initial prompt. It is a **living acceptance specification**.
+
+Every phase, feature, refactor, and release must be checked against it.
+
+An implementation is incomplete if it works technically but violates any applicable requirement from `prompt.txt`.
+
+The agent must maintain a **Prompt Compliance Matrix** throughout the project:
+
+```text
+Prompt requirement
+    ↓
+PLAN phase / feature
+    ↓
+Implementation
+    ↓
+Verification
+    ↓
+Evidence
+    ↓
+PASS / FAIL / BLOCKED
+```
+
+No requirement may silently disappear because it was not convenient to implement.
+
+## 0.3 No phase skipping
+
+The project uses sequential phases:
+
+```text
+Phase 0 → Phase 1 → Phase 2 → ... → Phase 12
+```
+
+A phase must be completed and accepted before the next phase begins.
+
+A later phase may not be used to hide unfinished mandatory work from an earlier phase.
 
 ---
 
-## Phase 1: Architecture, Crate Workspace DAG & IPC Pipeline (COMPLETED)[cite: 1, 2]
-- [x] **Cargo & pnpm Workspace Setup:** Pinned Rust 1.97 and pnpm 11 workspace DAG (`apps/zettings`, 7 core crates, `packages/ts-bindings`)[cite: 1, 2].
-- [x] **Core Crates Skeleton:** Implemented `zsettings-core`, `zsettings-bus`, `zettings-ipc`, `zettings-polkit`, `zettings-plugin-sdk`, `zettings-palette`, and `zettings-search`[cite: 1, 2].
-- [x] **IPC Binding Pipeline:** Configured `ts-rs` v12 payload derivation exporting typed interfaces to `@zettings/bindings`[cite: 1, 2].
-- [x] **Mock Execution Layer:** Created `zsettings-mock` feature flag enabling full state-machine mock backend execution on Windows development hosts[cite: 1].
-- [x] **Capabilities & Assets:** Resolved Tauri ACL capabilities (`core:webview:allow-internal-toggle-devtools`) and generated PNG/ICO assets[cite: 2].
-- [x] **Architecture Diagrams:** Authored 5 Mermaid system diagrams under `docs/architecture/`[cite: 1, 2].
+# 1. PRODUCT VISION
 
-**Gate Commit:** `git commit -m "phase(1): complete architecture scaffold and crate workspace"`[cite: 1]
+ZETTINGS is a next-generation Linux system settings application for Zyntrix OS.
 
----
+It must combine:
 
-## Phase 2: Zyntrix Design Language (ZDL) Specification & Token Cascade (COMPLETED)
-- [x] **Primitive & Semantic Design Tokens:** Create CSS variable system for surface elevation, translucent glass tints, specular edge highlights, and wallpaper accent colors[cite: 2].
-- [x] **Continuous Curvature Math Engine:** Implement G2 ($n=4$) and G3 ($n=6$) superellipse squircle clip-path generators in React/TypeScript[cite: 1].
-- [x] **Liquid Glass Material Composition:** Construct multi-layered CSS backdrop-filter panels (`blur(24px)`, `saturate(180%)`) with dynamic contrast adjustments[cite: 2].
-- [x] **Tailwind v4 `@theme` Integration:** Map ZDL primitive tokens directly into Tailwind v4 workspace configurations[cite: 2].
-- [x] **Tauri Decorum Shell Window:** Integrate custom transparent window frame with native window controls[cite: 2].
+- Windows 11's strong settings information architecture and discoverability;
+- Apple's refinement, hierarchy, responsiveness, and interaction quality;
+- KDE/Linux-native system integration;
+- Rust/Tauri security and maintainability;
+- an original Zyntrix Design Language (ZDL).
 
-**Gate Commit:** `git commit -m "phase(2): build ZDL token cascade and liquid glass visual shell"`[cite: 1]
+It is **not a Windows clone**.
+
+The Windows reference explicitly defines the target as the Windows Settings mental model plus Windows/Fluent grammar, KDE/Linux-native implementation, data-driven registry, strong search, deep links, native adapters, accessibility, and responsive navigation. fileciteturn2file0L122-L148
+
+`prompt.txt` requires the finished product to exceed major desktop settings applications in UI, UX, animation, architecture, performance, integration, accessibility, consistency, extensibility, and maintainability. fileciteturn2file3L734-L770
 
 ---
 
-## Phase 3: 120 FPS Motion Engine & Physics Solvers (COMPLETED)
-- [x] **Spring Physics Solver:** Build analytical and RK4 spring-damper solvers (`stiffness`, `damping`, `mass`, `velocity`) running on compositor thread[cite: 1].
-- [x] **Continuous Curvature Transitions:** Implement page route transition hooks maintaining velocity across tab changes[cite: 1].
-- [x] **Micro-Interaction System:** Build spring-animated sliders, toggle switches, expanders, and press-feedback cards with physical weight[cite: 1].
-- [x] **Reduced Motion Adaptive Fallbacks:** Implement automatic fallback to opacity cross-fades when system `prefers-reduced-motion` is active[cite: 1].
+# 2. MASTER ACCEPTANCE TARGET
 
-**Gate Commit:** `git commit -m "phase(3): build 120 FPS spring motion engine and physics solvers"`[cite: 1]
+At release, ZETTINGS must satisfy all applicable requirements in these domains:
 
----
+## Product
 
-## Phase 4: Core Framework, Plugin SDK & Tokio Message Bus `(COMPLETED)`
-- [x] **`zsettings-bus` Event Router:** Build async tokio broadcast channel for live system event streaming (e.g., link state, audio volume, display re-plug)[cite: 1, 2].
-- [x] **`zsettings-core` Plugin Registry:** Implement dynamic plugin discovery, `ring` ed25519 signature verification, and manifest parsing[cite: 1, 2].
-- [x] **`zsettings-plugin-sdk` Capability ACLs:** Enforce capability boundaries on external settings modules[cite: 1, 2].
-- [x] **`zsettings-polkit` Auth Gateway:** Implement PolicyKit privilege check pipeline returning structured Authorization/Challenge/Denied responses[cite: 1, 2].
+- Production-grade system settings application.
+- No toy examples.
+- No fake integrations presented as real.
+- No unexplained placeholders.
+- No pseudo-code in production implementation.
+- No arbitrary shortcuts.
 
-**Gate Commit:** `git commit -m "phase(4): build tokio message bus, plugin loader, and polkit authorization gateway"`[cite: 1]
+## UI / UX
 
----
+- Original ZDL.
+- Windows-inspired information architecture.
+- Premium visual hierarchy.
+- Responsive navigation.
+- Reusable settings primitives.
+- Consistent interaction behavior.
+- Deep linking.
+- Breadcrumb/context navigation.
+- Excellent empty/loading/error/permission states.
 
-## Phase 5: Deep System Backend Integration (`zbus` & Linux Services)
-- [x] **Display (`zsettings-display`):** `zbus` bindings to `org.kde.KScreen` for resolution, refresh rate, scaling, and night color management[cite: 1, 2].
-- [x] **Audio (`zsettings-audio`):** `libpulse-binding` and `pipewire` hooks for per-application volume sliders, stream routing, and device selection[cite: 1, 2].
-- [x] **Network & Bluetooth (`zsettings-network`, `zsettings-bluetooth`):** `zbus` bindings to `NetworkManager` and `BlueZ` for Wi-Fi scanning, VPN, and device pairing[cite: 1, 2]. _(Bluetooth/VPN deferred — `zettings-network` covers hostname + Wi-Fi scan; `BlueZ` merges into network per AGENTS.md "Network & Bluetooth Engineer".)_
-- [x] **Power & Battery (`zsettings-power`):** `UPower` and `power-profiles-daemon` hooks for charge thresholds and performance profile switching[cite: 1, 2].
-- [ ] **Accounts & System (`zsettings-accounts`):** `AccountsService` and `logind` integration for user profile management and session control[cite: 1, 2]. _(Deferred to Phase 6+ — no `zettings-bus` event type requires it yet.)_
+## Motion
 
-**Gate Commit:** `git commit -m "phase(5): implement zbus linux service integration across domain crates"`[cite: 1]
+- G2/G3 continuity where defined by ZDL.
+- Bezier interpolation.
+- Spring interpolation.
+- Velocity preservation.
+- Momentum.
+- Elasticity.
+- Dynamic easing.
+- Micro-interactions.
+- Anticipation / overshoot / settle.
+- Secondary motion.
+- Parallax/depth where justified.
+- Adaptive and context-aware duration.
+- GPU-accelerated rendering.
+- No janky or blocking animation.
+- Target 120 FPS.
 
----
+These requirements are explicitly specified by `prompt.txt`. fileciteturn1file1L593-L693
 
-## Phase 6: Frontend Shell, Spotlight Search & Navigation Graph
-- [x] **In-Memory Tantivy Index (`zsettings-search`):** Build schema-driven search index for settings options, sub-menus, keywords, and aliases[cite: 1, 2].
-- [x] **Sub-5ms Fuzzy Search:** Combine Tantivy with `strsim` Levenshtein distance for typo-tolerant query results over IPC[cite: 1, 2].
-- [x] **Spotlight Modal Component:** Build Apple-inspired centered glass search overlay triggered by global shortcut (`Super+I` / `Ctrl+Space`)[cite: 1, 2].
-- [x] **Breadcrumbs & Settings Graph Navigation:** Implement deep-linking router capability that highlights target controls upon navigation[cite: 1, 2].
+## System integration
 
-**Gate Commit:** `git commit -m "phase(6): build frontend shell, deep search engine, and navigation graph"`[cite: 1]
+The architecture must support the complete requested integration surface, including:
 
----
+- display / resolution / scaling / HDR / night light / refresh rate / GPU / color profiles;
+- audio / microphone;
+- Bluetooth / Wi-Fi / Ethernet / VPN / firewall;
+- updates;
+- storage / battery / power / performance modes;
+- processes / startup apps;
+- users / groups;
+- accessibility / keyboard / mouse / touchpad / tablet / stylus;
+- fonts / regional settings / language / notifications;
+- privacy / security / developer options;
+- Wayland / X11;
+- virtual desktops / window rules / KWin / KDE effects;
+- package management / drivers / printers / USB / Thunderbolt / DisplayLink / docking;
+- file associations / default apps;
+- themes / wallpaper / accent / animations / cursor / icons;
+- shell / terminal;
+- network shares / remote desktop / SSH;
+- containers / Flatpak / Snap / AppImage / Docker / Podman / VMs;
+- logs / crash reports / services / systemd / journal;
+- environment variables / power profiles;
+- BIOS / kernel / CPU / GPU / memory / sensors / fans / thermals.
 
-## Phase 7: Domain Feature Modules (UI Panels)
-- [ ] **Display & Monitor Canvas Panel:** Interactive drag-and-arrange monitor arrangement canvas with snapping alignment[cite: 1].
-- [ ] **Sound Mixer & Equalizer Panel:** Per-app audio mixer cards with live VU volume meters[cite: 1].
-- [ ] **Network & Wi-Fi Panel:** Access point connection lists with signal strength meters and security credential prompts[cite: 1].
-- [ ] **Bluetooth & Peripherals Panel:** Paired device management cards with battery percentage indicators[cite: 1].
-- [ ] **Power & Performance Panel:** Interactive battery health discharge graphs and power profile toggles[cite: 1].
-- [ ] **Personalization & ZDL Theme Panel:** Dynamic wallpaper accent color picker, squircle roundness sliders, and blur controls[cite: 1].
-
-**Gate Commit:** `git commit -m "phase(7): construct complete domain settings feature modules"`[cite: 1]
-
----
-
-## Phase 8: Comprehensive Testing Suite & Security Audit
-- [ ] **Backend Unit & Integration Tests:** Run `cargo nextest run --workspace` covering mock state machines, IPC contracts, and PolicyKit checks[cite: 1].
-- [ ] **Frontend Component Unit Tests:** Execute `pnpm -r test` validating React component rendering, state hooks, and binding parsing[cite: 1].
-- [ ] **IPC Security & Fuzz Testing:** Sanitize all Tauri command payload inputs and verify permission boundary rejection[cite: 1].
-- [ ] **License & Dependency Audit:** Execute `cargo deny check` ensuring zero security advisories and strict dual MIT/Apache-2.0 compliance[cite: 1].
-
-**Gate Commit:** `git commit -m "phase(8): execute test suite, IPC security audit, and license validation"`[cite: 1]
-
----
-
-## Phase 9: Performance Optimization & 120 FPS Audit
-- [x] **Launch Time Benchmarking:** Validate cold start <500ms and hot start <150ms using performance tracing[cite: 1].
-- [x] **Memory Footprint Audit:** Profile process memory to ensure idle footprint stays under 150MB RAM[cite: 1].
-- [x] **120 FPS Frame Rate Audit:** Audit animation paths using Chrome DevTools performance traces to eliminate DOM reflows and layout thrashing[cite: 1].
-
-**Gate Commit:** `git commit -m "phase(9): optimize binary execution speed, memory footprint, and rendering pipeline"`[cite: 1]
-
----
-
-## Phase 10: Production Packaging & System Integration
-- [x] **Debian Package Build (`.deb`):** Configured Tauri bundler `bundle.linux.deb` (system `depends`, `section`/`priority`, desktop template, extra files) so Kubuntu 24.04 LTS packages install binaries, desktop entries, and icons. Package generation runs in WSL2: `pnpm -F zettings tauri build --bundles deb`[cite: 1, 2].
-- [x] **PolicyKit Actions Installation:** Authored `packaging/org.zyntrix.zettings.policy` with the 5 privileged actions (`network.set-hostname`, `display.apply-mode`, `audio.set-volume`, `network.scan-wifi`, `power.set-profile`); installed to `/usr/share/polkit-1/actions/` via `deb.files`[cite: 1, 2].
-- [x] **Systemd User Service:** Created `packaging/zettings-daemon.service` (headless `zettings --daemon` mode in `main.rs` — warms the in-memory search index + holds live bus state-sync subscriptions); installed to `/usr/lib/systemd/user/` via `deb.files`[cite: 1].
-- [x] **KDE Plasma Integration:** Desktop template (`packaging/zettings.desktop`) rendered to `/usr/share/applications/zettings.desktop` with `Settings;System;` categories + `X-KDE-System-Settings-Categories` mapping into KDE Plasma System Settings[cite: 1].
-
-**Gate Commit:** `git commit -m "phase(10): construct production debian package, systemd service, and desktop integration"`[cite: 1]
+This inventory comes directly from `prompt.txt`; unsupported hardware or platform capabilities must be represented honestly rather than faked. fileciteturn1file0L11-L109
 
 ---
 
-## Phase 11: Developer Documentation & API Specifications
-- [ ] **Plugin Developer Guide:** Author `docs/plugins/developer-guide.md` specifying module manifest structures, capabilities, and IPC protocols[cite: 1].
-- [ ] **Architecture Manual:** Finalize `docs/architecture/` documenting crate relationships, IPC sequences, and security boundaries[cite: 1, 2].
-- [ ] **Contribution Guide:** Create `CONTRIBUTING.md` detailing toolchain requirements, code style guidelines, and verify gate procedures[cite: 1].
+# 3. ARCHITECTURAL PRINCIPLE
 
-**Gate Commit:** `git commit -m "phase(11): finalize developer documentation and API specifications"`[cite: 1]
+Use a data-driven settings graph:
+
+```text
+Canonical Registry
+      ↓
+Category
+      ↓
+Page
+      ↓
+Section
+      ↓
+Setting Definition
+      ↓
+Reusable Control Renderer
+      ↓
+Capability / Permission Layer
+      ↓
+Backend Adapter
+      ↓
+Native Linux / KDE subsystem
+```
+
+The Windows reconstruction reference specifically recommends a registry → page definition → section definition → setting definition → control renderer → native Linux backend pipeline. fileciteturn2file5L1229-L1275
+
+Every setting must have at least:
+
+```text
+stable ID
+title
+description
+category
+page
+section
+route
+aliases
+keywords
+icon
+control type
+current-value provider
+set-value action
+validation
+permission requirements
+hardware requirements
+reboot requirements
+search weight
+backend capability
+```
 
 ---
 
-## Phase 12: Production Release Delivery
-- [ ] **Full CI Pipeline Execution:** Run `pnpm ci:check` validating all format, lint, typecheck, compile, and test gates[cite: 1].
-- [ ] **Tag Release Artifacts:** Tag release `v1.0.0` and output final build binaries for Zyntrix OS[cite: 1].
+# 4. WINDOWS SETTINGS RECONSTRUCTION BASELINE
 
-**Gate Commit:** `git commit -m "phase(12): deliver production release build v1.0.0 for Zyntrix OS"`[cite: 1]
+Use Windows Settings as the **engineering and information-architecture reference**, not as proprietary source code.
+
+The current top-level model is:
+
+```text
+Home
+System
+Bluetooth & devices
+Network & internet
+Personalization
+Apps
+Accounts
+Time & language
+Gaming
+Accessibility
+Privacy & security
+Windows Update
+```
+
+The reference identifies this as the recognizable Windows Settings mental model. fileciteturn2file6L1407-L1427
+
+Use the following hierarchy:
+
+```text
+L0 Application shell
+L1 Category / hub
+L2 Settings page
+L3 Section / group
+L4 Setting entity / card / row
+L5 Inline expander / sub-setting
+L6 Dialog / flyout / picker / advanced page
+```
+
+This hierarchy is explicitly identified in the Windows reconstruction specification. fileciteturn2file4L1079-L1120
+
+Reusable templates must include:
+
+```text
+CategoryPageTemplate
+L2SettingsPageTemplate
+SettingsGroupTemplate
+SettingsCardTemplate
+SettingsExpanderTemplate
+DeviceListTemplate
+DetailPageTemplate
+SearchResultTemplate
+PermissionTemplate
+ErrorTemplate
+EmptyStateTemplate
+```
+
+---
+
+# 5. SEARCH ARCHITECTURE
+
+ZETTINGS search is a first-class subsystem, not a text filter.
+
+Required capabilities:
+
+- natural-language search;
+- fuzzy matching;
+- AI-assisted ranking;
+- synonyms;
+- aliases;
+- misspelling tolerance;
+- keyboard navigation;
+- instant results;
+- recent settings;
+- pinned settings;
+- frequently used settings;
+- context awareness;
+- predictive suggestions;
+- searchable settings index.
+
+These requirements are explicit in `prompt.txt`. fileciteturn1file0L111-L141
+
+Recommended pipeline:
+
+```text
+Query
+ ↓
+Normalization
+ ↓
+Exact title/ID match
+ ↓
+Keyword / alias match
+ ↓
+Fuzzy match
+ ↓
+Semantic retrieval
+ ↓
+Context/recent/frequency boosts
+ ↓
+Ranked settings
+ ↓
+Direct route
+```
+
+Baseline ranking from the Windows reconstruction:
+
+```text
+exact title match       +100
+exact keyword match      +80
+alias match              +70
+page/category match      +50
+description match       +35
+semantic similarity      +30
+recently used            +10
+fuzzy spelling            +5
+```
+
+Direct settings must rank above broad category pages. fileciteturn2file7L1651-L1683
+
+AI-assisted setting changes must always use:
+
+```text
+Intent
+ ↓
+Candidate setting
+ ↓
+Explanation
+ ↓
+Preview
+ ↓
+Explicit user confirmation
+ ↓
+Validated backend action
+ ↓
+Result
+```
+
+Never allow AI to silently change arbitrary system configuration. fileciteturn2file7L1622-L1647
+
+---
+
+# 6. DEEP LINKING
+
+Use ZETTINGS-owned routes.
+
+Examples:
+
+```text
+zettings://system
+zettings://system/display
+zettings://system/sound
+zettings://system/power
+zettings://devices/bluetooth
+zettings://devices/printers
+zettings://network/wifi
+zettings://network/ethernet
+zettings://personalization/background
+zettings://personalization/themes
+zettings://apps/installed
+zettings://accounts/sign-in
+zettings://accessibility/display
+zettings://privacy/microphone
+zettings://updates
+```
+
+The Windows specification explicitly recommends a ZETTINGS route scheme rather than copying `ms-settings:`. fileciteturn2file9L2019-L2045
+
+Rules:
+
+- Every navigable setting has a stable route.
+- Every route maps to exactly one page definition.
+- Routes must be serializable and testable.
+- Back/forward navigation must work.
+- Deep-linked pages must load directly.
+- Permission/hardware failures must not break routing.
+
+---
+
+# 7. DESIGN SYSTEM — ZDL
+
+`prompt.txt` requires an original design language named **Zyntrix Design Language (ZDL)**.
+
+Do not copy Windows, macOS, GNOME, KDE, or another product.
+
+Take inspiration from them while producing an original visual system. fileciteturn1file2L834-L864
+
+ZDL must define:
+
+```text
+Color tokens
+Typography
+Spacing
+Density
+Elevation
+Materials
+Transparency
+Blur
+Geometry
+G2/G3 curvature
+Controls
+Icons
+Focus
+Selection
+Hover
+Pressed states
+Disabled states
+Dark mode
+OLED mode
+Light mode
+Motion tokens
+Accessibility variants
+```
+
+Repository `DESIGN.md` remains authoritative for exact ZDL values.
+
+The Windows reference supplies reusable UI anatomy such as SettingsCard, SettingsExpander, navigation, constrained content, and standard controls; ZDL must translate those concepts into Zyntrix's own geometry and materials. fileciteturn2file4L1124-L1193
+
+---
+
+# 8. MOTION ENGINE
+
+Build the motion system before feature-heavy UI.
+
+Architecture:
+
+```text
+Interaction
+ ↓
+Motion intent
+ ↓
+Context
+ ↓
+Physics parameters
+ ↓
+Interpolation
+ ↓
+GPU-composited animation
+ ↓
+Accessibility/reduced-motion policy
+```
+
+Motion engine must support:
+
+- G2/G3 continuity;
+- Bezier interpolation;
+- spring interpolation;
+- velocity preservation;
+- momentum;
+- elasticity;
+- dynamic easing;
+- micro-interactions;
+- anticipation;
+- overshoot;
+- settle;
+- secondary motion;
+- parallax;
+- depth;
+- adaptive duration;
+- context-aware motion.
+
+`prompt.txt` explicitly requires these motion primitives and a 120 FPS target. fileciteturn1file1L643-L693
+
+Reduced-motion mode must disable or simplify non-essential motion without breaking interaction.
+
+---
+
+# 9. SECURITY ARCHITECTURE
+
+Security is a product feature.
+
+Required principles:
+
+- Zero Trust.
+- Least privilege.
+- Sandboxing.
+- Secure IPC.
+- PolicyKit.
+- Capability-based permissions.
+- Input sanitization.
+- Permission validation.
+- Audit logging.
+- Threat modeling.
+- No unsafe arbitrary command execution.
+- Privileged operations isolated in backend adapters.
+
+These are explicit `prompt.txt` requirements. fileciteturn2file1L317-L341
+
+Additional rules:
+
+```text
+React/UI
+  NEVER directly modifies system files.
+
+UI
+  → typed Tauri command
+  → capability/authorization layer
+  → backend adapter
+  → native API
+```
+
+System changes must go through backend adapters and privileged operations must be isolated and validated. fileciteturn2file8L1792-L1825
+
+---
+
+# 10. PERFORMANCE BUDGET
+
+Target:
+
+```text
+Cold launch       < 500 ms
+Hot launch        < 150 ms
+Memory            < 150 MB
+Target rendering  120 FPS
+```
+
+Required strategies:
+
+- lazy-loaded feature modules;
+- lazy backend initialization;
+- background search indexing;
+- asynchronous system queries;
+- parallel independent backend queries;
+- memoized selectors;
+- zero unnecessary React re-renders;
+- resource cleanup;
+- no memory leaks;
+- GPU-accelerated animations;
+- no blocking IPC;
+- bounded caches;
+- incremental rendering for large lists.
+
+These targets and techniques are specified in `prompt.txt`. fileciteturn2file1L343-L365
+
+Every performance claim must be measured.
+
+---
+
+# 11. ACCESSIBILITY
+
+Target:
+
+- WCAG AAA where applicable;
+- screen-reader support;
+- keyboard-only operation;
+- reduced motion;
+- high contrast;
+- large-font support;
+- color-blind-safe information encoding;
+- visible focus;
+- accessible animation;
+- voice-navigation-ready semantics.
+
+These requirements are explicitly listed in `prompt.txt`. fileciteturn2file1L367-L387
+
+Every interactive control must have:
+
+```text
+accessible name
+role
+state/value
+keyboard operation
+focus behavior
+screen-reader semantics
+error/disabled explanation where relevant
+```
+
+---
+
+# 12. THEMING
+
+Required modes:
+
+```text
+Light
+Dark
+OLED
+```
+
+Required customization:
+
+```text
+Dynamic accent colors
+Wallpaper-derived colors
+Custom themes
+Roundedness
+Transparency
+Blur
+Animation intensity
+Compact mode
+Comfort mode
+Developer mode
+```
+
+These requirements come from `prompt.txt`. fileciteturn2file1L389-L415
+
+All theme values must flow through ZDL tokens.
+
+No feature may hard-code theme colors or geometry without a documented exception.
+
+---
+
+# 13. BACKEND INTEGRATION MATRIX
+
+Build adapters rather than embedding platform calls into UI components.
+
+Primary backend technologies required by `prompt.txt` include:
+
+```text
+Rust
+Tauri v2
+Tokio
+zbus
+D-Bus
+PolicyKit
+systemd
+NetworkManager
+PipeWire
+PulseAudio
+UPower
+PowerProfilesDaemon
+AccountsService
+BlueZ
+KScreen
+KWin APIs
+libinput
+login1
+PackageKit
+Flatpak
+Snap
+AppImage
+Debian packaging
+```
+
+fileciteturn1file1L519-L567
+
+Suggested adapter boundaries:
+
+```text
+DisplayAdapter
+AudioAdapter
+BluetoothAdapter
+NetworkAdapter
+VpnAdapter
+FirewallAdapter
+UpdateAdapter
+StorageAdapter
+BatteryAdapter
+PowerAdapter
+ProcessAdapter
+StartupAdapter
+AccountsAdapter
+AccessibilityAdapter
+InputAdapter
+FontAdapter
+LocaleAdapter
+NotificationAdapter
+PrivacyAdapter
+SecurityAdapter
+KWinAdapter
+DesktopAdapter
+PackageAdapter
+PrinterAdapter
+UsbAdapter
+ContainerAdapter
+VirtualizationAdapter
+DiagnosticsAdapter
+SystemAdapter
+```
+
+Each adapter exposes typed capabilities and reports unavailable functionality honestly.
+
+---
+
+# 14. PHASE 0 — RESEARCH
+
+## Objectives
+
+Establish the factual and architectural baseline before implementation.
+
+## Tasks
+
+- Read and reconcile `prompt.txt`.
+- Read the Windows reconstruction specification completely.
+- Read `AGENTS.md`.
+- Read `DESIGN.md`.
+- Inventory existing repository architecture.
+- Inventory existing skills.
+- Identify authoritative skill for every technical concern.
+- Load all required skills before repository work.
+- Build Prompt Compliance Matrix.
+- Build Windows → Zyntrix feature mapping.
+- Identify Linux backend feasibility.
+- Identify unsupported/optional platform features.
+- Establish terminology.
+- Establish security threat model.
+- Establish performance measurement methodology.
+
+## Deliverables
+
+```text
+docs/research/
+docs/research/prompt-compliance.md
+docs/research/windows-to-zyntrix-mapping.md
+docs/research/backend-capability-matrix.md
+docs/research/threat-model.md
+docs/research/performance-baseline.md
+```
+
+## Exit gate
+
+No unresolved architectural contradiction.
+
+---
+
+# 15. PHASE 1 — ARCHITECTURE
+
+## Objectives
+
+Create the production architecture.
+
+## Tasks
+
+- Define workspace boundaries.
+- Define Rust crates using `zettings-` naming.
+- Define Tauri IPC architecture.
+- Define frontend/backend boundary.
+- Define capability system.
+- Define backend adapter interface.
+- Define settings registry.
+- Define settings graph.
+- Define routing.
+- Define search index.
+- Define plugin architecture.
+- Define dependency injection.
+- Define message bus.
+- Define repository pattern where appropriate.
+- Define state machines.
+- Define error model.
+- Define observability.
+- Define audit logging.
+- Define permissions model.
+
+## Deliverables
+
+```text
+architecture diagrams
+sequence diagrams
+component diagrams
+data-flow diagrams
+API contracts
+settings registry schema
+route schema
+capability model
+```
+
+## Exit gate
+
+Architecture review passes and Prompt Compliance Matrix remains complete.
+
+---
+
+# 16. PHASE 2 — DESIGN SYSTEM
+
+## Objectives
+
+Implement ZDL foundations.
+
+## Tasks
+
+- Define tokens.
+- Define typography.
+- Define spacing.
+- Define density.
+- Define surfaces/materials.
+- Define G2/G3 geometry.
+- Define control states.
+- Define icons.
+- Define focus states.
+- Define light/dark/OLED themes.
+- Define accessibility variants.
+- Define responsive breakpoints.
+- Define component primitives.
+- Define SettingsCard.
+- Define SettingsExpander.
+- Define navigation row.
+- Define info bar.
+- Define picker primitives.
+
+## Exit gate
+
+Core components visually and semantically satisfy `DESIGN.md` and Windows reference hierarchy without becoming a Windows clone.
+
+---
+
+# 17. PHASE 3 — MOTION ENGINE
+
+## Objectives
+
+Create reusable ZDL motion infrastructure.
+
+## Tasks
+
+- Motion token system.
+- Spring system.
+- Bezier system.
+- G2/G3 transition support.
+- Velocity tracking.
+- Gesture state.
+- Enter/exit transitions.
+- Navigation transitions.
+- Expansion transitions.
+- Hover/press/focus feedback.
+- Modal/flyout transitions.
+- Reduced-motion behavior.
+- GPU compositing strategy.
+- Frame-time instrumentation.
+
+## Exit gate
+
+Motion primitives are reusable, measurable, accessible, and do not block rendering.
+
+---
+
+# 18. PHASE 4 — CORE FRAMEWORK
+
+## Objectives
+
+Build the application shell.
+
+## Tasks
+
+- Window shell.
+- Navigation shell.
+- Responsive navigation.
+- Search surface.
+- Back/forward navigation.
+- Breadcrumbs.
+- Routing.
+- Settings registry loading.
+- Error boundaries.
+- Loading states.
+- Empty states.
+- Permission states.
+- Notification/InfoBar system.
+- Keyboard navigation.
+- Accessibility tree.
+- Theme engine.
+- State management.
+
+## Navigation model
+
+Use:
+
+```text
+Desktop
+  expanded navigation
+
+Medium
+  compact navigation
+
+Narrow
+  overlay/minimal navigation
+```
+
+The Windows specification explicitly warns against keeping a giant always-open sidebar at every width. fileciteturn2file4L1075-L1120
+
+---
+
+# 19. PHASE 5 — BACKEND INTEGRATION
+
+## Objectives
+
+Connect ZETTINGS to real Linux/KDE systems.
+
+## Tasks
+
+Implement adapters incrementally:
+
+1. D-Bus / zbus foundation.
+2. PolicyKit.
+3. systemd/login1.
+4. NetworkManager.
+5. PipeWire/PulseAudio.
+6. BlueZ.
+7. KScreen.
+8. KWin.
+9. UPower / power profiles.
+10. AccountsService.
+11. libinput/input.
+12. udisks/storage.
+13. CUPS/printers.
+14. PackageKit.
+15. Flatpak.
+16. Snap.
+17. AppImage.
+18. Diagnostics/system information.
+19. Containers/VM integrations.
+20. Remaining feature adapters.
+
+No UI should call native system APIs directly.
+
+## Exit gate
+
+Each adapter has:
+
+```text
+typed API
+capability detection
+permission handling
+error handling
+tests
+mock implementation where required
+real Linux integration path
+```
+
+---
+
+# 20. PHASE 6 — FRONTEND
+
+## Objectives
+
+Build the complete user-facing shell on the framework.
+
+## Tasks
+
+Implement:
+
+```text
+Home
+System
+Bluetooth & devices
+Network & internet
+Personalization
+Apps
+Accounts
+Time & language
+Gaming
+Accessibility
+Privacy & security
+Updates
+```
+
+The Windows reference establishes these categories as the baseline information architecture. fileciteturn2file6L1407-L1427
+
+Do not blindly reproduce every historical Windows Settings URI. The reference explicitly warns that some entries are deprecated or conditional. fileciteturn2file9L1948-L2015
+
+---
+
+# 21. PHASE 7 — FEATURE MODULES
+
+Build modules from highest-value/core system capabilities to extended integrations.
+
+## Tier 1 — Core desktop
+
+- Display.
+- Audio.
+- Network.
+- Bluetooth.
+- Power.
+- Storage.
+- Appearance.
+- Input.
+- Users.
+- Accessibility.
+
+## Tier 2 — System management
+
+- Apps.
+- Packages.
+- Updates.
+- Printers.
+- Privacy.
+- Security.
+- Developer options.
+- Services.
+- Startup.
+- Processes.
+
+## Tier 3 — KDE/Zyntrix
+
+- KWin.
+- Window rules.
+- Virtual desktops.
+- KDE effects.
+- Plasma integration.
+- Shell.
+- Terminal.
+- Theme engine.
+- Zyntrix-specific settings.
+
+## Tier 4 — Advanced ecosystem
+
+- Containers.
+- Flatpak.
+- Snap.
+- AppImage.
+- Docker.
+- Podman.
+- Virtual machines.
+- SSH.
+- Remote desktop.
+- Diagnostics.
+- Logs.
+- Crash reports.
+- Hardware telemetry.
+
+Each module must consume the canonical registry and reusable components.
+
+---
+
+# 22. PHASE 8 — TESTING
+
+## Test layers
+
+### Rust
+
+- unit tests;
+- integration tests;
+- backend adapter tests;
+- permission tests;
+- error-path tests;
+- serialization tests;
+- IPC contract tests.
+
+### Frontend
+
+- component tests;
+- state tests;
+- routing tests;
+- keyboard navigation tests;
+- accessibility tests;
+- search tests;
+- theme tests;
+- reduced-motion tests.
+
+### Integration
+
+- real D-Bus;
+- real NetworkManager;
+- real PipeWire;
+- real BlueZ;
+- real KScreen;
+- real KWin;
+- PolicyKit;
+- systemd/login1.
+
+### Visual
+
+- screenshot regression;
+- responsive breakpoints;
+- theme comparisons;
+- state comparisons;
+- animation/frame-time checks.
+
+### Performance
+
+Measure the explicit `prompt.txt` targets rather than claiming them.
+
+---
+
+# 23. PHASE 9 — OPTIMIZATION
+
+## Objectives
+
+Meet or improve the performance budget.
+
+## Tasks
+
+- cold launch profiling;
+- hot launch profiling;
+- memory profiling;
+- React render profiling;
+- Rust profiling;
+- IPC latency;
+- backend query parallelization;
+- search indexing optimization;
+- lazy loading;
+- cache tuning;
+- GPU compositing;
+- animation frame profiling;
+- leak detection.
+
+## Acceptance
+
+```text
+Cold launch < 500 ms
+Hot launch  < 150 ms
+Memory      < 150 MB
+Target      120 FPS
+```
+
+If hardware/environment prevents a target from being met, document the measured result and bottleneck instead of fabricating compliance.
+
+---
+
+# 24. PHASE 10 — PACKAGING
+
+## Objectives
+
+Produce installable Zyntrix artifacts.
+
+## Tasks
+
+- Debian packaging.
+- Tauri packaging.
+- Dependency declarations.
+- Desktop entry.
+- Icons.
+- MIME/deep-link registration.
+- Permissions.
+- PolicyKit installation.
+- Upgrade behavior.
+- Uninstall behavior.
+- Offline/install validation.
+- Versioning.
+- Release artifacts.
+
+---
+
+# 25. PHASE 11 — DOCUMENTATION
+
+Required documentation:
+
+```text
+README
+Developer Guide
+Contribution Guide
+Architecture documentation
+Backend integration guide
+Security model
+Threat model
+Testing strategy
+Performance guide
+ZDL documentation
+Plugin development guide
+Settings registry guide
+WSL2 setup
+Packaging guide
+Release guide
+```
+
+`prompt.txt` explicitly requires folder/architecture diagrams, sequence/component/data-flow diagrams, modules, API contracts, testing strategy, CI/CD, documentation, README, Developer Guide, and Contribution Guide. fileciteturn1file0L269-L303
+
+---
+
+# 26. PHASE 12 — RELEASE
+
+## Final release gate
+
+Every applicable requirement must be:
+
+```text
+PASS
+```
+
+or explicitly:
+
+```text
+BLOCKED — documented reason
+```
+
+No silent omissions.
+
+Final verification:
+
+```cmd
+cargo fmt --all --check
+cargo clippy --workspace --all-targets -- -D warnings
+cargo check --workspace
+pnpm -r typecheck
+```
+
+Then run all relevant tests, security checks, packaging checks, runtime integration checks, performance benchmarks, and visual/accessibility checks required by the affected modules.
+
+---
+
+# 27. PROMPT COMPLIANCE MATRIX
+
+Maintain this matrix throughout the project.
+
+| Requirement domain | Required | Evidence |
+|---|---:|---|
+| Production-grade implementation | YES | Build + review |
+| Original ZDL | YES | `DESIGN.md` + visual review |
+| Windows-inspired architecture | YES | Registry/navigation tests |
+| Apple-quality interaction target | YES | UX/visual review |
+| KDE/Linux-native backend | YES | Integration tests |
+| Rust + Tauri v2 | YES | Workspace |
+| React 19 + TypeScript | YES | Frontend |
+| Advanced motion engine | YES | Motion tests |
+| G2/G3 | YES | Motion/design tests |
+| 120 FPS target | YES | Performance benchmark |
+| Search | YES | Search test suite |
+| AI ranking | YES | Ranking tests |
+| Deep links | YES | Route tests |
+| Enterprise modular architecture | YES | Architecture review |
+| Zero Trust / least privilege | YES | Security review |
+| PolicyKit | YES | Permission integration |
+| Audit logging | YES | Security tests |
+| Performance budget | YES | Benchmarks |
+| WCAG AAA target | YES | Accessibility audit |
+| Light/Dark/OLED | YES | Theme tests |
+| Dynamic/custom themes | YES | Theme tests |
+| Full requested system integration | YES | Capability matrix |
+| Documentation | YES | Docs review |
+| CI/CD | YES | CI pipeline |
+| Packaging | YES | Install artifacts |
+| Release readiness | YES | Final gate |
+
+---
+
+# 28. PHASE COMPLETION CONTRACT
+
+A phase is complete only when:
+
+```text
+[ ] All phase objectives implemented
+[ ] All required skills were loaded before relevant work
+[ ] Prompt Compliance Matrix updated
+[ ] Architecture constraints respected
+[ ] ZDL constraints respected
+[ ] Security constraints respected
+[ ] Accessibility constraints respected
+[ ] Tests completed
+[ ] Applicable verification gates passed
+[ ] Documentation updated
+[ ] No known unresolved blocker
+[ ] Phase review accepted
+```
+
+Only then may the next phase begin.
+
+---
+
+# 29. ABSOLUTE DEVELOPMENT RULE
+
+The agent must continuously ask:
+
+```text
+Does this satisfy prompt.txt?
+Does this satisfy AGENTS.md?
+Does this satisfy DESIGN.md?
+Does this use the correct loaded skills?
+Does this preserve the Windows information architecture without cloning Windows?
+Does this use native Linux/KDE backends?
+Is it production-ready?
+Is it secure?
+Is it accessible?
+Is it performant?
+Is it maintainable?
+```
+
+If any answer is **NO**, the work is not complete.
+
+`prompt.txt` explicitly establishes the quality bar as production-ready, fully tested, benchmarked, and continuously evaluated against Apple, Microsoft, KDE, and Rust engineering standards. fileciteturn2file1L513-L547
+
+---
+
+# 30. FINAL PRODUCT DEFINITION
+
+ZETTINGS is successful when it becomes:
+
+> A beautiful, intelligent, fluid, secure, accessible, deeply integrated, Linux-native settings application for Zyntrix OS that uses the recognizable information architecture and discoverability principles of Windows Settings while remaining an original Zyntrix product.
+
+The Windows reference explicitly defines the final reconstruction target as Windows information architecture + Fluent grammar + KDE/Linux-native implementation + data-driven registry + strong search + stable deep links + native adapters + accessibility + responsive navigation. fileciteturn2file0L122-L148
+
+The product goal from `prompt.txt` is broader: a flagship Tauri + Rust + KDE Plasma application that is native, fluid, intelligent, deeply integrated, modular, secure, maintainable, and suitable for long-term evolution into Zyntrix OS's official settings application. fileciteturn2file1L549-L557
