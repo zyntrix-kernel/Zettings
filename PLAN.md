@@ -6,7 +6,7 @@
 >
 > **Target:** Kubuntu 24.04 / KDE Plasma 5.27
 >
-> **Primary inputs:** `prompt.txt`, `ZETTINGS_Windows_11_Settings_Deep_UI_Spec(1).md`, `AGENTS.md`, `DESIGN.md`
+> **Primary inputs:** `prompt.txt`, `ZETTINGS_Windows_11_Settings_Deep_UI_Spec.md`, `AGENTS.md`, `DESIGN.md`
 >
 > **Rule:** `prompt.txt` is a mandatory product requirement. The Windows 11 specification is the reference for information architecture, navigation, reusable settings patterns, search, and observable UX—not a license to copy Microsoft's proprietary implementation.
 
