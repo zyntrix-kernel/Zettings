@@ -22,4 +22,10 @@ fn export_typescript_bindings() {
     crate::RegistrySnapshotDto::export(&config).expect("export RegistrySnapshotDto");
     crate::SearchHitDto::export(&config).expect("export SearchHitDto");
     crate::SearchResponseDto::export(&config).expect("export SearchResponseDto");
+    crate::CapabilityStateDto::export(&config).expect("export CapabilityStateDto");
+    crate::PowerProfileSnapshotDto::export(&config).expect("export PowerProfileSnapshotDto");
+    crate::NetworkDeviceDto::export(&config).expect("export NetworkDeviceDto");
+    crate::NetworkStatusDto::export(&config).expect("export NetworkStatusDto");
+    crate::SessionCapabilitiesDto::export(&config).expect("export SessionCapabilitiesDto");
+    crate::SystemSnapshotDto::export(&config).expect("export SystemSnapshotDto");
 }

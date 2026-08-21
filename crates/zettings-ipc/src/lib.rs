@@ -14,6 +14,11 @@ mod category;
 #[cfg(feature = "export-bindings")]
 mod export;
 mod search;
+mod system;
 
 pub use category::{CategorySummaryDto, RegistrySnapshotDto};
 pub use search::{SearchHitDto, SearchResponseDto};
+pub use system::{
+    CapabilityStateDto, NetworkDeviceDto, NetworkStatusDto, PowerProfileSnapshotDto,
+    SessionCapabilitiesDto, SystemSnapshotDto,
+};

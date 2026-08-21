@@ -19,6 +19,8 @@ tracing = { workspace = true }
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
 zettings-core = { workspace = true }
 zettings-ipc = { workspace = true }
+zettings-backends = { workspace = true }
+zettings-polkit = { workspace = true }
 tauri = { version = "2", features = [] }
 
 [build-dependencies]

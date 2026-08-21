@@ -8,6 +8,7 @@ members = [
     "crates/zettings-polkit",
     "crates/zettings-plugin-sdk",
     "crates/zettings-search",
+    "crates/zettings-backends",
 ]
 
 [workspace.package]
@@ -83,6 +84,7 @@ zettings-bus = { path = "crates/zettings-bus" }
 zettings-polkit = { path = "crates/zettings-polkit" }
 zettings-plugin-sdk = { path = "crates/zettings-plugin-sdk" }
 zettings-search = { path = "crates/zettings-search" }
+zettings-backends = { path = "crates/zettings-backends" }
 
 # ---------------------------------------------------------------------------
 # Profile tuning — small release binary, fast dev cycle.
