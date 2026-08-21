@@ -14,13 +14,15 @@ export type Route =
 export function parseHash(hash: string): Route {
   const path = hash.replace(/^#\/?/, "").replace(/\/+$/, "");
   if (path === "" || path === "home") return { kind: "home" };
-  const [head, ...rest] = path.split("/");
-  const category = head?.toLowerCase() ?? "";
-  // Only the category segment is addressable until L2 pages land; deeper
-  // segments are preserved in the URL but currently resolve to their hub.
-  return category === "" || rest.some((s) => !/^[a-z0-9-]*$/.test(s))
-    ? { kind: "home" }
-    : { kind: "category", category };
+  const segments = path.split("/");
+  const category = segments[0]?.toLowerCase() ?? "";
+  // Every segment must be a valid slug; unknown-but-well-formed categories
+  // resolve to an honest "unknown location" page in the shell.
+  const wellFormed =
+    category !== "" &&
+    /^[a-z0-9-]+$/.test(category) &&
+    segments.every((s) => /^[a-z0-9-]*$/.test(s));
+  return wellFormed ? { kind: "category", category } : { kind: "home" };
 }
 
 /** Current route. */
