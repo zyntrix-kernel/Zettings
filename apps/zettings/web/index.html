@@ -3,7 +3,27 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
     <title>Zettings</title>
+    <script>
+      // Anti-flash theme resolution (DESIGN.md §9): runs before first paint.
+      (function () {
+        var mode = null;
+        try {
+          mode = localStorage.getItem("zettings.theme-mode");
+        } catch (e) {}
+        if (
+          mode !== "light" &&
+          mode !== "dark" &&
+          mode !== "oled" &&
+          mode !== "hc"
+        ) {
+          return; // system: CSS media queries resolve the appearance
+        }
+        document.documentElement.setAttribute("data-theme-mode", mode);
+        document.documentElement.setAttribute("data-theme", mode);
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
