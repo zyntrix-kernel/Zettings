@@ -1,5 +1,7 @@
+import { AnimatePresence, motion } from "motion/react";
 import { useId, useState, type ReactNode } from "react";
 import { Chevron } from "./settings-card";
+import { useMotionPolicy } from "../../lib/motion";
 
 export interface SettingsExpanderProps {
   /** Expander header title. */
@@ -17,8 +19,10 @@ export interface SettingsExpanderProps {
  * `aria-expanded`/`aria-controls` and a single expansion level — nested
  * expanders are forbidden by the Windows reconstruction spec §5.3.
  *
- * Native `<button>` semantics provide Enter/Space activation; no custom
- * keyboard handlers are added.
+ * Expansion animates through the ZDL motion engine; under reduced motion the
+ * policy collapses it to an opacity fade. The region stays in the
+ * accessibility tree via `aria-controls`; `hidden` is applied only when fully
+ * exited so screen readers never see a half-open state.
  */
 export function SettingsExpander({
   title,
@@ -27,6 +31,7 @@ export function SettingsExpander({
   icon,
 }: SettingsExpanderProps) {
   const [open, setOpen] = useState(false);
+  const policy = useMotionPolicy();
   const regionId = useId();
 
   return (
@@ -49,14 +54,23 @@ export function SettingsExpander({
           <Chevron className="zdl-expander__chevron" />
         </span>
       </button>
-      <div
-        id={regionId}
-        className="zdl-expander__region"
-        hidden={!open}
-        data-testid="expander-region"
-      >
-        {children}
-      </div>
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            id={regionId}
+            className="zdl-expander__region"
+            data-testid="expander-region"
+            key="region"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={policy.expand}
+            style={policy.reduced ? { height: "auto" } : {}}
+          >
+            {children}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
