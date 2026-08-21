@@ -272,3 +272,43 @@ mod tests {
         }
     }
 }
+
+/// Builds searchable page-level definitions for the twelve built-in
+/// categories. These are the L1 hubs of the settings graph; concrete L2/L4
+/// settings join the same list as adapter phases land them, so search always
+/// indexes exactly what exists.
+pub fn built_in_page_definitions() -> Vec<SettingDefinition> {
+    built_in_categories()
+        .values()
+        .map(|summary| SettingDefinition {
+            id: format!("{}.overview", summary.id),
+            title: summary.title.clone(),
+            description: summary.description.clone(),
+            category: CategoryId::parse(summary.id.as_str()).expect("seed id"),
+            page: summary.id.as_str().to_owned(),
+            section: "overview".to_owned(),
+            route: summary.route.clone(),
+            aliases: Vec::new(),
+            keywords: vec![summary.title.to_lowercase()],
+            control_type: ControlType::Navigate,
+            requirements: ValueRequirement::default(),
+            search_weight: 0,
+        })
+        .collect()
+}
+
+#[cfg(test)]
+mod page_tests {
+    use super::*;
+
+    #[test]
+    fn page_definitions_cover_every_category_and_route() {
+        let pages = built_in_page_definitions();
+        assert_eq!(pages.len(), BUILT_IN_CATEGORY_IDS.len());
+        let cats = built_in_categories();
+        for page in &pages {
+            assert!(cats.contains_key(&page.category));
+            assert_eq!(page.route.as_str(), format!("zettings://{}", page.category));
+        }
+    }
+}

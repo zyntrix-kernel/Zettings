@@ -12,6 +12,7 @@ publish.workspace = true
 [dependencies]
 serde = { workspace = true }
 zettings-core = { workspace = true }
+zettings-search = { workspace = true }
 ts-rs = { workspace = true }
 
 [dev-dependencies]

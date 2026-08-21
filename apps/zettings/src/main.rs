@@ -18,6 +18,14 @@ fn registry_snapshot() -> zettings_ipc::RegistrySnapshotDto {
     zettings_ipc::RegistrySnapshotDto::built_in()
 }
 
+/// Ranks built-in registry pages against a raw query using the weighted
+/// search kernel (spec §9 weights). Pure and stateless; recency/pinned/freq
+/// boosts attach with their persistence layer in Phase 7.
+#[tauri::command]
+fn search_registry(query: &str) -> zettings_ipc::SearchResponseDto {
+    zettings_ipc::SearchResponseDto::built_in_query(query)
+}
+
 fn init_tracing() {
     let filter = tracing_subscriber::EnvFilter::try_from_default_env()
         .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("info"));
@@ -27,7 +35,7 @@ fn init_tracing() {
 fn main() {
     init_tracing();
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![registry_snapshot])
+        .invoke_handler(tauri::generate_handler![registry_snapshot, search_registry])
         .run(tauri::generate_context!())
         .expect("zettings runtime failure");
 }

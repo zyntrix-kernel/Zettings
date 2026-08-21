@@ -13,5 +13,7 @@
 mod category;
 #[cfg(feature = "export-bindings")]
 mod export;
+mod search;
 
 pub use category::{CategorySummaryDto, RegistrySnapshotDto};
+pub use search::{SearchHitDto, SearchResponseDto};

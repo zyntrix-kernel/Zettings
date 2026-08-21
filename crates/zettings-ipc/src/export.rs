@@ -20,4 +20,6 @@ fn export_typescript_bindings() {
     let config = ts_rs::Config::from_env();
     crate::CategorySummaryDto::export(&config).expect("export CategorySummaryDto");
     crate::RegistrySnapshotDto::export(&config).expect("export RegistrySnapshotDto");
+    crate::SearchHitDto::export(&config).expect("export SearchHitDto");
+    crate::SearchResponseDto::export(&config).expect("export SearchResponseDto");
 }

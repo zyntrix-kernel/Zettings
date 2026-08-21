@@ -8,3 +8,5 @@
  */
 export type { CategorySummaryDto } from "./generated/category-summary";
 export type { RegistrySnapshotDto } from "./generated/registry-snapshot";
+export type { SearchHitDto } from "./generated/search-hit";
+export type { SearchResponseDto } from "./generated/search-response";

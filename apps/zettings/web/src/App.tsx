@@ -1,21 +1,27 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { CategorySummaryDto, RegistrySnapshotDto } from "@zettings/bindings";
 import { invokeIpc } from "./lib/ipc";
-import { NavRow } from "./components/zdl";
+import { currentRoute, navigateToRoute, type Route } from "./lib/router";
+import { AppShell, routeFromDeepLink } from "./components/shell/app-shell";
+import { EmptyState, ErrorBar, Loading } from "./components/shell/status";
+import { SettingsCard } from "./components/zdl";
 
 type LoadState =
   | { phase: "loading" }
   | { phase: "ready"; snapshot: RegistrySnapshotDto }
   | { phase: "error"; message: string };
 
-/**
- * Phase-2 shell proof: renders the registry seed graph through ZDL
- * primitives over typed IPC. The full responsive shell replaces this in
- * PLAN Phase 4.
- */
+function routeTitle(route: Route, categories: CategorySummaryDto[]): string {
+  if (route.kind === "home") return "Home";
+  return (
+    categories.find((c) => c.id === route.category)?.title ?? "Settings"
+  );
+}
+
 export function App() {
   const [state, setState] = useState<LoadState>({ phase: "loading" });
-  const [currentId, setCurrentId] = useState<string | null>(null);
+  const [route, setRoute] = useState<Route>(() => currentRoute());
+  const headingRef = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -34,36 +40,93 @@ export function App() {
     };
   }, []);
 
-  const openCategory = (category: CategorySummaryDto) => {
-    setCurrentId(category.id);
-  };
+  // Browser history owns Back/Forward; hashchange is the single source.
+  useEffect(() => {
+    const onHashChange = (): void => setRoute(currentRoute());
+    window.addEventListener("hashchange", onHashChange);
+    return () => window.removeEventListener("hashchange", onHashChange);
+  }, []);
+
+  // Client-side routing contract: title update + focus on page heading.
+  const categories =
+    state.phase === "ready" ? state.snapshot.categories : [];
+  useEffect(() => {
+    document.title = `${routeTitle(route, categories)} · Zettings`;
+    headingRef.current?.focus();
+  }, [route, categories]);
+
+  const navigate = (next: Route): void => navigateToRoute(next);
+  const openDeepLink = (link: string): void =>
+    setRoute(routeFromDeepLink(link));
+
+  let content: ReactNode;
+  if (state.phase === "loading") {
+    content = <Loading label="Loading settings…" />;
+  } else if (state.phase === "error") {
+    content = (
+      <ErrorBar
+        title="Settings backend unavailable"
+        detail={state.message}
+        onRetry={() => window.location.reload()}
+      />
+    );
+  } else if (route.kind === "home") {
+    content = (
+      <>
+        <h1 ref={headingRef} tabIndex={-1} className="zdl-page-title">
+          Home
+        </h1>
+        <div className="zdl-card-grid">
+          {state.snapshot.categories.map((category) => (
+            <SettingsCard
+              key={category.id}
+              title={category.title}
+              description={category.description}
+              onActivate={() => navigate({ kind: "category", category: category.id })}
+            />
+          ))}
+        </div>
+      </>
+    );
+  } else {
+    const category = state.snapshot.categories.find(
+      (c) => c.id === route.category,
+    );
+    content = category === undefined
+      ? (
+        <EmptyState
+          title="Unknown location"
+          explanation="That settings address does not exist. Use search or the navigation pane to find a setting."
+          action={
+            <button type="button" className="zdl-button" onClick={() => navigate({ kind: "home" })}>
+              Go to Home
+            </button>
+          }
+        />
+      )
+      : (
+        <>
+          <h1 ref={headingRef} tabIndex={-1} className="zdl-page-title">
+            {category.title}
+          </h1>
+          <p className="zdl-page-description">{category.description}</p>
+          {/* Honest empty state: L2 pages arrive with adapter phases. */}
+          <EmptyState
+            title="No settings pages yet"
+            explanation={`Settings for ${category.title} connect as system adapters are integrated. The category is registered and searchable; its pages are not built yet.`}
+          />
+        </>
+      );
+  }
 
   return (
-    <main style={{ maxWidth: 1000, margin: "0 auto", padding: "var(--space-8)" }}>
-      <h1 style={{ font: "var(--text-display)", marginBlockEnd: "var(--space-6)" }}>
-        Zettings
-      </h1>
-      {state.phase === "loading" && <p role="status">Loading settings registry…</p>}
-      {state.phase === "error" && (
-        <div role="alert">
-          <p>Settings backend unavailable.</p>
-          <p>{state.message}</p>
-        </div>
-      )}
-      {state.phase === "ready" && (
-        <nav aria-label="Settings categories">
-          <div style={{ display: "grid", gap: "var(--space-1)" }}>
-            {state.snapshot.categories.map((category) => (
-              <NavRow
-                key={category.id}
-                label={category.title}
-                current={currentId === category.id}
-                onActivate={() => openCategory(category)}
-              />
-            ))}
-          </div>
-        </nav>
-      )}
-    </main>
+    <AppShell
+      route={route}
+      categories={categories}
+      onNavigate={navigate}
+      onOpenDeepLink={openDeepLink}
+    >
+      {content}
+    </AppShell>
   );
 }

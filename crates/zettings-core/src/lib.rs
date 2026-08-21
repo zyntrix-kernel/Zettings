@@ -20,6 +20,6 @@ pub use capability::CapabilityState;
 pub use error::ZettingsError;
 pub use registry::{
     BUILT_IN_CATEGORY_IDS, CategoryId, CategorySummary, ControlType, SettingDefinition,
-    ValueRequirement, built_in_categories,
+    ValueRequirement, built_in_categories, built_in_page_definitions,
 };
 pub use route::{ROUTE_SCHEME, RouteId};
