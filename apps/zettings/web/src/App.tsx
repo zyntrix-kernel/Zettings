@@ -5,6 +5,7 @@ import { currentRoute, navigateToRoute, type Route } from "./lib/router";
 import { AppShell, routeFromDeepLink } from "./components/shell/app-shell";
 import { EmptyState, ErrorBar, Loading } from "./components/shell/status";
 import { SettingsCard } from "./components/zdl";
+import { SystemPage } from "./SystemPage";
 
 type LoadState =
   | { phase: "loading" }
@@ -110,11 +111,15 @@ export function App() {
             {category.title}
           </h1>
           <p className="zdl-page-description">{category.description}</p>
-          {/* Honest empty state: L2 pages arrive with adapter phases. */}
-          <EmptyState
-            title="No settings pages yet"
-            explanation={`Settings for ${category.title} connect as system adapters are integrated. The category is registered and searchable; its pages are not built yet.`}
-          />
+          {category.id === "system" ? (
+            <SystemPage />
+          ) : (
+            /* Honest empty state: pages arrive with their adapter phases. */
+            <EmptyState
+              title="No settings pages yet"
+              explanation={`Settings for ${category.title} connect as system adapters are integrated. The category is registered and searchable; its pages are not built yet.`}
+            />
+          )}
         </>
       );
   }

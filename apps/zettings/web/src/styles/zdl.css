@@ -698,3 +698,22 @@ button.zdl-card:active:not(:disabled) {
   .zdl-infobar, .zdl-empty { border: 2px solid ButtonText; }
   .zdl-search__list { border: 2px solid ButtonText; }
 }
+
+/* Select control (ComboBox primitive) */
+.zdl-select {
+  min-block-size: var(--target-comfortable);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-control);
+  background: var(--surface-elevated);
+  color: var(--text);
+  font: var(--text-body);
+}
+.zdl-select:hover:not(:disabled) {
+  background: var(--surface-muted);
+}
+
+.zdl-section-title {
+  font: var(--text-title-lg);
+  margin: var(--space-6) 0 var(--space-2);
+}
