@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import type { RegistrySnapshotDto } from "@zettings/bindings";
+import type { CategorySummaryDto, RegistrySnapshotDto } from "@zettings/bindings";
 import { invokeIpc } from "./lib/ipc";
+import { NavRow } from "./components/zdl";
 
 type LoadState =
   | { phase: "loading" }
@@ -8,12 +9,13 @@ type LoadState =
   | { phase: "error"; message: string };
 
 /**
- * Phase-1 shell proof: renders the registry seed graph fetched over typed
- * IPC. The full ZDL shell replaces this in PLAN Phase 4; structure (nav list,
- * honest loading/error states) is kept intentionally.
+ * Phase-2 shell proof: renders the registry seed graph through ZDL
+ * primitives over typed IPC. The full responsive shell replaces this in
+ * PLAN Phase 4.
  */
 export function App() {
   const [state, setState] = useState<LoadState>({ phase: "loading" });
+  const [currentId, setCurrentId] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -32,12 +34,16 @@ export function App() {
     };
   }, []);
 
+  const openCategory = (category: CategorySummaryDto) => {
+    setCurrentId(category.id);
+  };
+
   return (
-    <main className="shell">
-      <h1>Zettings</h1>
-      {state.phase === "loading" && (
-        <p role="status">Loading settings registry…</p>
-      )}
+    <main style={{ maxWidth: 1000, margin: "0 auto", padding: "var(--space-8)" }}>
+      <h1 style={{ font: "var(--text-display)", marginBlockEnd: "var(--space-6)" }}>
+        Zettings
+      </h1>
+      {state.phase === "loading" && <p role="status">Loading settings registry…</p>}
       {state.phase === "error" && (
         <div role="alert">
           <p>Settings backend unavailable.</p>
@@ -46,13 +52,16 @@ export function App() {
       )}
       {state.phase === "ready" && (
         <nav aria-label="Settings categories">
-          <ul>
+          <div style={{ display: "grid", gap: "var(--space-1)" }}>
             {state.snapshot.categories.map((category) => (
-              <li key={category.id}>
-                {category.title} — {category.description}
-              </li>
+              <NavRow
+                key={category.id}
+                label={category.title}
+                current={currentId === category.id}
+                onActivate={() => openCategory(category)}
+              />
             ))}
-          </ul>
+          </div>
         </nav>
       )}
     </main>

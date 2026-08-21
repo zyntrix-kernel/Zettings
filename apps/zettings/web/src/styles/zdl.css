@@ -1,20 +1,200 @@
-/* ZDL token cascade — Phase 1 bootstrap subset.
-   The authoritative ZDL specification lands with the DESIGN.md rewrite
-   (PLAN Phase 2); these tokens exist so the shell proof renders sanely. */
+/* ==========================================================================
+   ZDL — Zyntrix Design Language token cascade
+   Authoritative spec: DESIGN.md. This file is the ONLY place raw color
+   values may appear; components consume semantic tokens exclusively.
+   Tiers: primitive (--zdl-base-*, --accent-*) -> semantic (--surface,
+   --text, ...) -> component (--card-*, --nav-*).
+   ========================================================================== */
+
+/* ---------------------------------- Tier 1: primitives ------------------ */
 :root {
-  --zdl-base-950: #0c0a09;
   --zdl-base-50: #fafaf9;
-  --surface: var(--zdl-base-950);
-  --text: var(--zdl-base-50);
+  --zdl-base-100: #f5f5f4;
+  --zdl-base-200: #e7e5e4;
+  --zdl-base-300: #d6d3d1;
+  --zdl-base-400: #a8a29e;
+  --zdl-base-500: #78716c;
+  --zdl-base-600: #57534e;
+  --zdl-base-700: #44403c;
+  --zdl-base-800: #292524;
+  --zdl-base-900: #1c1917;
+  --zdl-base-950: #0c0a09;
+
+  /* Accent "Zyntrix Signal" — per-theme values live in Tier 2 blocks. */
+  --accent-warn: #b45309;
+  --accent-danger: #b91c1c;
+
+  /* Spacing — 4px base grid */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-16: 64px;
+
+  /* Typography */
+  --font-sans: "Inter", "Cantarell", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
+  --text-display: 600 28px/36px var(--font-sans);
+  --text-title-lg: 600 20px/28px var(--font-sans);
+  --text-title: 600 16px/24px var(--font-sans);
+  --text-body: 400 14px/21px var(--font-sans);
+  --text-caption: 400 12px/18px var(--font-sans);
+
+  /* Geometry (squircle radii; see DESIGN.md §6) */
+  --radius-control: 8px;
+  --radius-card: 12px;
+  --radius-panel: 16px;
+  --radius-overlay: 20px;
+
+  /* Glass material */
+  --glass-blur: blur(24px) saturate(180%);
+  --glass-blur-calm: blur(64px) saturate(120%);
+  --glass-specular: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+
+  /* Motion tokens (engine: Phase 3) */
+  --motion-instant: 80ms;
+  --motion-quick: 140ms;
+  --motion-normal: 220ms;
+  --motion-deliberate: 320ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    --surface: var(--zdl-base-50);
-    --text: var(--zdl-base-950);
+/* ---------------------------------- Tier 2: semantic -------------------- */
+/* Light is the default appearance. */
+:root {
+  color-scheme: light;
+  --accent: #0f766e;
+  --accent-strong: #115e59;
+  --on-accent: #ffffff;
+
+  --surface: var(--zdl-base-50);
+  --surface-elevated: #ffffff;
+  --surface-muted: var(--zdl-base-100);
+  --surface-sunken: var(--zdl-base-200);
+  --text: var(--zdl-base-900);
+  --text-muted: var(--zdl-base-600);
+  --text-subtle: var(--zdl-base-500);
+  --border: var(--zdl-base-300);
+  --border-strong: var(--zdl-base-500);
+  --focus-ring: var(--accent);
+  --shadow-color: rgba(0, 0, 0, 0.12);
+  --glass-tint: rgba(255, 255, 255, 0.45);
+  --shadow-1: 0 1px 2px var(--shadow-color);
+  --shadow-2: 0 2px 8px var(--shadow-color);
+  --shadow-3: 0 8px 24px var(--shadow-color);
+  --shadow-4: 0 16px 48px var(--shadow-color);
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --accent: #2dd4bf;
+  --accent-strong: #5eead4;
+  --on-accent: #042f2e;
+  --accent-warn: #fbbf24;
+  --accent-danger: #f87171;
+
+  --surface: var(--zdl-base-900);
+  --surface-elevated: var(--zdl-base-800);
+  --surface-muted: rgba(41, 37, 36, 0.6);
+  --surface-sunken: var(--zdl-base-950);
+  --text: var(--zdl-base-50);
+  --text-muted: var(--zdl-base-400);
+  --text-subtle: var(--zdl-base-500);
+  --border: var(--zdl-base-700);
+  --border-strong: var(--zdl-base-500);
+  --shadow-color: rgba(0, 0, 0, 0.4);
+  --glass-tint: rgba(28, 25, 23, 0.65);
+}
+
+[data-theme="oled"] {
+  color-scheme: dark;
+  --accent: #2dd4bf;
+  --accent-strong: #5eead4;
+  --on-accent: #042f2e;
+  --accent-warn: #fbbf24;
+  --accent-danger: #f87171;
+
+  --surface: #000000;
+  --surface-elevated: #101010;
+  --surface-muted: #0a0a0a;
+  --surface-sunken: #000000;
+  --text: var(--zdl-base-50);
+  --text-muted: var(--zdl-base-400);
+  --text-subtle: var(--zdl-base-500);
+  --border: var(--zdl-base-800);
+  --border-strong: var(--zdl-base-600);
+  --shadow-color: rgba(0, 0, 0, 0.6);
+  /* OLED: emissive blacks stay pure; glass falls back to opaque. */
+  --glass-tint: #101010;
+}
+
+/* High contrast: opaque, thick borders, no glass, no shadows. */
+[data-theme="hc"] {
+  color-scheme: light;
+  --accent: #000000;
+  --accent-strong: #000000;
+  --on-accent: #ffffff;
+  --accent-warn: #000000;
+  --accent-danger: #000000;
+
+  --surface: #ffffff;
+  --surface-elevated: #ffffff;
+  --surface-muted: #ffffff;
+  --surface-sunken: #ffffff;
+  --text: #000000;
+  --text-muted: #000000;
+  --text-subtle: #000000;
+  --border: #000000;
+  --border-strong: #000000;
+  --focus-ring: #000000;
+  --shadow-color: transparent;
+  --glass-tint: #ffffff;
+}
+[data-theme="hc"] {
+  --shadow-1: none;
+  --shadow-2: none;
+  --shadow-3: none;
+  --shadow-4: none;
+}
+
+/* System preference resolution when no explicit theme is chosen. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    color-scheme: dark;
+    --accent: #2dd4bf;
+    --accent-strong: #5eead4;
+    --on-accent: #042f2e;
+    --surface: var(--zdl-base-900);
+    --surface-elevated: var(--zdl-base-800);
+    --surface-muted: rgba(41, 37, 36, 0.6);
+    --surface-sunken: var(--zdl-base-950);
+    --text: var(--zdl-base-50);
+    --text-muted: var(--zdl-base-400);
+    --text-subtle: var(--zdl-base-500);
+    --border: var(--zdl-base-700);
+    --border-strong: var(--zdl-base-500);
+    --shadow-color: rgba(0, 0, 0, 0.4);
+    --glass-tint: rgba(28, 25, 23, 0.65);
   }
 }
 
+/* ---------------------------------- Tier 3: component ------------------- */
+:root {
+  --card-bg: var(--surface-elevated);
+  --card-border: var(--border);
+  --card-shadow: var(--shadow-1);
+  --nav-bg: var(--surface);
+  --row-height: 56px;
+  --row-height-compact: 44px;
+  --target-min: 24px;
+  --target-comfortable: 44px;
+}
+
+/* ---------------------------------- Base -------------------------------- */
 *,
 *::before,
 *::after {
@@ -23,8 +203,233 @@
 
 body {
   margin: 0;
-  font-family:
-    "Inter", "Cantarell", "Segoe UI", system-ui, -apple-system, sans-serif;
+  font: var(--text-body);
   background: var(--surface);
   color: var(--text);
+}
+
+/* Focus contract (DESIGN.md §8.3) */
+:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* User contrast escalation */
+@media (prefers-contrast: more) {
+  :root {
+    --text-muted: var(--text);
+    --border: var(--border-strong);
+  }
+  :focus-visible {
+    outline-width: 4px;
+  }
+}
+
+/* Forced colors: system palette owns presentation; keep structure legible. */
+@media (forced-colors: active) {
+  :root {
+    --glass-tint: Canvas;
+    --shadow-1: none;
+    --shadow-2: none;
+    --shadow-3: none;
+    --shadow-4: none;
+  }
+  :focus-visible {
+    outline-color: Highlight;
+  }
+}
+
+/* Reduced motion: collapse transitions to opacity-only micro fades. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Reduced transparency / no compositing: glass becomes opaque. */
+@media (prefers-reduced-transparency: reduce) {
+  :root {
+    --glass-tint: var(--surface-elevated);
+  }
+}
+
+/* ---------------------------------- Primitives (Tier 3 classes) --------- */
+/* Anatomy per DESIGN.md §11; states per §8. */
+
+.zdl-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  width: 100%;
+  min-height: var(--row-height);
+  padding: var(--space-3) var(--space-4);
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--card-shadow);
+  color: var(--text);
+  font: var(--text-body);
+  text-align: start;
+  transition:
+    background var(--motion-quick) var(--ease-standard),
+    box-shadow var(--motion-quick) var(--ease-standard),
+    transform var(--motion-instant) var(--ease-standard);
+}
+
+button.zdl-card,
+a.zdl-card {
+  cursor: pointer;
+}
+
+button.zdl-card:hover:not(:disabled),
+.zdl-card[data-hoverable="true"]:hover {
+  background: var(--surface-elevated);
+  box-shadow: var(--shadow-2);
+}
+
+button.zdl-card:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.zdl-card:disabled {
+  color: var(--text-subtle);
+  cursor: default;
+}
+
+.zdl-card__icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  inline-size: var(--target-comfortable);
+  block-size: var(--target-comfortable);
+  border-radius: var(--radius-control);
+  background: var(--surface-muted);
+  color: var(--text-muted);
+}
+
+.zdl-card__body {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.zdl-card__title {
+  font: var(--text-title);
+}
+
+.zdl-card__description {
+  font: var(--text-caption);
+  color: var(--text-muted);
+}
+
+.zdl-card__control {
+  flex: none;
+  margin-inline-start: auto;
+}
+
+.zdl-card__chevron {
+  flex: none;
+  color: var(--text-subtle);
+}
+
+/* Expander */
+.zdl-expander__region {
+  overflow: hidden;
+  padding: var(--space-2) 0 var(--space-2) var(--space-8);
+  border-inline-start: 1px solid var(--border);
+  margin-inline-start: var(--space-4);
+  display: grid;
+  gap: var(--space-2);
+}
+
+.zdl-expander__chevron {
+  transition: transform var(--motion-normal) var(--ease-standard);
+}
+.zdl-expander__chevron[data-open="true"] {
+  transform: rotate(180deg);
+}
+
+/* Toggle switch — role=switch button; geometry per DESIGN.md §11 */
+.zdl-switch {
+  position: relative;
+  inline-size: 40px;
+  block-size: 24px;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface-sunken);
+  cursor: pointer;
+  transition: background var(--motion-quick) var(--ease-standard);
+}
+
+.zdl-switch::after {
+  content: "";
+  position: absolute;
+  inset-block-start: 1px;
+  inset-inline-start: 1px;
+  inline-size: 20px;
+  block-size: 20px;
+  border-radius: 999px;
+  background: var(--surface-elevated);
+  border: 1px solid var(--border-strong);
+  transition: translate var(--motion-quick) var(--ease-standard);
+}
+
+.zdl-switch[aria-checked="true"] {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.zdl-switch[aria-checked="true"]::after {
+  translate: 16px 0;
+  border-color: transparent;
+}
+
+.zdl-switch:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* Hit-area wrapper guarantees ≥44px target without enlarging the visual. */
+.zdl-switch-hit {
+  display: inline-grid;
+  place-items: center;
+  min-inline-size: var(--target-comfortable);
+  min-block-size: var(--target-comfortable);
+  border-radius: var(--radius-control);
+}
+
+/* Navigation row (rail) */
+.zdl-nav-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: var(--row-height-compact);
+  padding: var(--space-2) var(--space-3);
+  border: none;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--text-muted);
+  font: var(--text-title);
+  text-align: start;
+  cursor: pointer;
+  transition:
+    background var(--motion-quick) var(--ease-standard),
+    color var(--motion-quick) var(--ease-standard);
+}
+
+.zdl-nav-row:hover {
+  background: var(--surface-muted);
+  color: var(--text);
+}
+
+.zdl-nav-row[aria-current="page"] {
+  background: var(--surface-muted);
+  color: var(--accent);
+  font-weight: 600;
 }

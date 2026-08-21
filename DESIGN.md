@@ -1,82 +1,302 @@
-# DESIGN.md — Zyntrix Design Language (ZDL) Specification
+# DESIGN.md — Zyntrix Design Language (ZDL)
 
-## 1. Geometry: Continuous Curvature (G2/G3 Squircles)
-Standard CSS `border-radius` is forbidden for major cards and modal containers. Radii must follow continuous curvature $G2/G3$ superellipses defined by:
+> **Authority.** This document is the single source of truth for all visual,
+> spatial, material, motion, and accessibility-affecting presentation in
+> ZETTINGS. Project rules (`AGENTS.md`) and product requirements (`prompt.txt`)
+> override it only where they explicitly conflict. Implementation lives in
+> `apps/zettings/web/src/styles/zdl.css` (tokens) and `src/components/zdl/`
+> (primitives); this document specifies intent and exact values.
+>
+> **Originality clause.** ZDL is an original language for Zyntrix OS. The
+> Windows 11 reconstruction spec supplies information architecture and
+> interaction grammar only. Fluent, Apple HIG, Material, and Nothing OS are
+> inspiration sources — never templates. No proprietary asset, metric table,
+> or font from another platform is reproduced.
 
-$$\left|\frac{x}{a}\right|^n + \left|\frac{y}{b}\right|^n = 1$$
+---
 
-- **G2 Continuity ($n=4$):** Standard cards, input fields, toggles, list items.
-- **G3 Continuity ($n=6$):** Main application shell, floating dialogs, spotlight search overlay.
+## 1. Design principles
 
-### Radius Blending
-The `radius` parameter controls corner roundness, blending between a sharp rectangle (`radius=0`) and a full superellipse. The blending is achieved by interpolating the effective exponent between 2 (pure ellipse) and the target order (4 for G2, 6 for G3) based on the radius ratio:
+1. **Calm authority** — a settings app is infrastructure; decoration never
+   competes with comprehension.
+2. **Everything responds** — every interactive surface acknowledges hover,
+   press, focus, and state change through the shared motion vocabulary.
+3. **Depth is honest** — elevation and translucency communicate real layering;
+   glass never obscures legibility (§5 fallbacks).
+4. **One excellent component** — pages are compositions of registry-driven
+   primitives; bespoke one-off styling is forbidden without a documented
+   exception in this file.
+5. **Accessible by construction** — contrast pairs, focus treatment, target
+   sizes, and reduced-motion behavior are token-level guarantees, not
+   per-component afterthoughts.
 
-$$n_{eff} = 2 + (n - 2) \cdot \frac{r}{\min(w, h) / 2}$$
+## 2. Color system
 
-### SVG Path Output
-Squircle paths use cubic bezier (`C`) commands with 128 perimeter samples for smooth curves. The `useSquircle` hook returns both the SVG path string and a CSS `clip-path` value.
+### 2.1 Primitive ramp — `--zdl-base-*`
 
-## 2. Liquid Glass Material Stack
-Glass panels use a multi-layered composition:
-- **Layer 1 (Backdrop):** `backdrop-filter: blur(24px) saturate(180%)`
-- **Layer 2 (Tint):** `rgba(28, 25, 23, 0.65)` (Dark) / `rgba(255, 255, 255, 0.45)` (Light)
-- **Layer 3 (Specular Highlight):** `1px solid rgba(255, 255, 255, 0.12)` top border
+A warm neutral ramp (stone family) anchors all surfaces:
 
-### Elevation Levels
-| Level | Shadow | Use Case |
-|-------|--------|----------|
-| 1 | `0 1px 2px rgba(0,0,0,0.04)` | Inline cards, list items |
-| 2 | `0 2px 8px rgba(0,0,0,0.08)` | Sidebar, content panels |
-| 3 | `0 8px 24px rgba(0,0,0,0.12)` | Floating dialogs, modals |
-| 4 | `0 16px 48px rgba(0,0,0,0.16)` | Spotlight search overlay |
+| Token | Value | | Token | Value |
+|---|---|---|---|---|
+| `--zdl-base-50` | `#fafaf9` | | `--zdl-base-500` | `#78716c` |
+| `--zdl-base-100` | `#f5f5f4` | | `--zdl-base-600` | `#57534e` |
+| `--zdl-base-200` | `#e7e5e4` | | `--zdl-base-700` | `#44403c` |
+| `--zdl-base-300` | `#d6d3d1` | | `--zdl-base-800` | `#292524` |
+| `--zdl-base-400` | `#a8a29e` | | `--zdl-base-900` | `#1c1917` |
+| | | | `--zdl-base-950` | `#0c0a09` |
 
-## 3. ZDL Token Cascade (3-Tier System)
+### 2.2 Accent — "Zyntrix Signal"
 
-### Tier 1: Primitive Tokens
-Raw color values, spacing, radii, typography scales. Theme-agnostic.
-- Neutrals: `--zdl-base-50` through `--zdl-base-950` (stone palette)
-- Accents: `--accent`, `--accent-on`, `--accent-secondary`
-- Spacing: `--space-1` (4px) through `--space-16` (64px) on 4/8 rhythm
-- Typography: `--font-sans`, `--font-mono`, `--text-xs` through `--text-2xl`
-- Radii: `--radius-sm` (6px), `--radius-md` (10px), `--radius-lg` (14px), `--radius-xl` (20px)
-- Glass: `--glass-blur` (24px), `--glass-saturate` (180%), `--glass-tint`, `--glass-specular`
-- Shadows: `--shadow-1` through `--shadow-4`
+The brand accent is a deep teal in light appearances and a luminous seafoam in
+dark appearances. It is used for selection, active navigation, primary actions,
+and focus rings — never for body text.
 
-### Tier 2: Semantic Tokens
-Theme-aware aliases that reference primitives. Override per theme via `[data-theme="..."]`.
-- Surfaces: `--surface`, `--surface-elevated`, `--surface-muted`
-- Borders: `--border`
-- Text: `--text`, `--text-muted`, `--text-subtle`
-- Ring: `--ring` (focus indicator)
+| Role | Light / OLED-light | Dark / OLED |
+|---|---|---|
+| `--accent` | `#0f766e` | `#2dd4bf` |
+| `--accent-strong` (hover/pressed) | `#115e59` | `#5eead4` |
+| `--on-accent` (text on accent fills) | `#ffffff` | `#042f2e` |
 
-### Tier 3: Component Tokens
-Component-specific compositions referencing semantic tokens.
-- Sidebar: `--sidebar-bg`, `--sidebar-border`
-- Content: `--content-bg`, `--content-bar-border`
-- Glass panel: `--glass-panel-bg`, `--glass-panel-blur`, `--glass-panel-border`
+Secondary signal (warnings/destructive confirmations) uses amber `#b45309`
+(light) / `#fbbf24` (dark); danger uses `#b91c1c` / `#f87171`. Status is never
+encoded by color alone (icon + label always accompany it).
 
-### Theme Variants
-| Theme | `data-theme` | Background | Key Difference |
-|-------|-------------|------------|----------------|
-| Light | `light` (default) | `--zdl-base-50` | High contrast on white |
-| Dark | `dark` | `--zdl-base-950` | Inverted, dark surfaces |
-| OLED | `oled` | `#000000` | True black, pure OLED |
-| High Contrast | `hc` | Boosted | WCAG AAA, thick borders |
+### 2.3 Semantic tokens (theme-aware)
 
-## 4. Motion Engine Physics Parameters
-- **Navigation Slide:** `stiffness: 220, damping: 28, mass: 1.0`
-- **Interactive Toggles:** `stiffness: 320, damping: 22, mass: 0.6`
-- **Sliders & Knobs:** `stiffness: 400, damping: 30, mass: 0.5`
-- **Modal Dialog:** `stiffness: 180, damping: 24, mass: 1.2`
-- **Target Compositor Speed:** **120 FPS** with zero synchronous DOM reflows.
+Components consume **only** semantic tokens:
 
-### Reduced Motion Fallback
-When `prefers-reduced-motion: reduce` is active, all spring animations fall back to opacity cross-fades with `0ms` duration. The `data-reduced-motion` attribute on the shell element gates this behavior.
+| Token | Light | Dark | OLED |
+|---|---|---|---|
+| `--surface` | base-50 | base-900 | `#000000` |
+| `--surface-elevated` | `#ffffff` | base-800 | `#101010` |
+| `--surface-muted` | base-100 | base-800/60% | `#0a0a0a` |
+| `--surface-sunken` | base-200 | base-950 | `#000000` |
+| `--text` | base-900 | base-50 | base-50 |
+| `--text-muted` | base-600 | base-400 | base-400 |
+| `--text-subtle` | base-500 | base-500 | base-500 |
+| `--border` | base-300 | base-700 | base-800 |
+| `--border-strong` (control outlines) | base-500 | base-500 | base-600 |
+| `--focus-ring` | `--accent` | `--accent` | `--accent` |
+| `--shadow-color` | 12% black | 40% black | 60% black |
 
-## 5. Tailwind v4 @theme Integration
-ZDL primitive tokens are mapped into Tailwind v4's `@theme` block, enabling utility classes like:
-- `bg-surface`, `bg-surface-elevated`, `bg-surface-muted`
-- `text-default`, `text-muted`, `text-subtle`
-- `border-border`, `ring-ring`
-- `shadow-1` through `shadow-4`
-- `font-sans`, `font-mono`
+### 2.4 Contrast contract (WCAG 2.2)
+
+Validated pairs (computed ratios):
+
+- `--text` on `--surface`: ≥ 13:1 in every theme (AAA).
+- `--text-muted` on `--surface`: ≥ 6.5:1 (AA+, near AAA).
+- `--text-subtle` is reserved for ≥ 18.67 px bold / 24 px text or decorative
+  separators; never for instructional copy.
+- `--border-strong` on `--surface`: ≥ 3:1 — required wherever a control
+  boundary is the identifying affordance (unchecked toggle track, slider
+  track, checkbox).
+- `--on-accent` on `--accent`: ≥ 4.5:1 in every theme.
+- Focus ring: 3 px `outline` at ≥ 3:1 against any surface it crosses
+  (§8.3).
+
+New token pairs must be added to the validated-pairs table in
+`docs/research/prompt-compliance.md` evidence before use.
+
+### 2.5 High-contrast theme (`data-theme="hc"`)
+
+User-selectable always; automatically approximated under
+`forced-colors: active`. Rules: pure `#000`/`#fff` inversions, all borders
+2 px `currentColor`, **glass disabled** (opaque surfaces), shadows removed,
+focus outline widened to 4 px, selection uses `Highlight` system color.
+
+## 3. Typography
+
+Stack: `"Inter", "Cantarell", "Segoe UI", system-ui, sans-serif`;
+monospace: `"JetBrains Mono", "Fira Code", ui-monospace, monospace`.
+KDE-native fallbacks (Cantarell, Noto Sans) render acceptably; Inter ships
+with Zyntrix OS.
+
+| Token | Size / line-height | Weight | Use |
+|---|---|---|---|
+| `--text-display` | 28 px / 36 px | 600 | Page titles (L1/L2) |
+| `--text-title-lg` | 20 px / 28 px | 600 | Section heroes, dialog titles |
+| `--text-title` | 16 px / 24 px | 600 | Card titles, group headers |
+| `--text-body` | 14 px / 21 px | 400 | Default copy, descriptions |
+| `--text-caption` | 12 px / 18 px | 400 | Meta, timestamps, badges |
+
+Minimum rendered size is 12 px. Text scales with OS font settings; layouts
+must survive 200% text zoom without clipping (reflow-safe single column).
+
+## 4. Spacing, density, layout
+
+Base unit **4 px**. Tokens `--space-1…--space-16` = 4…64 px.
+
+| Context | Value |
+|---|---|
+| Card internal padding | `--space-4` (16 px) |
+| Gap between cards in a group | `--space-2` (8 px) |
+| Gap between groups | `--space-6` (24 px) |
+| Page horizontal padding | `--space-8` (32 px) |
+| Content max width | 1000 px (Windows-spec constrained column) |
+
+Density modes: **comfortable** (default; settings rows 56 px min-height) and
+**compact** (rows 44 px — the touch-target floor). Both keep interactive
+targets ≥ 24 px absolute minimum; primary pointers land ≥ 44 px.
+
+Responsive breakpoints (content width, per spec §16): >1100 expanded nav ·
+800–1100 compact rail · 560–800 overlay nav · <560 single column.
+
+## 5. Materials & elevation
+
+### 5.1 Liquid Glass stack
+
+Transient surfaces (dialogs, flyouts, search overlay) use the four-layer
+glass composition (per liquid-glass skill):
+
+```text
+L0 refraction  backdrop-filter: blur(24px) saturate(180%) [+ SVG displacement in Chromium]
+L1 tint        rgba(surface-tint, α)  — dark .65 / light .45
+L2 specular    inset 0 1px 0 rgba(255,255,255,.12) top rim
+L3 content     opaque-enough backing for AA text
+```
+
+Long-lived surfaces (window background, nav pane) use **Mica-like** flat
+translucency: `backdrop-filter: blur(64px)` over wallpaper sampling at low
+opacity — calm, not showy.
+
+### 5.2 Fallback ladder (legibility wins)
+
+1. Chromium: full refraction pipeline.
+2. Non-Chromium engines: blur+tint only (graceful degradation).
+3. Compositing disabled / `prefers-reduced-transparency` / hc theme /
+   OLED: **opaque** `--surface-elevated`; zero backdrop-filter.
+
+Text over glass always sits on the tint layer validated against the *least
+favorable* wallpaper region; if validation fails, opacity increases before
+any text size/weight compensation is considered.
+
+### 5.3 Elevation
+
+| Level | Shadow (dark-adjusted via `--shadow-color`) | Use |
+|---|---|---|
+| 1 | `0 1px 2px` 6% | resting cards |
+| 2 | `0 2px 8px` 10% | hovered cards, nav pane |
+| 3 | `0 8px 24px` 14% | dialogs, flyouts |
+| 4 | `0 16px 48px` 20% | search overlay |
+
+Elevation is communicated by shadow **and** surface shift together; hc theme
+replaces both with 2 px borders.
+
+## 6. Geometry — G2/G3 continuous curvature
+
+Standard `border-radius` is **forbidden** on major surfaces (cards, panels,
+dialogs, shell). ZDL uses superellipse squircles:
+
+```text
+|x/a|^n + |y/b|^n = 1
+G2 (n=4): cards, inputs, list rows, buttons
+G3 (n=6): app shell frame, floating dialogs, search overlay
+```
+
+Radius blending interpolates the exponent between ellipse (n=2) and target
+order as `r/min(w,h)/2` grows, so small radii stay visually consistent:
+
+```text
+n_eff = 2 + (n − 2) · r / (min(w,h)/2)
+```
+
+Implementation: `useSquircle()` generates a 128-sample cubic-bézier SVG path
+(`clip-path: path(...)`), recomputed on resize via ResizeObserver. Radii
+tokens: `--radius-control` 8 · `--radius-card` 12 · `--radius-panel` 16 ·
+`--radius-overlay` 20. Pill shapes (toggles, chips) use true capsules.
+
+## 7. Iconography
+
+Lucide stroke icons (24 px grid, 2 px stroke, round caps/joins) — matches the
+seed-graph icon names already shipped in the registry. Rules: icons are
+decorative unless alone; icon-only controls require `aria-label`; status
+icons always pair with text; `currentColor` everywhere so themes and forced
+colors adapt.
+
+## 8. States & interaction
+
+### 8.1 Component states
+
+Every interactive primitive implements: rest · hover · pressed · focus ·
+selected/checked · disabled · loading. Hover lifts elevation 1→2 and shifts
+surface toward `--surface-elevated`; press compresses scale to 0.98 with
+spring return (Phase 3 engine); disabled keeps full visibility, drops to
+`--text-subtle` + `--border`, and explains itself via description when the
+reason isn't obvious (spec §15).
+
+### 8.2 Selection semantics
+
+A card is either a toggle or a navigation affordance — never ambiguous
+(spec §18). Navigation rows end in a chevron; toggle cards carry the switch
+on the right; mixed-action cards separate the zones into distinct targets.
+
+### 8.3 Focus
+
+```css
+:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+```
+
+Never removed without equal replacement. Under `forced-colors`, outline
+switches to `Highlight`. Focus and selection are visually distinct
+(outline ≠ fill). Focus order follows DOM order; composite widgets (nav rail)
+use roving tabindex with arrow keys per APG.
+
+### 8.4 Keyboard contract (app-wide)
+
+Ctrl+F search · Alt+Backspace back · arrows navigate lists/rail · Enter/Space
+activate · Esc dismisses overlays · Tab traversal logical. Dialogs use native
+`<dialog>`/`showModal()` semantics with focus restore.
+
+## 9. Themes
+
+Selection model follows the three-option pattern (System / Light / Dark +
+OLED and High-contrast entries), stored as `system|light|dark|oled|hc`,
+applied via `data-theme-mode` + resolved `data-theme` attributes, anti-flash
+inline bootstrap, `color-scheme` synced, storage wrapped in try/catch.
+Theme changes occur **only** on explicit activation — never on focus/hover.
+OLED forces opaque blacks and disables glass; hc per §2.5.
+
+## 10. Motion (token layer; engine lands Phase 3)
+
+Durations: `--motion-instant` 80 ms · `--motion-quick` 140 ms ·
+`--motion-normal` 220 ms · `--motion-deliberate` 320 ms.
+Easing: standard `cubic-bezier(0.2, 0, 0, 1)`; emphasized transitions use
+spring physics `{stiffness, damping}` pairs — navigation 220/28, controls
+320/22, modals 180/24 (mass 1.0/0.6/1.2). Velocity is preserved across
+interruptions; overshoot allowed only on control-scale feedback (≤ 4%).
+
+Reduced motion: `prefers-reduced-motion: reduce` collapses all transforms to
+opacity cross-fades ≤ 120 ms or zero duration; parallax and secondary motion
+are disabled entirely. Theme changes never animate color.
+
+GPU discipline: animate only `transform`/`opacity`/`clip-path`/`filter`;
+layout properties are never animated. Frame budget 8.3 ms; instrumentation
+lands with the Phase 3 harness.
+
+## 11. Component anatomy (canonical primitives)
+
+```text
+SettingsCard      [icon] title/description …… control | chevron
+SettingsExpander  header card + aria-expanded region, ONE level deep
+NavRow            icon + label (+ badge) ; roving tabindex in rail
+ToggleSwitch      role=switch, 40×24 track, 20×20 knob, ≥44 px hit area
+InfoBar           icon + message + optional action; polite live region
+Dialog            native <dialog>, G3 overlay surface, focus restore
+SearchOverlay     level-4 elevation, results ranked by zettings-search
+Skeleton          shimmer-free pulse (reduced-motion safe) placeholder
+EmptyState        icon + explanation + action; honest unavailable states
+```
+
+Anatomy deviations require a DESIGN.md amendment first, implementation second.
+
+## 12. Compliance hooks
+
+- Token usage enforced by review + future `validate-tokens` script (no raw hex
+  outside `zdl.css`).
+- Every primitive ships with its state matrix exercised in tests (Phase 8:
+  axe scans per theme, keyboard walkthroughs, forced-colors snapshots).
+- This file changes only through commits that update both spec and tokens
+  atomically.
