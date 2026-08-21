@@ -1,8 +1,8 @@
 //! System adapter snapshot payloads (Phase 5 surface).
-
 use serde::{Deserialize, Serialize};
 use zettings_backends::{
-    NetworkDevice, NetworkDeviceKind, NetworkStatus, PowerProfileSnapshot, SessionCapabilities,
+    AudioSink, BluetoothDevice, BluetoothStatus, DisplayOutput, DisplayStatus, NetworkDevice,
+    NetworkDeviceKind, NetworkStatus, PowerProfileSnapshot, SessionCapabilities,
 };
 use zettings_core::CapabilityState;
 
@@ -148,6 +148,12 @@ pub struct SystemSnapshotDto {
     pub network: NetworkStatusDto,
     /// Session actions area.
     pub session: SessionCapabilitiesDto,
+    /// Audio output area.
+    pub audio: AudioAreaDto,
+    /// Bluetooth area.
+    pub bluetooth: BluetoothStatusDto,
+    /// Display area (read-only in this phase).
+    pub display: DisplayStatusDto,
 }
 
 #[cfg(test)]
@@ -191,9 +197,154 @@ mod tests {
                 can_reboot: "yes".into(),
                 can_suspend: "challenge".into(),
             },
+            audio: AudioAreaDto {
+                capability: CapabilityStateDto::Available,
+                sinks: vec![AudioSinkDto {
+                    name: "mock-output".into(),
+                    description: "Mock output".into(),
+                    muted: false,
+                    volume_percent: 80,
+                    is_default: true,
+                }],
+            },
+            bluetooth: BluetoothStatusDto {
+                capability: CapabilityStateDto::Available,
+                powered: Some(true),
+                devices: vec![],
+            },
+            display: DisplayStatusDto {
+                capability: CapabilityStateDto::Available,
+                outputs: vec![],
+            },
         };
         let json = serde_json::to_string(&snap).expect("serialize");
         let back: SystemSnapshotDto = serde_json::from_str(&json).expect("deserialize");
         assert_eq!(back, snap);
+    }
+}
+
+/// Audio sink on the wire.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ts_rs::TS)]
+#[ts(export, export_to = "audio-sink.ts")]
+pub struct AudioSinkDto {
+    /// Stable sink name.
+    pub name: String,
+    /// Human-readable description.
+    pub description: String,
+    /// Mute state.
+    pub muted: bool,
+    /// Average volume 0-150%.
+    pub volume_percent: u32,
+    /// Default output flag.
+    pub is_default: bool,
+}
+
+impl From<&AudioSink> for AudioSinkDto {
+    fn from(value: &AudioSink) -> Self {
+        Self {
+            name: value.name.clone(),
+            description: value.description.clone(),
+            muted: value.muted,
+            volume_percent: value.volume_percent,
+            is_default: value.is_default,
+        }
+    }
+}
+
+/// Audio area snapshot with its own honest capability.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ts_rs::TS)]
+#[ts(export, export_to = "audio-area.ts")]
+pub struct AudioAreaDto {
+    /// Adapter capability.
+    pub capability: CapabilityStateDto,
+    /// Output sinks (empty when unavailable).
+    pub sinks: Vec<AudioSinkDto>,
+}
+
+/// Bluetooth device on the wire.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ts_rs::TS)]
+#[ts(export, export_to = "bluetooth-device.ts")]
+pub struct BluetoothDeviceDto {
+    /// Remote device name.
+    pub alias: String,
+    /// Paired flag.
+    pub paired: bool,
+    /// Connected flag.
+    pub connected: bool,
+}
+
+impl From<&BluetoothDevice> for BluetoothDeviceDto {
+    fn from(value: &BluetoothDevice) -> Self {
+        Self {
+            alias: value.alias.clone(),
+            paired: value.paired,
+            connected: value.connected,
+        }
+    }
+}
+
+/// Bluetooth area snapshot on the wire.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ts_rs::TS)]
+#[ts(export, export_to = "bluetooth-status.ts")]
+pub struct BluetoothStatusDto {
+    /// Adapter capability.
+    pub capability: CapabilityStateDto,
+    /// Powered state; null when no adapter exists.
+    pub powered: Option<bool>,
+    /// Known devices.
+    pub devices: Vec<BluetoothDeviceDto>,
+}
+
+impl From<&BluetoothStatus> for BluetoothStatusDto {
+    fn from(value: &BluetoothStatus) -> Self {
+        Self {
+            capability: CapabilityStateDto::from(&value.capability),
+            powered: value.powered,
+            devices: value.devices.iter().map(BluetoothDeviceDto::from).collect(),
+        }
+    }
+}
+
+/// Display connector on the wire.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ts_rs::TS)]
+#[ts(export, export_to = "display-output.ts")]
+pub struct DisplayOutputDto {
+    /// DRM connector name.
+    pub name: String,
+    /// Connected flag.
+    pub connected: bool,
+    /// Supported modes (best first).
+    pub modes: Vec<String>,
+    /// Active mode; empty when off/disconnected.
+    pub current_mode: String,
+}
+
+impl From<&DisplayOutput> for DisplayOutputDto {
+    fn from(value: &DisplayOutput) -> Self {
+        Self {
+            name: value.name.clone(),
+            connected: value.connected,
+            modes: value.modes.clone(),
+            current_mode: value.current_mode.clone(),
+        }
+    }
+}
+
+/// Display area snapshot on the wire.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ts_rs::TS)]
+#[ts(export, export_to = "display-status.ts")]
+pub struct DisplayStatusDto {
+    /// Adapter capability.
+    pub capability: CapabilityStateDto,
+    /// Detected connectors.
+    pub outputs: Vec<DisplayOutputDto>,
+}
+
+impl From<&DisplayStatus> for DisplayStatusDto {
+    fn from(value: &DisplayStatus) -> Self {
+        Self {
+            capability: CapabilityStateDto::from(&value.capability),
+            outputs: value.outputs.iter().map(DisplayOutputDto::from).collect(),
+        }
     }
 }

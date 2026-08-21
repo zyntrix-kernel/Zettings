@@ -78,8 +78,8 @@ fn session_dto(
     )
 }
 
-/// Aggregated system snapshot (power/network/session) with honest capability
-/// states for each area.
+/// Aggregated system snapshot (power/network/session/audio/bluetooth/display)
+/// with honest capability states for each area.
 #[tauri::command]
 async fn system_snapshot(
     backends: tauri::State<'_, std::sync::Arc<BackendSet>>,
@@ -87,11 +87,55 @@ async fn system_snapshot(
     let power = backends.power.snapshot().await;
     let network = backends.network.status().await;
     let session = backends.session.capabilities().await;
+    let audio = backends.audio.sinks().await;
+    let bluetooth = backends.bluetooth.status().await;
+    let display = backends.display.status().await;
     Ok(zettings_ipc::SystemSnapshotDto {
         power: power_dto(&power),
         network: network_dto(&network),
         session: session_dto(&session),
+        audio: audio_area_dto(&audio),
+        bluetooth: bluetooth_dto(&bluetooth),
+        display: display_dto(&display),
     })
+}
+
+/// Sets mute and/or volume on one sink; omitted fields are left unchanged.
+#[tauri::command]
+async fn set_audio_sink(
+    sink: &str,
+    volume_percent: Option<u32>,
+    muted: Option<bool>,
+    backends: tauri::State<'_, std::sync::Arc<BackendSet>>,
+) -> Result<(), String> {
+    if let Some(muted) = muted {
+        backends
+            .audio
+            .set_sink_mute(sink, muted)
+            .await
+            .map_err(|e| e.to_string())?;
+    }
+    if let Some(volume) = volume_percent {
+        backends
+            .audio
+            .set_sink_volume(sink, volume)
+            .await
+            .map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+/// Powers the default Bluetooth adapter on/off (`BlueZ` enforces policy).
+#[tauri::command]
+async fn set_bluetooth_powered(
+    enabled: bool,
+    backends: tauri::State<'_, std::sync::Arc<BackendSet>>,
+) -> Result<(), String> {
+    backends
+        .bluetooth
+        .set_powered(enabled)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 /// Activates a power profile after validating it against the daemon's list.
@@ -105,6 +149,52 @@ async fn set_power_profile(
         .set_active_profile(profile)
         .await
         .map_err(|e| e.to_string())
+}
+
+fn audio_area_dto(
+    result: &Result<Vec<zettings_backends::AudioSink>, zettings_backends::BackendError>,
+) -> zettings_ipc::AudioAreaDto {
+    result.as_ref().map_or_else(
+        |e| zettings_ipc::AudioAreaDto {
+            capability: zettings_ipc::CapabilityStateDto::Unavailable {
+                reason: e.to_string(),
+            },
+            sinks: Vec::new(),
+        },
+        |sinks| zettings_ipc::AudioAreaDto {
+            capability: zettings_ipc::CapabilityStateDto::Available,
+            sinks: sinks.iter().map(zettings_ipc::AudioSinkDto::from).collect(),
+        },
+    )
+}
+
+fn bluetooth_dto(
+    result: &Result<zettings_backends::BluetoothStatus, zettings_backends::BackendError>,
+) -> zettings_ipc::BluetoothStatusDto {
+    result.as_ref().map_or_else(
+        |e| zettings_ipc::BluetoothStatusDto {
+            capability: zettings_ipc::CapabilityStateDto::Unavailable {
+                reason: e.to_string(),
+            },
+            powered: None,
+            devices: Vec::new(),
+        },
+        zettings_ipc::BluetoothStatusDto::from,
+    )
+}
+
+fn display_dto(
+    result: &Result<zettings_backends::DisplayStatus, zettings_backends::BackendError>,
+) -> zettings_ipc::DisplayStatusDto {
+    result.as_ref().map_or_else(
+        |e| zettings_ipc::DisplayStatusDto {
+            capability: zettings_ipc::CapabilityStateDto::Unavailable {
+                reason: e.to_string(),
+            },
+            outputs: Vec::new(),
+        },
+        zettings_ipc::DisplayStatusDto::from,
+    )
 }
 
 /// Toggles the Wi-Fi radio via `NetworkManager` (NM enforces its own policy).
@@ -147,7 +237,9 @@ fn main() {
             search_registry,
             system_snapshot,
             set_power_profile,
-            set_wireless_enabled
+            set_wireless_enabled,
+            set_audio_sink,
+            set_bluetooth_powered
         ])
         .run(tauri::generate_context!())
         .expect("zettings runtime failure");

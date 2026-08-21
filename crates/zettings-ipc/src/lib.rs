@@ -19,6 +19,7 @@ mod system;
 pub use category::{CategorySummaryDto, RegistrySnapshotDto};
 pub use search::{SearchHitDto, SearchResponseDto};
 pub use system::{
-    CapabilityStateDto, NetworkDeviceDto, NetworkStatusDto, PowerProfileSnapshotDto,
-    SessionCapabilitiesDto, SystemSnapshotDto,
+    AudioAreaDto, AudioSinkDto, BluetoothDeviceDto, BluetoothStatusDto, CapabilityStateDto,
+    DisplayOutputDto, DisplayStatusDto, NetworkDeviceDto, NetworkStatusDto,
+    PowerProfileSnapshotDto, SessionCapabilitiesDto, SystemSnapshotDto,
 };

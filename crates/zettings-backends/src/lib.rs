@@ -8,6 +8,9 @@
 //! Security contract (threat-model.md): privileged mutations flow through the
 //! [`zettings_polkit::AuthorizationGateway`]; adapters never spawn shells.
 
+mod audio;
+mod bluetooth;
+mod display;
 mod error;
 mod network;
 mod power;
@@ -16,6 +19,9 @@ mod session;
 #[cfg(target_os = "linux")]
 mod polkit_gateway;
 
+pub use audio::{AudioAdapter, AudioSink, MockAudio};
+pub use bluetooth::{BluetoothAdapter, BluetoothDevice, BluetoothStatus, MockBluetooth};
+pub use display::{DisplayAdapter, DisplayOutput, DisplayStatus, MockDisplay};
 pub use error::BackendError;
 pub use network::{MockNetwork, NetworkAdapter, NetworkDevice, NetworkDeviceKind, NetworkStatus};
 pub use power::{MockPowerProfiles, PowerProfileSnapshot, PowerProfilesAdapter};
@@ -39,6 +45,12 @@ pub struct BackendSet {
     pub network: Arc<dyn NetworkAdapter>,
     /// Session power actions (systemd login1).
     pub session: Arc<dyn SessionAdapter>,
+    /// Audio output control (PulseAudio/PipeWire).
+    pub audio: Arc<dyn AudioAdapter>,
+    /// Bluetooth radio and devices (`BlueZ`).
+    pub bluetooth: Arc<dyn BluetoothAdapter>,
+    /// Display topology (kernel DRM; read-only in this phase).
+    pub display: Arc<dyn DisplayAdapter>,
     /// Authorization seam for privileged mutations.
     pub auth: Arc<dyn zettings_polkit::AuthorizationGateway>,
 }
@@ -65,6 +77,9 @@ impl BackendSet {
                 power: Arc::new(power::LinuxPowerProfiles::new(conn.clone())),
                 network: Arc::new(network::LinuxNetwork::new(conn.clone())),
                 session: Arc::new(session::LinuxSession::new(conn.clone())),
+                audio: Arc::new(audio::LinuxAudio::new()),
+                bluetooth: Arc::new(bluetooth::LinuxBluetooth::new(conn.clone())),
+                display: Arc::new(display::LinuxDisplay::default()),
                 auth: Arc::new(polkit_gateway::PolkitGateway::new(conn)),
             })
         }
@@ -81,6 +96,9 @@ impl BackendSet {
             power: Arc::new(power::MockPowerProfiles::default()),
             network: Arc::new(network::MockNetwork::default()),
             session: Arc::new(session::MockSession),
+            audio: Arc::new(audio::MockAudio::default()),
+            bluetooth: Arc::new(bluetooth::MockBluetooth::default()),
+            display: Arc::new(display::MockDisplay::default()),
             auth: Arc::new(zettings_polkit::MockGateway::new()),
         }
     }

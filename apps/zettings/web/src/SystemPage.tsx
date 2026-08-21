@@ -9,7 +9,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { NetworkStatusDto, SystemSnapshotDto } from "@zettings/bindings";
 import { invokeIpc } from "./lib/ipc";
 import { ComboBox, SettingsCard, ToggleSwitch } from "./components/zdl";
-import { ErrorBar, InfoBar, Loading } from "./components/shell/status";
+import { EmptyState, ErrorBar, InfoBar, Loading } from "./components/shell/status";
 
 type SnapshotState =
   | { phase: "loading" }
@@ -53,8 +53,40 @@ export function SystemPage() {
     );
   }
 
-  const { power, network, session }: SystemSnapshotDto = state.snapshot;
+  const { power, network, session, audio, bluetooth, display }: SystemSnapshotDto =
+    state.snapshot;
   const powerAvailable = power.capability.state === "available";
+  const audioAvailable = audio.capability.state === "available";
+  const bluetoothAvailable = bluetooth.capability.state === "available";
+
+  const setSinkMute = (sink: string, muted: boolean): void => {
+    setBusy(true);
+    invokeIpc<void>("set_audio_sink", { sink, muted })
+      .then(() => {
+        setActionNotice(muted ? "Output muted." : "Output unmuted.");
+        load();
+      })
+      .catch((cause: unknown) => {
+        const message = cause instanceof Error ? cause.message : String(cause);
+        setActionNotice(`Could not change output: ${message}`);
+      })
+      .finally(() => setBusy(false));
+  };
+
+  const toggleBluetooth = (enabled: boolean): void => {
+    setBusy(true);
+    invokeIpc<void>("set_bluetooth_powered", { enabled })
+      .then(() => {
+        setActionNotice(enabled ? "Bluetooth turned on." : "Bluetooth turned off.");
+        load();
+      })
+      .catch((cause: unknown) => {
+        const message = cause instanceof Error ? cause.message : String(cause);
+        setActionNotice(`Could not change Bluetooth: ${message}`);
+      })
+      .finally(() => setBusy(false));
+  };
+
 
   const setProfile = (profile: string): void => {
     setBusy(true);
@@ -139,6 +171,101 @@ export function SystemPage() {
           }
           control={<span className="zdl-card__description">{network.networking_enabled ? "On" : "Off"}</span>}
         />
+      </div>
+
+      <h2 className="zdl-section-title">Audio</h2>
+      <div className="zdl-card-grid">
+        {audioAvailable ? (
+          audio.sinks.map((sink) => (
+            <SettingsCard
+              key={sink.name}
+              title={sink.description !== "" ? sink.description : sink.name}
+              description={`Volume ${sink.volume_percent}%${sink.is_default ? " · default output" : ""}`}
+              control={
+                <ToggleSwitch
+                  label={`Mute ${sink.description || sink.name}`}
+                  checked={sink.muted}
+                  onChange={(muted) => setSinkMute(sink.name, muted)}
+                  disabled={busy}
+                />
+              }
+            />
+          ))
+        ) : (
+          <SettingsCard
+            title="Audio output"
+            description={reasonOf(audio.capability)}
+          />
+        )}
+      </div>
+
+      <h2 className="zdl-section-title">Bluetooth</h2>
+      <div className="zdl-card-grid">
+        {bluetoothAvailable ? (
+          <>
+            <SettingsCard
+              title="Bluetooth"
+              description={
+                bluetooth.powered === true
+                  ? `${bluetooth.devices.length} device${bluetooth.devices.length === 1 ? "" : "s"} known.`
+                  : "Adapter is off."
+              }
+              control={
+                bluetooth.powered !== null && (
+                  <ToggleSwitch
+                    label="Bluetooth"
+                    checked={bluetooth.powered}
+                    onChange={toggleBluetooth}
+                    disabled={busy}
+                  />
+                )
+              }
+            />
+            {bluetooth.devices.map((device) => (
+              <SettingsCard
+                key={device.alias}
+                title={device.alias}
+                description={`${device.paired ? "Paired" : "Not paired"}${device.connected ? " · connected" : ""}`}
+              />
+            ))}
+          </>
+        ) : (
+          <SettingsCard
+            title="Bluetooth"
+            description={reasonOf(bluetooth.capability)}
+          />
+        )}
+      </div>
+
+      <h2 className="zdl-section-title">Display</h2>
+      <div className="zdl-card-grid">
+        {display.capability.state === "available" ? (
+          display.outputs.length > 0 ? (
+            display.outputs.map((output) => (
+              <SettingsCard
+                key={output.name}
+                title={output.name}
+                description={
+                  output.connected
+                    ? output.current_mode !== ""
+                      ? `Connected · running ${output.current_mode}`
+                      : "Connected"
+                    : "Disconnected"
+                }
+              />
+            ))
+          ) : (
+            <EmptyState
+              title="No display connectors detected"
+              explanation="The kernel did not report any DRM connectors to this session."
+            />
+          )
+        ) : (
+          <SettingsCard
+            title="Displays"
+            description={reasonOf(display.capability)}
+          />
+        )}
       </div>
 
       <h2 className="zdl-section-title">Session</h2>

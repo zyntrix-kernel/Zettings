@@ -28,4 +28,10 @@ fn export_typescript_bindings() {
     crate::NetworkStatusDto::export(&config).expect("export NetworkStatusDto");
     crate::SessionCapabilitiesDto::export(&config).expect("export SessionCapabilitiesDto");
     crate::SystemSnapshotDto::export(&config).expect("export SystemSnapshotDto");
+    crate::AudioSinkDto::export(&config).expect("export AudioSinkDto");
+    crate::AudioAreaDto::export(&config).expect("export AudioAreaDto");
+    crate::BluetoothDeviceDto::export(&config).expect("export BluetoothDeviceDto");
+    crate::BluetoothStatusDto::export(&config).expect("export BluetoothStatusDto");
+    crate::DisplayOutputDto::export(&config).expect("export DisplayOutputDto");
+    crate::DisplayStatusDto::export(&config).expect("export DisplayStatusDto");
 }

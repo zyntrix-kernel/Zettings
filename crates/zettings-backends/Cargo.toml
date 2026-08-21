@@ -20,6 +20,7 @@ tokio = { workspace = true }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 zbus = { version = "5.9", default-features = false, features = ["tokio"] }
+libpulse-binding = "2.30"
 
 [dev-dependencies]
 tokio = { workspace = true }
