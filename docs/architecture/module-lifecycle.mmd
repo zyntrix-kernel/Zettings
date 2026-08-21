@@ -1,0 +1,14 @@
+stateDiagram-v2
+    accTitle: Settings module lifecycle
+    accDescr: A module starts Discovered when its manifest is found. The manifest is signature-verified; failure moves it to Rejected and nothing else happens. On success the loader checks the requested capabilities against policy, then admits its definitions into the registry (Active). Deactivation or removal returns it to Discovered or unloads it entirely.
+    [*] --> Discovered
+    Discovered --> VerifySignature
+    VerifySignature --> Rejected: invalid signature
+    VerifySignature --> CheckPolicy: valid signature
+    CheckPolicy --> Rejected: capability not allowed
+    CheckPolicy --> Active: allowed
+    Active --> RegistryLoaded: definitions merged
+    RegistryLoaded --> Active
+    Active --> Unloaded: removed by user/policy
+    Unloaded --> [*]
+    Rejected --> [*]

@@ -1,0 +1,30 @@
+/* ZDL token cascade — Phase 1 bootstrap subset.
+   The authoritative ZDL specification lands with the DESIGN.md rewrite
+   (PLAN Phase 2); these tokens exist so the shell proof renders sanely. */
+:root {
+  --zdl-base-950: #0c0a09;
+  --zdl-base-50: #fafaf9;
+  --surface: var(--zdl-base-950);
+  --text: var(--zdl-base-50);
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --surface: var(--zdl-base-50);
+    --text: var(--zdl-base-950);
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family:
+    "Inter", "Cantarell", "Segoe UI", system-ui, -apple-system, sans-serif;
+  background: var(--surface);
+  color: var(--text);
+}

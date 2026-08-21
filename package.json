@@ -1,1 +1,25 @@
-{"name":"zettings","private":true,"version":"0.1.0","license":"(MIT OR Apache-2.0)","packageManager":"pnpm@11.18.0","engines":{"node":">=24.18.0","pnpm":">=11.18.0"},"type":"module","scripts":{"dev":"pnpm -F zettings-web dev","dev:linux":"cargo run --features zettings-mock --manifest-path apps/zettings/Cargo.toml --no-default-features || cargo run --manifest-path apps/zettings/Cargo.toml","build":"pnpm -r build","build:linux":"pnpm -F zettings-web build && cargo build --release --manifest-path apps/zettings/Cargo.toml --target x86_64-unknown-linux-gnu","typecheck":"pnpm -r typecheck","lint":"pnpm -r lint","format":"pnpm -r format","test":"pnpm -r test","ci:check":"pnpm typecheck && pnpm lint && cargo fmt --all --check && cargo clippy --workspace --all-targets -- -D warnings && cargo check --workspace && cargo deny check","bindings":"cargo test -p zettings-ipc --features export-bindings && pnpm typecheck"},"devDependencies":{"typescript":"^5.9.0"}}
+{
+  "name": "zettings",
+  "private": true,
+  "version": "0.2.0",
+  "license": "(MIT OR Apache-2.0)",
+  "packageManager": "pnpm@11.18.0",
+  "engines": {
+    "node": ">=24.18.0",
+    "pnpm": ">=11.18.0"
+  },
+  "type": "module",
+  "scripts": {
+    "dev": "pnpm -F zettings-web dev",
+    "dev:linux": "cargo run --release --manifest-path apps/zettings/Cargo.toml --target x86_64-unknown-linux-gnu",
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "bindings": "cargo test -p zettings-ipc --features export-bindings && pnpm -F @zettings/bindings typecheck",
+    "fmt:rust": "cargo fmt --all",
+    "ci:check": "pnpm typecheck && cargo fmt --all --check && cargo clippy --workspace --all-targets -- -D warnings && cargo check --workspace"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.0"
+  }
+}

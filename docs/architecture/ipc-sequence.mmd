@@ -1,0 +1,21 @@
+sequenceDiagram
+    accTitle: Typed IPC round trip for the registry snapshot
+    accDescr: On shell boot the React frontend invokes the registry_snapshot command through the Tauri IPC bridge. The Rust command returns the built-in registry snapshot DTO, which was generated into TypeScript bindings at build time. If no runtime is detected the bridge reports an honest error instead of fabricating data.
+    participant UI as React shell
+    participant BR as invokeIpc bridge
+    participant RS as Tauri runtime
+    participant CMD as registry_snapshot command
+    participant REG as zettings-core seed graph
+
+    UI->>BR: invokeIpc("registry_snapshot")
+    alt inside desktop runtime
+        BR->>RS: invoke(command)
+        RS->>CMD: call
+        CMD->>REG: built_in_categories()
+        REG-->>CMD: CategorySummary map
+        CMD-->>RS: RegistrySnapshotDto
+        RS-->>BR: JSON payload (bindings-typed)
+        BR-->>UI: RegistrySnapshotDto
+    else plain browser dev session
+        BR-->>UI: Error "Zettings runtime not detected"
+    end

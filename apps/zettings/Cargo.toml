@@ -1,0 +1,28 @@
+[package]
+name = "zettings"
+description = "ZETTINGS — system settings application shell for Zyntrix OS."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish.workspace = true
+
+[features]
+# Selects deterministic mock backend providers so the Windows host can run the
+# full shell without Linux services. Real adapters ignore this flag.
+zettings-mock = []
+
+[dependencies]
+tracing = { workspace = true }
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+zettings-core = { workspace = true }
+zettings-ipc = { workspace = true }
+tauri = { version = "2", features = [] }
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[lints]
+workspace = true
