@@ -1026,6 +1026,25 @@ button.zdl-card:active:not(:disabled) {
   color: var(--text-muted);
 }
 
+/* Planned-area status (spec §15): explained availability, never an error. */
+.zdl-area-status {
+  flex: none;
+  padding: var(--space-1) var(--space-2);
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--text-muted);
+  font: var(--text-caption);
+  letter-spacing: var(--track-caption);
+  white-space: nowrap;
+}
+
+/* Inline mutation feedback on L2 pages. */
+.zdl-action-notice {
+  margin: var(--space-3) 0 0;
+  font: var(--text-body);
+  color: var(--text-muted);
+}
+
 /* ------------------------------ Theme selector -------------------------- */
 .zdl-theme-group {
   display: flex;

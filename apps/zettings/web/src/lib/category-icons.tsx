@@ -1,26 +1,53 @@
 /**
- * Category iconography (DESIGN.md §7): Lucide stroke icons mapped per
- * registry category id. Icons are decorative — accessible names come from
- * the visible labels; every icon renders with currentColor.
+ * Category + area iconography (DESIGN.md §7): Lucide stroke icons mapped
+ * per registry category id and L2 area slug. Icons are decorative —
+ * accessible names come from the visible labels; all render currentColor.
  */
 import type { ComponentType } from "react";
 import {
-  Laptop,
-  Bluetooth,
-  Wifi,
-  Palette,
-  LayoutGrid,
-  UserRound,
-  Languages,
-  Gamepad2,
   Accessibility,
-  ShieldCheck,
-  RefreshCcw,
-  Terminal,
+  Bell,
+  Bluetooth,
+  Camera,
+  Clock,
+  Ear,
+  Eye,
+  FileText,
+  Gamepad2,
+  Globe,
+  Hand,
+  HardDrive,
+  History,
   House,
+  KeyRound,
+  Languages,
+  Laptop,
+  LayoutGrid,
+  Lock,
+  Monitor,
+  Mouse,
+  MousePointer2,
+  Palette,
+  PlayCircle,
+  Printer,
+  RefreshCcw,
+  RefreshCw,
+  Search,
+  Server,
+  Shield,
+  ShieldCheck,
+  Terminal,
+  Type,
+  Usb,
+  UserRound,
+  Volume2,
+  Wifi,
+  Zap,
 } from "lucide-react";
 
-export const CATEGORY_ICONS: Readonly<Record<string, ComponentType<{ size?: number | string }>>> = {
+type IconComponent = ComponentType<{ size?: number | string }>;
+
+const CATEGORY_ICONS: Readonly<Record<string, IconComponent>> = {
   system: Laptop,
   devices: Bluetooth,
   network: Wifi,
@@ -35,6 +62,49 @@ export const CATEGORY_ICONS: Readonly<Record<string, ComponentType<{ size?: numb
   developer: Terminal,
 };
 
-export function categoryIcon(id: string, fallback: ComponentType<{ size?: number | string }> = House) {
-  return CATEGORY_ICONS[id] ?? fallback;
+const AREA_ICONS: Readonly<Record<string, IconComponent>> = {
+  power: Zap,
+  bluetooth: Bluetooth,
+  sound: Volume2,
+  display: Monitor,
+  storage: HardDrive,
+  notifications: Bell,
+  printers: Printer,
+  "mouse-touchpad": Mouse,
+  usb: Usb,
+  autoplay: PlayCircle,
+  status: Globe,
+  vpn: Shield,
+  proxy: Globe,
+  firewall: ShieldCheck,
+  theme: Palette,
+  colors: Palette,
+  fonts: Type,
+  cursor: MousePointer2,
+  installed: LayoutGrid,
+  defaults: LayoutGrid,
+  startup: PlayCircle,
+  users: UserRound,
+  "sign-in": KeyRound,
+  sync: RefreshCw,
+  "date-time": Clock,
+  region: Globe,
+  language: Languages,
+  "game-mode": Gamepad2,
+  captures: Camera,
+  vision: Eye,
+  hearing: Ear,
+  interaction: Hand,
+  permissions: Lock,
+  "search-permissions": Search,
+  check: RefreshCcw,
+  history: History,
+  services: Server,
+  journal: FileText,
+  environment: Terminal,
+};
+
+/** Resolves an icon by area slug first, then category id, then a house fallback. */
+export function categoryIcon(id: string): IconComponent {
+  return AREA_ICONS[id] ?? CATEGORY_ICONS[id] ?? House;
 }

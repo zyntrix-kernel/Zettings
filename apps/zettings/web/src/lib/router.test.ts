@@ -16,11 +16,16 @@ describe("hash router", () => {
     });
   });
 
-  it("preserves deep segments in the category route", () => {
-    // L2 pages land later; the hub still resolves.
+  it("parses L2 sub-routes into the category + sub shape", () => {
     expect(parseHash("#/system/display")).toEqual({
       kind: "category",
       category: "system",
+      sub: "display",
+    });
+    expect(parseHash("#/devices/bluetooth")).toEqual({
+      kind: "category",
+      category: "devices",
+      sub: "bluetooth",
     });
   });
 

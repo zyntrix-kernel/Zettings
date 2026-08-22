@@ -5,15 +5,27 @@ import { invokeIpc } from "./lib/ipc";
 import { currentRoute, navigateToRoute, type Route } from "./lib/router";
 import { useMotionPolicy } from "./lib/motion";
 import { categoryIcon } from "./lib/category-icons";
+import { findLiveArea } from "./lib/pages";
 import { AppShell, routeFromDeepLink } from "./components/shell/app-shell";
 import { EmptyState, ErrorBar, Loading } from "./components/shell/status";
 import { SettingsCard } from "./components/zdl";
+import { CategoryHub } from "./components/CategoryHub";
+import { BluetoothPage } from "./components/BluetoothPage";
+import { NetworkPage } from "./components/NetworkPage";
+import { PersonalizationPage } from "./components/PersonalizationPage";
 import { SystemPage } from "./SystemPage";
 
 type LoadState =
   | { phase: "loading" }
   | { phase: "ready"; snapshot: RegistrySnapshotDto }
   | { phase: "error"; message: string };
+
+/** Live L2 pages keyed by `<category>/<sub>`. */
+const LIVE_PAGES: Readonly<Record<string, () => ReactNode>> = {
+  "devices/bluetooth": () => <BluetoothPage />,
+  "network/status": () => <NetworkPage />,
+  "personalization/theme": () => <PersonalizationPage />,
+};
 
 function routeTitle(route: Route, categories: CategorySummaryDto[]): string {
   if (route.kind === "home") return "Home";
@@ -115,25 +127,25 @@ export function App() {
           }
         />
       )
-      : (
-        <>
-          <h1 ref={headingRef} tabIndex={-1} className="zdl-page-title">
-            {category.title}
-          </h1>
-          <p className="zdl-page-description">{category.description}</p>
-          {category.id === "system" ? (
-            <SystemPage />
-          ) : (
-            /* Honest empty state: pages arrive with their adapter phases. */
-            <EmptyState
-              title="No settings pages yet"
-              explanation={`Settings for ${category.title} connect as system adapters are integrated. The category is registered and searchable; its pages are not built yet.`}
+      : route.category === "system"
+        ? /* System's hub IS its multi-section live page (power/network/
+             audio/bluetooth/display sections on real adapters). */
+          <SystemPage />
+        : route.sub !== undefined && findLiveArea(route.category, route.sub) !== null
+          ? (LIVE_PAGES[`${route.category}/${route.sub}`]?.() ?? null)
+          : (
+            <CategoryHub
+              category={route.category}
+              title={category.title}
+              description={category.description}
+              onOpenArea={(slug) =>
+                navigate({ kind: "category", category: route.category, sub: slug })
+              }
             />
-          )}
-        </>
-      );
+          );
   }
 
+  // Focus target: hubs/home own the h1 via headingRef.
   return (
     <AppShell
       route={route}
@@ -145,7 +157,7 @@ export function App() {
         <motion.div
           key={
             state.phase === "ready"
-              ? `${route.kind}:${route.kind === "category" ? route.category : ""}`
+              ? `${route.kind}:${route.kind === "category" ? route.category : ""}:${route.kind === "category" ? (route.sub ?? "") : ""}`
               : state.phase
           }
           className="zdl-page"
