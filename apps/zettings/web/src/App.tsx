@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import type { CategorySummaryDto, RegistrySnapshotDto } from "@zettings/bindings";
 import { invokeIpc } from "./lib/ipc";
 import { currentRoute, navigateToRoute, type Route } from "./lib/router";
+import { useMotionPolicy } from "./lib/motion";
+import { categoryIcon } from "./lib/category-icons";
 import { AppShell, routeFromDeepLink } from "./components/shell/app-shell";
 import { EmptyState, ErrorBar, Loading } from "./components/shell/status";
 import { SettingsCard } from "./components/zdl";
@@ -23,6 +26,7 @@ export function App() {
   const [state, setState] = useState<LoadState>({ phase: "loading" });
   const [route, setRoute] = useState<Route>(() => currentRoute());
   const headingRef = useRef<HTMLHeadingElement>(null);
+  const policy = useMotionPolicy();
 
   useEffect(() => {
     let cancelled = false;
@@ -78,14 +82,20 @@ export function App() {
           Home
         </h1>
         <div className="zdl-card-grid">
-          {state.snapshot.categories.map((category) => (
-            <SettingsCard
-              key={category.id}
-              title={category.title}
-              description={category.description}
-              onActivate={() => navigate({ kind: "category", category: category.id })}
-            />
-          ))}
+          {state.snapshot.categories.map((category) => {
+            const Icon = categoryIcon(category.id);
+            return (
+              <SettingsCard
+                key={category.id}
+                title={category.title}
+                description={category.description}
+                icon={<Icon size={20} />}
+                onActivate={() =>
+                  navigate({ kind: "category", category: category.id })
+                }
+              />
+            );
+          })}
         </div>
       </>
     );
@@ -131,7 +141,22 @@ export function App() {
       onNavigate={navigate}
       onOpenDeepLink={openDeepLink}
     >
-      {content}
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.div
+          key={
+            state.phase === "ready"
+              ? `${route.kind}:${route.kind === "category" ? route.category : ""}`
+              : state.phase
+          }
+          className="zdl-page"
+          initial={policy.page.initial}
+          animate={policy.page.animate}
+          exit={policy.page.exit}
+          transition={policy.page.transition}
+        >
+          {content}
+        </motion.div>
+      </AnimatePresence>
     </AppShell>
   );
 }

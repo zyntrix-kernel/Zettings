@@ -13,3 +13,23 @@ if (typeof window !== "undefined" && !window.matchMedia) {
     dispatchEvent: () => false,
   })) as unknown as typeof window.matchMedia;
 }
+
+// jsdom lacks ResizeObserver; LiquidGlassSurface measures itself with it.
+if (typeof window !== "undefined" && !("ResizeObserver" in window)) {
+  Object.defineProperty(window, "ResizeObserver", {
+    configurable: true,
+    value: class {
+      observe(): void {}
+      unobserve(): void {}
+      disconnect(): void {}
+    },
+  });
+}
+
+// jsdom lacks PointerEvent; motion/react gesture setup references it.
+if (typeof window !== "undefined" && !("PointerEvent" in window)) {
+  Object.defineProperty(window, "PointerEvent", {
+    configurable: true,
+    value: MouseEvent,
+  });
+}

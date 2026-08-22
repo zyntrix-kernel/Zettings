@@ -1,26 +1,34 @@
 /* ==========================================================================
-   ZDL — Zyntrix Design Language token cascade
-   Authoritative spec: DESIGN.md. This file is the ONLY place raw color
-   values may appear; components consume semantic tokens exclusively.
-   Tiers: primitive (--zdl-base-*, --accent-*) -> semantic (--surface,
-   --text, ...) -> component (--card-*, --nav-*).
+   ZDL — Zyntrix Design Language v3 (rebuilt from zero)
+   Material : Liquid Glass per liquid-glass + apple-design skills —
+              translucent layers over an aurora wallpaper, bright top-edge
+              rims ("light catching the material"), weight encodes hierarchy
+              (heavy structural rail, light interactive cards).
+   Accent   : "Zyntrix Aurora" — slight purple, per-theme luminance.
+   Motion   : spring-physics engine (motion/react); critically damped by
+              default, bounce reserved for momentum gestures (apple-design).
+   Type     : size-specific tracking — negative on display sizes (§15).
+   Authority: DESIGN.md + AGENTS.md. Raw values live ONLY here; components
+              consume semantic tokens and component classes exclusively.
    ========================================================================== */
 
-/* ---------------------------------- Tier 1: primitives ------------------ */
+/* ------------------------------ Tier 1: primitives ---------------------- */
 :root {
-  --zdl-base-50: #fafaf9;
-  --zdl-base-100: #f5f5f4;
-  --zdl-base-200: #e7e5e4;
-  --zdl-base-300: #d6d3d1;
-  --zdl-base-400: #a8a29e;
-  --zdl-base-500: #78716c;
-  --zdl-base-600: #57534e;
-  --zdl-base-700: #44403c;
-  --zdl-base-800: #292524;
-  --zdl-base-900: #1c1917;
-  --zdl-base-950: #0c0a09;
+  /* Cool neutral ramp (Apple-like zinc family) */
+  --zdl-base-50: #fafafa;
+  --zdl-base-100: #f4f4f5;
+  --zdl-base-200: #e4e4e7;
+  --zdl-base-300: #d4d4d8;
+  --zdl-base-400: #a1a1aa;
+  --zdl-base-500: #71717a;
+  --zdl-base-600: #52525b;
+  --zdl-base-700: #3f3f46;
+  --zdl-base-800: #27272a;
+  --zdl-base-900: #18181b;
+  --zdl-base-950: #09090b;
 
-  /* Accent "Zyntrix Signal" — per-theme values live in Tier 2 blocks. */
+  /* Zyntrix Aurora accent primitives (per-theme roles in Tier 2).
+     Validated pairs: #7c3aed on white ≈ 5.7:1; #a78bfa on near-black ≈ 6.9:1 */
   --accent-warn: #b45309;
   --accent-danger: #b91c1c;
 
@@ -35,27 +43,37 @@
   --space-10: 40px;
   --space-16: 64px;
 
-  /* Typography */
+  /* Typography — size-specific tracking per apple-design §15 */
   --font-sans: "Inter", "Cantarell", "Segoe UI", system-ui, sans-serif;
   --font-mono: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
-  --text-display: 600 28px/36px var(--font-sans);
-  --text-title-lg: 600 20px/28px var(--font-sans);
-  --text-title: 600 16px/24px var(--font-sans);
+  --text-display: 600 28px/34px var(--font-sans);
+  --text-title-lg: 600 20px/27px var(--font-sans);
+  --text-title: 600 15px/21px var(--font-sans);
   --text-body: 400 14px/21px var(--font-sans);
-  --text-caption: 400 12px/18px var(--font-sans);
+  --text-caption: 400 12px/17px var(--font-sans);
+  --track-display: -0.02em;
+  --track-title-lg: -0.012em;
+  --track-title: -0.006em;
+  --track-body: 0em;
+  --track-caption: 0.01em;
 
-  /* Geometry (squircle radii; see DESIGN.md §6) */
-  --radius-control: 8px;
-  --radius-card: 12px;
-  --radius-panel: 16px;
-  --radius-overlay: 20px;
+  /* Geometry — soft continuous-feel radii */
+  --radius-control: 10px;
+  --radius-card: 14px;
+  --radius-panel: 20px;
+  --radius-overlay: 28px;
 
-  /* Glass material */
-  --glass-blur: blur(24px) saturate(180%);
-  --glass-blur-calm: blur(64px) saturate(120%);
-  --glass-specular: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  /* Liquid Glass material — blur+saturate per apple-design §12 example;
+     heavier surfaces get stronger blur AND deeper shadow. */
+  --glass-blur: blur(20px) saturate(170%);
+  --glass-blur-heavy: blur(36px) saturate(160%);
+  --glass-specular:
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    inset 1px 0 0 rgba(255, 255, 255, 0.12),
+    inset -1px 0 0 rgba(255, 255, 255, 0.12),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.06);
 
-  /* Motion tokens (engine: Phase 3) */
+  /* Motion durations (springs live in src/lib/motion/tokens.ts) */
   --motion-instant: 80ms;
   --motion-quick: 140ms;
   --motion-normal: 220ms;
@@ -63,12 +81,12 @@
   --ease-standard: cubic-bezier(0.2, 0, 0, 1);
 }
 
-/* ---------------------------------- Tier 2: semantic -------------------- */
+/* ------------------------------ Tier 2: semantic ------------------------ */
 /* Light is the default appearance. */
 :root {
   color-scheme: light;
-  --accent: #0f766e;
-  --accent-strong: #115e59;
+  --accent: #7c3aed;
+  --accent-strong: #6d28d9;
   --on-accent: #ffffff;
 
   --surface: var(--zdl-base-50);
@@ -78,43 +96,63 @@
   --text: var(--zdl-base-900);
   --text-muted: var(--zdl-base-600);
   --text-subtle: var(--zdl-base-500);
-  --border: var(--zdl-base-300);
+  --border: rgba(9, 9, 11, 0.08);
   --border-strong: var(--zdl-base-500);
   --focus-ring: var(--accent);
-  --shadow-color: rgba(0, 0, 0, 0.12);
-  --glass-tint: rgba(255, 255, 255, 0.45);
-  --shadow-1: 0 1px 2px var(--shadow-color);
-  --shadow-2: 0 2px 8px var(--shadow-color);
-  --shadow-3: 0 8px 24px var(--shadow-color);
-  --shadow-4: 0 16px 48px var(--shadow-color);
+  --shadow-color: rgba(9, 9, 11, 0.1);
+  --shadow-1: 0 1px 3px var(--shadow-color);
+  --shadow-2: 0 4px 16px var(--shadow-color);
+  --shadow-3: 0 8px 32px var(--shadow-color);
+  --shadow-4: 0 24px 64px var(--shadow-color);
+
+  /* Glass washes — violet-tinted so surfaces transmit the wallpaper hue */
+  --glass-tint: rgba(255, 255, 255, 0.46);
+  --glass-tint-rail: rgba(255, 255, 255, 0.4);
+  --card-glass-hi: rgba(255, 255, 255, 0.66);
+  --card-glass-lo: rgba(255, 255, 255, 0.42);
+  --card-glass-hi-hover: rgba(255, 255, 255, 0.78);
+  --card-glass-lo-hover: rgba(255, 255, 255, 0.52);
+  --card-rim: rgba(255, 255, 255, 0.85);
 }
 
 [data-theme="dark"] {
   color-scheme: dark;
-  --accent: #2dd4bf;
-  --accent-strong: #5eead4;
-  --on-accent: #042f2e;
+  --accent: #a78bfa;
+  --accent-strong: #c4b5fd;
+  --on-accent: #241145;
   --accent-warn: #fbbf24;
   --accent-danger: #f87171;
 
-  --surface: var(--zdl-base-900);
-  --surface-elevated: var(--zdl-base-800);
-  --surface-muted: rgba(41, 37, 36, 0.6);
-  --surface-sunken: var(--zdl-base-950);
+  --surface: var(--zdl-base-950);
+  --surface-elevated: var(--zdl-base-900);
+  --surface-muted: rgba(39, 39, 42, 0.6);
+  --surface-sunken: #000000;
   --text: var(--zdl-base-50);
   --text-muted: var(--zdl-base-400);
   --text-subtle: var(--zdl-base-500);
-  --border: var(--zdl-base-700);
+  --border: rgba(255, 255, 255, 0.09);
   --border-strong: var(--zdl-base-500);
-  --shadow-color: rgba(0, 0, 0, 0.4);
-  --glass-tint: rgba(28, 25, 23, 0.65);
+  --shadow-color: rgba(0, 0, 0, 0.5);
+  --shadow-1: 0 1px 3px var(--shadow-color);
+  --shadow-2: 0 4px 16px var(--shadow-color);
+  --shadow-3: 0 8px 32px var(--shadow-color);
+  --shadow-4: 0 24px 64px var(--shadow-color);
+
+  /* Violet glass — the wallpaper's purple shines THROUGH surfaces */
+  --glass-tint: rgba(34, 22, 58, 0.42);
+  --glass-tint-rail: rgba(26, 17, 46, 0.52);
+  --card-glass-hi: rgba(255, 255, 255, 0.13);
+  --card-glass-lo: rgba(255, 255, 255, 0.05);
+  --card-glass-hi-hover: rgba(255, 255, 255, 0.19);
+  --card-glass-lo-hover: rgba(255, 255, 255, 0.08);
+  --card-rim: rgba(255, 255, 255, 0.22);
 }
 
 [data-theme="oled"] {
   color-scheme: dark;
-  --accent: #2dd4bf;
-  --accent-strong: #5eead4;
-  --on-accent: #042f2e;
+  --accent: #a78bfa;
+  --accent-strong: #c4b5fd;
+  --on-accent: #241145;
   --accent-warn: #fbbf24;
   --accent-danger: #f87171;
 
@@ -125,11 +163,21 @@
   --text: var(--zdl-base-50);
   --text-muted: var(--zdl-base-400);
   --text-subtle: var(--zdl-base-500);
-  --border: var(--zdl-base-800);
+  --border: rgba(255, 255, 255, 0.07);
   --border-strong: var(--zdl-base-600);
-  --shadow-color: rgba(0, 0, 0, 0.6);
-  /* OLED: emissive blacks stay pure; glass falls back to opaque. */
-  --glass-tint: #101010;
+  --shadow-color: rgba(0, 0, 0, 0.7);
+  --shadow-1: 0 1px 3px var(--shadow-color);
+  --shadow-2: 0 4px 16px var(--shadow-color);
+  --shadow-3: 0 8px 32px var(--shadow-color);
+  --shadow-4: 0 24px 64px var(--shadow-color);
+
+  --glass-tint: rgba(13, 13, 16, 0.72);
+  --glass-tint-rail: rgba(10, 10, 12, 0.8);
+  --card-glass-hi: rgba(255, 255, 255, 0.07);
+  --card-glass-lo: rgba(255, 255, 255, 0.03);
+  --card-glass-hi-hover: rgba(255, 255, 255, 0.11);
+  --card-glass-lo-hover: rgba(255, 255, 255, 0.05);
+  --card-rim: rgba(255, 255, 255, 0.14);
 }
 
 /* High contrast: opaque, thick borders, no glass, no shadows. */
@@ -152,69 +200,224 @@
   --border-strong: #000000;
   --focus-ring: #000000;
   --shadow-color: transparent;
-  --glass-tint: #ffffff;
-}
-[data-theme="hc"] {
   --shadow-1: none;
   --shadow-2: none;
   --shadow-3: none;
   --shadow-4: none;
+
+  --glass-tint: #ffffff;
+  --glass-tint-rail: #ffffff;
+  --card-glass-hi: #ffffff;
+  --card-glass-lo: #ffffff;
+  --card-glass-hi-hover: #ffffff;
+  --card-glass-lo-hover: #ffffff;
+  --card-rim: transparent;
 }
 
 /* System preference resolution when no explicit theme is chosen. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme]) {
     color-scheme: dark;
-    --accent: #2dd4bf;
-    --accent-strong: #5eead4;
-    --on-accent: #042f2e;
-    --surface: var(--zdl-base-900);
-    --surface-elevated: var(--zdl-base-800);
-    --surface-muted: rgba(41, 37, 36, 0.6);
-    --surface-sunken: var(--zdl-base-950);
+    --accent: #a78bfa;
+    --accent-strong: #c4b5fd;
+    --on-accent: #241145;
+    --surface: var(--zdl-base-950);
+    --surface-elevated: var(--zdl-base-900);
+    --surface-muted: rgba(39, 39, 42, 0.6);
+    --surface-sunken: #000000;
     --text: var(--zdl-base-50);
     --text-muted: var(--zdl-base-400);
     --text-subtle: var(--zdl-base-500);
-    --border: var(--zdl-base-700);
+    --border: rgba(255, 255, 255, 0.09);
     --border-strong: var(--zdl-base-500);
-    --shadow-color: rgba(0, 0, 0, 0.4);
-    --glass-tint: rgba(28, 25, 23, 0.65);
+    --shadow-color: rgba(0, 0, 0, 0.5);
+    --glass-tint: rgba(34, 22, 58, 0.42);
+    --glass-tint-rail: rgba(26, 17, 46, 0.52);
+    --card-glass-hi: rgba(255, 255, 255, 0.13);
+    --card-glass-lo: rgba(255, 255, 255, 0.05);
+    --card-glass-hi-hover: rgba(255, 255, 255, 0.19);
+    --card-glass-lo-hover: rgba(255, 255, 255, 0.08);
+    --card-rim: rgba(255, 255, 255, 0.22);
   }
 }
 
-/* ---------------------------------- Tier 3: component ------------------- */
+/* ------------------------------ Component tokens ------------------------ */
 :root {
-  --card-bg: var(--surface-elevated);
-  --card-border: var(--border);
-  --card-shadow: var(--shadow-1);
-  --nav-bg: var(--surface);
   --row-height: 56px;
   --row-height-compact: 44px;
   --target-min: 24px;
   --target-comfortable: 44px;
+  --card-bg: var(--glass-tint);
+  --card-border: var(--border);
 }
 
-/* ---------------------------------- Base -------------------------------- */
+/* ------------------------------ Aurora backdrop ------------------------- */
+/* The vibrant violet wallpaper that makes glass READ as glass: surfaces
+   genuinely transmit its hue. Decorative only (aria-hidden in markup);
+   transform-only drift, amplitude kept small (apple-design §14: avoid
+   aggressive full-viewport motion), fully disabled under reduced-motion. */
+/* Aurora paints FIRST via DOM order — no z-index games (compositor-safe).
+   Reduced amplitude drift; disabled under reduced-motion. */
+.zdl-aurora {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(52% 60% at 18% 12%, rgba(167, 139, 250, 0.5) 0%, transparent 70%),
+    radial-gradient(46% 55% at 84% 22%, rgba(139, 92, 246, 0.34) 0%, transparent 68%),
+    radial-gradient(60% 50% at 55% 96%, rgba(196, 181, 253, 0.3) 0%, transparent 66%),
+    radial-gradient(38% 42% at 8% 62%, rgba(45, 212, 191, 0.16) 0%, transparent 60%),
+    radial-gradient(30% 36% at 92% 74%, rgba(251, 191, 36, 0.1) 0%, transparent 58%),
+    linear-gradient(165deg, #f5f3ff 0%, #ede9fe 38%, #fdf4ff 72%, #eff6ff 100%);
+}
+.zdl-aurora::before,
+.zdl-aurora::after {
+  content: "";
+  position: absolute;
+  inset: -20%;
+  background:
+    radial-gradient(40% 34% at 30% 30%, rgba(139, 92, 246, 0.2) 0%, transparent 70%),
+    radial-gradient(36% 30% at 72% 58%, rgba(167, 139, 250, 0.16) 0%, transparent 68%);
+  animation: zdl-aurora-drift 44s ease-in-out infinite alternate;
+  will-change: transform;
+}
+.zdl-aurora::after {
+  background:
+    radial-gradient(34% 30% at 66% 26%, rgba(45, 212, 191, 0.1) 0%, transparent 66%),
+    radial-gradient(40% 36% at 24% 76%, rgba(196, 181, 253, 0.18) 0%, transparent 70%);
+  animation-duration: 56s;
+  animation-direction: alternate-reverse;
+}
+@keyframes zdl-aurora-drift {
+  from { transform: translate3d(-1.5%, -1%, 0) scale(1); }
+  to { transform: translate3d(1.5%, 1.5%, 0) scale(1.05); }
+}
+
+/* Dark: rich violet silk (reference concept) — deep enough for white text
+   everywhere, with the brightest glow tucked behind the rail edge. */
+[data-theme="dark"] .zdl-aurora {
+  background:
+    radial-gradient(42% 52% at 6% 4%, rgba(167, 139, 250, 0.55) 0%, transparent 66%),
+    radial-gradient(46% 55% at 88% 20%, rgba(124, 58, 237, 0.48) 0%, transparent 64%),
+    radial-gradient(60% 50% at 55% 104%, rgba(109, 40, 217, 0.5) 0%, transparent 62%),
+    radial-gradient(36% 42% at 0% 70%, rgba(196, 181, 253, 0.3) 0%, transparent 58%),
+    radial-gradient(32% 38% at 98% 76%, rgba(45, 212, 191, 0.1) 0%, transparent 56%),
+    linear-gradient(120deg, transparent 34%, rgba(150, 120, 220, 0.14) 48%, transparent 62%),
+    linear-gradient(165deg, #1c1138 0%, #140c28 48%, #190f34 100%);
+}
+[data-theme="dark"] .zdl-aurora::before {
+  background:
+    radial-gradient(42% 36% at 28% 28%, rgba(167, 139, 250, 0.34) 0%, transparent 70%),
+    radial-gradient(38% 32% at 74% 60%, rgba(139, 92, 246, 0.28) 0%, transparent 68%),
+    linear-gradient(105deg, transparent 42%, rgba(255, 255, 255, 0.07) 51%, transparent 63%);
+}
+[data-theme="dark"] .zdl-aurora::after {
+  background:
+    radial-gradient(36% 32% at 64% 24%, rgba(196, 181, 253, 0.28) 0%, transparent 66%),
+    radial-gradient(44% 38% at 22% 78%, rgba(124, 58, 237, 0.32) 0%, transparent 68%);
+}
+
+/* OLED: emissive blacks stay pure; only faint violet breathes. */
+[data-theme="oled"] .zdl-aurora {
+  background:
+    radial-gradient(50% 55% at 18% 12%, rgba(124, 58, 237, 0.3) 0%, transparent 64%),
+    radial-gradient(44% 50% at 84% 80%, rgba(109, 40, 217, 0.24) 0%, transparent 60%),
+    #000000;
+}
+[data-theme="oled"] .zdl-aurora::before,
+[data-theme="oled"] .zdl-aurora::after {
+  content: none;
+}
+
+/* High contrast: no decorative layer at all. */
+[data-theme="hc"] .zdl-aurora {
+  background: var(--surface);
+}
+[data-theme="hc"] .zdl-aurora::before,
+[data-theme="hc"] .zdl-aurora::after {
+  content: none;
+}
+
+/* ------------------------------ Glass system (.zlg) --------------------- */
+/* Four-layer composition consumed by <LiquidGlassSurface>:
+   L0 refract (backdrop blur+saturate + SVG edge lensing in Chromium)
+   L1 tint (violet-transmitting wash) | L2 specular top rim | L3 content.
+   Radius inherits from the host className; themes own the colors. */
+.zlg {
+  position: relative;
+  overflow: hidden;
+}
+.zlg__refract,
+.zlg__tint,
+.zlg__specular {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+}
+.zlg__refract {
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  isolation: isolate;
+}
+.zlg__tint {
+  background: var(--glass-tint);
+}
+/* The rail is a bigger structural surface → thicker material (apple §12). */
+.zlg--rail .zlg__refract {
+  backdrop-filter: var(--glass-blur-heavy);
+  -webkit-backdrop-filter: var(--glass-blur-heavy);
+}
+.zlg--rail .zlg__tint {
+  background: var(--glass-tint-rail);
+}
+.zlg__specular {
+  box-shadow: var(--glass-specular);
+}
+.zlg__content {
+  position: relative;
+  z-index: 10;
+}
+/* Opaque fallback (OLED/hc/reduced-transparency): no backdrop sampling. */
+.zlg--opaque .zlg__refract {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.zlg--opaque .zlg__tint {
+  background: var(--surface-elevated);
+}
+
+/* ------------------------------ Base ------------------------------------ */
 *,
 *::before,
 *::after {
   box-sizing: border-box;
 }
 
+html {
+  height: 100%;
+}
+
 body {
   margin: 0;
+  min-height: 100%;
   font: var(--text-body);
+  letter-spacing: var(--track-body);
   background: var(--surface);
   color: var(--text);
 }
 
-/* Focus contract (DESIGN.md §8.3) */
+h1,
+h2 {
+  letter-spacing: var(--track-display);
+}
+
+/* ------------------------------ Accessibility contracts ----------------- */
 :focus-visible {
   outline: 3px solid var(--focus-ring);
   outline-offset: 2px;
 }
 
-/* User contrast escalation */
 @media (prefers-contrast: more) {
   :root {
     --text-muted: var(--text);
@@ -225,216 +428,92 @@ body {
   }
 }
 
-/* Forced colors: system palette owns presentation; keep structure legible. */
 @media (forced-colors: active) {
   :root {
     --glass-tint: Canvas;
+    --glass-tint-rail: Canvas;
     --shadow-1: none;
     --shadow-2: none;
     --shadow-3: none;
     --shadow-4: none;
+  }
+  .zlg__refract {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  .zdl-aurora {
+    display: none;
   }
   :focus-visible {
     outline-color: Highlight;
   }
 }
 
-/* Reduced motion: collapse transitions to opacity-only micro fades. */
+/* Reduced motion: stop decorative motion specifically (NOT a blanket
+   0.01ms rule — that pattern breaks transitionend logic; springs are
+   handled by the motion/react policy). */
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    transition-duration: 0.01ms !important;
-    animation-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
+  .zdl-aurora::before,
+  .zdl-aurora::after {
+    animation: none;
+  }
+  .zdl-card,
+  .zdl-nav-row,
+  .zdl-button,
+ .zdl-theme-btn,
+  .zdl-expander__chevron {
+    transition-duration: 0.01ms;
+  }
+  html {
+    scroll-behavior: auto;
   }
 }
 
-/* Reduced transparency / no compositing: glass becomes opaque. */
 @media (prefers-reduced-transparency: reduce) {
   :root {
     --glass-tint: var(--surface-elevated);
+    --glass-tint-rail: var(--surface-elevated);
+  }
+  .zlg__refract {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  .zdl-aurora {
+    opacity: 0.25;
   }
 }
 
-/* ---------------------------------- Primitives (Tier 3 classes) --------- */
-/* Anatomy per DESIGN.md §11; states per §8. */
-
-.zdl-card {
-  display: flex;
-  align-items: center;
-  gap: var(--space-4);
-  width: 100%;
-  min-height: var(--row-height);
-  padding: var(--space-3) var(--space-4);
-  background: var(--card-bg);
-  border: 1px solid var(--card-border);
-  border-radius: var(--radius-card);
-  box-shadow: var(--card-shadow);
-  color: var(--text);
-  font: var(--text-body);
-  text-align: start;
-  transition:
-    background var(--motion-quick) var(--ease-standard),
-    box-shadow var(--motion-quick) var(--ease-standard),
-    transform var(--motion-instant) var(--ease-standard);
+/* ------------------------------ Component-scope accents ----------------- */
+:root {
+  --accent-soft: rgba(124, 58, 237, 0.12);
+  --accent-soft-strong: rgba(124, 58, 237, 0.2);
+  --accent-glow: 0 4px 18px rgba(139, 92, 246, 0.4);
+  --icon-tile: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
+}
+[data-theme="dark"] {
+  --accent-soft: rgba(167, 139, 250, 0.16);
+  --accent-soft-strong: rgba(167, 139, 250, 0.26);
+  --accent-glow: 0 4px 20px rgba(139, 92, 246, 0.45);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --accent-soft: rgba(167, 139, 250, 0.16);
+    --accent-soft-strong: rgba(167, 139, 250, 0.26);
+    --accent-glow: 0 4px 20px rgba(139, 92, 246, 0.45);
+  }
+}
+[data-theme="oled"] {
+  --accent-soft: rgba(167, 139, 250, 0.14);
+  --accent-soft-strong: rgba(167, 139, 250, 0.24);
+}
+[data-theme="hc"] {
+  --accent-soft: transparent;
+  --accent-soft-strong: transparent;
+  --accent-glow: none;
+  --icon-tile: none;
 }
 
-button.zdl-card,
-a.zdl-card {
-  cursor: pointer;
-}
-
-button.zdl-card:hover:not(:disabled),
-.zdl-card[data-hoverable="true"]:hover {
-  background: var(--surface-elevated);
-  box-shadow: var(--shadow-2);
-}
-
-button.zdl-card:active:not(:disabled) {
-  transform: scale(0.98);
-}
-
-.zdl-card:disabled {
-  color: var(--text-subtle);
-  cursor: default;
-}
-
-.zdl-card__icon {
-  flex: none;
-  display: grid;
-  place-items: center;
-  inline-size: var(--target-comfortable);
-  block-size: var(--target-comfortable);
-  border-radius: var(--radius-control);
-  background: var(--surface-muted);
-  color: var(--text-muted);
-}
-
-.zdl-card__body {
-  flex: 1;
-  min-width: 0;
-  display: grid;
-  gap: 2px;
-}
-
-.zdl-card__title {
-  font: var(--text-title);
-}
-
-.zdl-card__description {
-  font: var(--text-caption);
-  color: var(--text-muted);
-}
-
-.zdl-card__control {
-  flex: none;
-  margin-inline-start: auto;
-}
-
-.zdl-card__chevron {
-  flex: none;
-  color: var(--text-subtle);
-}
-
-/* Expander */
-.zdl-expander__region {
-  overflow: hidden;
-  padding: var(--space-2) 0 var(--space-2) var(--space-8);
-  border-inline-start: 1px solid var(--border);
-  margin-inline-start: var(--space-4);
-  display: grid;
-  gap: var(--space-2);
-}
-
-.zdl-expander__chevron {
-  transition: transform var(--motion-normal) var(--ease-standard);
-}
-.zdl-expander__chevron[data-open="true"] {
-  transform: rotate(180deg);
-}
-
-/* Toggle switch — role=switch button; geometry per DESIGN.md §11 */
-.zdl-switch {
-  position: relative;
-  inline-size: 40px;
-  block-size: 24px;
-  border-radius: 999px;
-  border: 1px solid var(--border-strong);
-  background: var(--surface-sunken);
-  cursor: pointer;
-  transition: background var(--motion-quick) var(--ease-standard);
-}
-
-.zdl-switch::after {
-  content: "";
-  position: absolute;
-  inset-block-start: 1px;
-  inset-inline-start: 1px;
-  inline-size: 20px;
-  block-size: 20px;
-  border-radius: 999px;
-  background: var(--surface-elevated);
-  border: 1px solid var(--border-strong);
-  transition: translate var(--motion-quick) var(--ease-standard);
-}
-
-.zdl-switch[aria-checked="true"] {
-  background: var(--accent);
-  border-color: var(--accent);
-}
-
-.zdl-switch[aria-checked="true"]::after {
-  translate: 16px 0;
-  border-color: transparent;
-}
-
-.zdl-switch:disabled {
-  opacity: 0.5;
-  cursor: default;
-}
-
-/* Hit-area wrapper guarantees ≥44px target without enlarging the visual. */
-.zdl-switch-hit {
-  display: inline-grid;
-  place-items: center;
-  min-inline-size: var(--target-comfortable);
-  min-block-size: var(--target-comfortable);
-  border-radius: var(--radius-control);
-}
-
-/* Navigation row (rail) */
-.zdl-nav-row {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  width: 100%;
-  min-height: var(--row-height-compact);
-  padding: var(--space-2) var(--space-3);
-  border: none;
-  border-radius: var(--radius-control);
-  background: transparent;
-  color: var(--text-muted);
-  font: var(--text-title);
-  text-align: start;
-  cursor: pointer;
-  transition:
-    background var(--motion-quick) var(--ease-standard),
-    color var(--motion-quick) var(--ease-standard);
-}
-
-.zdl-nav-row:hover {
-  background: var(--surface-muted);
-  color: var(--text);
-}
-
-.zdl-nav-row[aria-current="page"] {
-  background: var(--surface-muted);
-  color: var(--accent);
-  font-weight: 600;
-}
-
-/* ---------------------------------- Shell (Phase 4) --------------------- */
+/* ------------------------------ Utilities ------------------------------- */
 .visually-hidden {
   position: absolute;
   width: 1px;
@@ -456,52 +535,75 @@ button.zdl-card:active:not(:disabled) {
   color: var(--on-accent);
   background: var(--accent);
   border-radius: var(--radius-control);
+  box-shadow: var(--shadow-2);
   transform: translateY(-200%);
 }
 .skip-link:focus {
   transform: translateY(0);
 }
 
+/* ------------------------------ Shell ----------------------------------- */
 .zdl-shell {
+  position: relative;
+  isolation: isolate;
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  background: var(--surface);
+  background: transparent;
   color: var(--text);
 }
-
 .zdl-shell__body {
   display: flex;
   flex: 1;
   min-height: 0;
 }
+.zdl-rail-host {
+  display: contents;
+}
 
+/* Topbar — thin transient glass strip (overlay widths only). */
 .zdl-topbar {
+  position: relative;
+  z-index: 20;
   display: flex;
   align-items: center;
   gap: var(--space-3);
   min-height: var(--row-height-compact);
   padding: var(--space-2) var(--space-4);
-  border-block-end: 1px solid var(--border);
+  background: var(--glass-tint);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-1), inset 0 1px 0 rgba(255, 255, 255, 0.25);
 }
 .zdl-topbar__title {
   font: var(--text-title-lg);
+  letter-spacing: var(--track-title-lg);
 }
 
-/* Navigation rail */
+/* Navigation rail — the heavy structural Liquid Glass panel. The
+   LiquidGlassSurface paints L0–L2 (zlg--rail thickens the material); this
+   class owns geometry, layout, and scroll behavior. */
 .zdl-rail {
+  position: relative;
+  z-index: 10;
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-  inline-size: 260px;
+  inline-size: 284px;
   flex: none;
+  margin: var(--space-3) 0 var(--space-3) var(--space-3);
   padding: var(--space-4) var(--space-3);
-  background: var(--nav-bg);
-  border-inline-end: 1px solid var(--border);
-  overflow-y: auto;
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-3);
+  overflow: hidden;
 }
 .zdl-rail--compact {
-  inline-size: 72px;
+  inline-size: 76px;
+  padding: var(--space-4) var(--space-2);
+}
+.zdl-rail--compact .zdl-nav-row {
+  justify-content: center;
+  padding-inline: 0;
 }
 .zdl-rail--compact .zdl-nav-row span:not(:first-child),
 .zdl-rail--compact .zdl-rail__search,
@@ -511,33 +613,45 @@ button.zdl-card:active:not(:disabled) {
 .zdl-rail--overlay {
   position: fixed;
   z-index: 100;
-  inset-block: 48px 0;
-  inset-inline-start: 0;
+  inset-block: 48px var(--space-3);
+  inset-inline-start: var(--space-3);
   inline-size: min(320px, 85vw);
-  box-shadow: var(--shadow-3);
-  background: var(--surface-elevated);
+  box-shadow: var(--shadow-4);
 }
 
+.zdl-rail__search {
+  margin-block-end: var(--space-1);
+}
 .zdl-rail__rows {
   display: grid;
   gap: var(--space-1);
   align-content: start;
   flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-inline-end: 2px;
 }
 .zdl-rail__footer {
   border-block-start: 1px solid var(--border);
   padding-block-start: var(--space-3);
 }
 
-/* Content column */
+/* Content column — transparent over the aurora; constrained per spec §5.1 */
 .zdl-content {
   flex: 1;
+  min-width: 0;
   max-width: 1000px;
   padding: var(--space-6) var(--space-8);
   outline-offset: -3px;
 }
+.zdl-page {
+  min-width: 0;
+}
 .zdl-page-title {
+  position: relative;
   font: var(--text-display);
+  letter-spacing: var(--track-display);
   margin: 0 0 var(--space-2);
 }
 .zdl-page-description {
@@ -549,8 +663,12 @@ button.zdl-card:active:not(:disabled) {
   display: grid;
   gap: var(--space-2);
 }
+.zdl-section-title {
+  font: var(--text-title-lg);
+  letter-spacing: var(--track-title-lg);
+  margin: var(--space-6) 0 var(--space-2);
+}
 
-/* Breadcrumbs (decorative separators hidden from AT via ::after content) */
 .zdl-breadcrumbs {
   display: flex;
   gap: var(--space-2);
@@ -558,12 +676,242 @@ button.zdl-card:active:not(:disabled) {
   margin: 0 0 var(--space-4);
   padding: 0;
   font: var(--text-caption);
+  letter-spacing: var(--track-caption);
   color: var(--text-muted);
 }
 .zdl-breadcrumbs li + li::before {
   content: "/";
   margin-inline-end: var(--space-2);
   color: var(--text-subtle);
+}
+
+/* ------------------------------ Cards ----------------------------------- */
+/* Light glass: a white gradient over the vibrant aurora picks up violet
+   naturally. Bright top rim = light catching the material (apple §12).
+   NO per-card backdrop blur — the aurora is already smooth; skipping the
+   sampling keeps dozens of cards on the compositor's cheap path. */
+.zdl-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  width: 100%;
+  min-height: var(--row-height);
+  padding: var(--space-3) var(--space-4);
+  background: linear-gradient(
+    135deg,
+    var(--card-glass-hi) 0%,
+    var(--card-glass-lo) 100%
+  );
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-card);
+  box-shadow:
+    var(--shadow-1),
+    inset 0 1px 0 var(--card-rim);
+  color: var(--text);
+  font: var(--text-body);
+  text-align: start;
+  transition:
+    background var(--motion-quick) var(--ease-standard),
+    box-shadow var(--motion-quick) var(--ease-standard),
+    border-color var(--motion-quick) var(--ease-standard),
+    transform var(--motion-quick) var(--ease-standard);
+}
+[data-theme="dark"] .zdl-card {
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+button.zdl-card,
+a.zdl-card {
+  cursor: pointer;
+}
+
+button.zdl-card:hover:not(:disabled),
+.zdl-card[data-hoverable="true"]:hover {
+  background: linear-gradient(
+    135deg,
+    var(--card-glass-hi-hover) 0%,
+    var(--card-glass-lo-hover) 100%
+  );
+  border-color: var(--accent-soft-strong);
+  box-shadow:
+    var(--shadow-2),
+    inset 0 1px 0 var(--card-rim);
+  transform: translateY(-1px);
+}
+
+button.zdl-card:active:not(:disabled) {
+  transform: translateY(0) scale(0.99);
+}
+
+.zdl-card:disabled {
+  color: var(--text-subtle);
+  cursor: default;
+}
+
+/* Icon tile — purple gradient square (reference concept). */
+.zdl-card__icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  inline-size: 40px;
+  block-size: 40px;
+  border-radius: var(--radius-control);
+  background: var(--icon-tile);
+  color: #ffffff;
+  box-shadow: var(--accent-glow);
+}
+
+.zdl-card__body {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.zdl-card__title {
+  font: var(--text-title);
+  letter-spacing: var(--track-title);
+}
+
+.zdl-card__description {
+  font: var(--text-caption);
+  letter-spacing: var(--track-caption);
+  color: var(--text-muted);
+}
+
+.zdl-card__control {
+  flex: none;
+  margin-inline-start: auto;
+}
+
+.zdl-card__chevron {
+  flex: none;
+  color: var(--text-subtle);
+}
+
+/* Expander */
+.zdl-expander__region {
+  overflow: hidden;
+  padding: var(--space-2) 0 var(--space-2) var(--space-8);
+  border-inline-start: 2px solid var(--accent-soft-strong);
+  margin-inline-start: var(--space-4);
+  display: grid;
+  gap: var(--space-2);
+}
+
+.zdl-expander__chevron {
+  transition: transform var(--motion-normal) var(--ease-standard);
+}
+.zdl-expander__chevron[data-open="true"] {
+  transform: rotate(180deg);
+}
+
+/* Toggle switch — knob travels on a motion/react spring (critical). */
+.zdl-switch {
+  position: relative;
+  inline-size: 40px;
+  block-size: 24px;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface-sunken);
+  cursor: pointer;
+  transition: background var(--motion-quick) var(--ease-standard),
+    border-color var(--motion-quick) var(--ease-standard);
+}
+
+.zdl-switch__knob {
+  position: absolute;
+  inset-block-start: 1px;
+  inset-inline-start: 1px;
+  inline-size: 20px;
+  block-size: 20px;
+  border-radius: 999px;
+  background: var(--surface-elevated);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  display: block;
+}
+
+.zdl-switch[aria-checked="true"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  box-shadow: var(--accent-glow);
+}
+
+.zdl-switch:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.zdl-switch-hit {
+  display: inline-grid;
+  place-items: center;
+  min-inline-size: var(--target-comfortable);
+  min-block-size: var(--target-comfortable);
+  border-radius: var(--radius-control);
+}
+
+/* Navigation row — active state is the glowing purple pill. */
+.zdl-nav-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: var(--row-height-compact);
+  padding: var(--space-2) var(--space-3);
+  border: none;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--text-muted);
+  font: var(--text-title);
+  letter-spacing: var(--track-title);
+  text-align: start;
+  cursor: pointer;
+  transition:
+    background var(--motion-quick) var(--ease-standard),
+    color var(--motion-quick) var(--ease-standard),
+    box-shadow var(--motion-quick) var(--ease-standard);
+}
+
+.zdl-nav-row:hover {
+  background: var(--accent-soft);
+  color: var(--text);
+}
+
+.zdl-nav-row[aria-current="page"] {
+  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+  color: #ffffff;
+  font-weight: 600;
+  box-shadow: var(--accent-glow);
+}
+[data-theme="hc"] .zdl-nav-row[aria-current="page"] {
+  background: var(--surface-elevated);
+  color: var(--text);
+  border: 2px solid var(--accent);
+}
+
+/* ------------------------------ Buttons --------------------------------- */
+.zdl-button {
+  padding: var(--space-2) var(--space-4);
+  min-block-size: var(--target-comfortable);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-control);
+  background: var(--card-glass-hi);
+  color: var(--text);
+  font: var(--text-title);
+  letter-spacing: var(--track-title);
+  cursor: pointer;
+  box-shadow: var(--shadow-1), inset 0 1px 0 var(--card-rim);
+  transition: background var(--motion-quick) var(--ease-standard),
+    transform var(--motion-instant) var(--ease-standard);
+}
+.zdl-button:hover:not(:disabled) {
+  background: var(--card-glass-hi-hover);
+}
+.zdl-button:active:not(:disabled) {
+  transform: scale(0.98);
 }
 
 .zdl-link {
@@ -577,22 +925,7 @@ button.zdl-card:active:not(:disabled) {
   cursor: pointer;
 }
 
-.zdl-button {
-  padding: var(--space-2) var(--space-4);
-  min-block-size: var(--target-comfortable);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-control);
-  background: var(--surface-elevated);
-  color: var(--text);
-  font: var(--text-title);
-  cursor: pointer;
-  transition: background var(--motion-quick) var(--ease-standard);
-}
-.zdl-button:hover:not(:disabled) {
-  background: var(--surface-muted);
-}
-
-/* Search surface */
+/* ------------------------------ Search surface -------------------------- */
 .zdl-search {
   position: relative;
 }
@@ -602,9 +935,21 @@ button.zdl-card:active:not(:disabled) {
   padding: var(--space-2) var(--space-3);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-control);
-  background: var(--surface-sunken);
+  background: var(--card-glass-lo);
   color: var(--text);
   font: var(--text-body);
+  box-shadow: inset 0 1px 0 var(--card-rim);
+  transition: background var(--motion-quick) var(--ease-standard),
+    border-color var(--motion-quick) var(--ease-standard);
+}
+.zdl-search input:focus-visible {
+  outline-offset: 0;
+  background: var(--card-glass-hi);
+  border-color: var(--accent);
+}
+.zdl-search input::placeholder {
+  color: var(--text-muted);
+  opacity: 1;
 }
 .zdl-search__list {
   position: absolute;
@@ -613,12 +958,20 @@ button.zdl-card:active:not(:disabled) {
   margin: var(--space-1) 0 0;
   padding: var(--space-1);
   list-style: none;
-  background: var(--surface-elevated);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-control);
-  box-shadow: var(--shadow-3);
+  background: var(--glass-tint-rail);
+  backdrop-filter: var(--glass-blur-heavy);
+  -webkit-backdrop-filter: var(--glass-blur-heavy);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-4);
   max-block-size: 60vh;
   overflow-y: auto;
+}
+[data-theme="oled"] .zdl-search__list,
+[data-theme="hc"] .zdl-search__list {
+  background: var(--surface-elevated);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 .zdl-search__result {
   display: grid;
@@ -634,10 +987,10 @@ button.zdl-card:active:not(:disabled) {
 }
 .zdl-search__result[data-active],
 .zdl-search__result:hover {
-  background: var(--surface-muted);
+  background: var(--accent-soft);
 }
 
-/* InfoBar / empty states */
+/* ------------------------------ Status surfaces ------------------------- */
 .zdl-infobar {
   display: flex;
   align-items: center;
@@ -646,10 +999,12 @@ button.zdl-card:active:not(:disabled) {
   padding: var(--space-3) var(--space-4);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-card);
-  background: var(--surface-muted);
+  background: var(--card-glass-hi);
+  box-shadow: inset 0 1px 0 var(--card-rim);
 }
 .zdl-infobar[data-variant="error"] {
   border-color: var(--accent-danger);
+  border-width: 2px;
 }
 .zdl-infobar__body {
   display: grid;
@@ -664,13 +1019,14 @@ button.zdl-card:active:not(:disabled) {
   border: 1px dashed var(--border-strong);
   border-radius: var(--radius-card);
   color: var(--text-muted);
+  background: var(--accent-soft);
 }
 
 .zdl-status {
   color: var(--text-muted);
 }
 
-/* Theme selector group */
+/* ------------------------------ Theme selector -------------------------- */
 .zdl-theme-group {
   display: flex;
   flex-wrap: wrap;
@@ -685,21 +1041,25 @@ button.zdl-card:active:not(:disabled) {
   background: transparent;
   color: var(--text-muted);
   font: var(--text-caption);
+  letter-spacing: var(--track-caption);
   cursor: pointer;
+  transition: background var(--motion-quick) var(--ease-standard),
+    color var(--motion-quick) var(--ease-standard),
+    border-color var(--motion-quick) var(--ease-standard);
+}
+.zdl-theme-btn:hover {
+  background: var(--accent-soft);
+  color: var(--text);
 }
 .zdl-theme-btn[aria-pressed="true"] {
   border: 2px solid var(--accent);
   color: var(--accent);
   font-weight: 600;
+  background: var(--accent-soft);
+  padding: calc(var(--space-1) - 1px) calc(var(--space-2) - 1px);
 }
 
-@media (forced-colors: active) {
-  .skip-link { background: Highlight; color: HighlightText; }
-  .zdl-infobar, .zdl-empty { border: 2px solid ButtonText; }
-  .zdl-search__list { border: 2px solid ButtonText; }
-}
-
-/* Select control (ComboBox primitive) */
+/* ------------------------------ Select (ComboBox) ----------------------- */
 .zdl-select {
   min-block-size: var(--target-comfortable);
   padding: var(--space-2) var(--space-3);
@@ -713,7 +1073,44 @@ button.zdl-card:active:not(:disabled) {
   background: var(--surface-muted);
 }
 
-.zdl-section-title {
-  font: var(--text-title-lg);
-  margin: var(--space-6) 0 var(--space-2);
+/* ------------------------------ Forced colors --------------------------- */
+@media (forced-colors: active) {
+  .skip-link {
+    background: Highlight;
+    color: HighlightText;
+  }
+  .zdl-infobar,
+  .zdl-empty,
+  .zdl-search__list {
+    border: 2px solid ButtonText;
+  }
+  .zdl-card {
+    border: 1px solid ButtonText;
+    background: ButtonFace;
+    box-shadow: none;
+  }
+  .zdl-card__icon {
+    background: ButtonFace;
+    color: ButtonText;
+    box-shadow: none;
+  }
+  .zdl-nav-row[aria-current="page"] {
+    border: 2px solid Highlight;
+    color: ButtonText;
+    box-shadow: none;
+  }
+  .zdl-switch[aria-checked="true"] {
+    background: ButtonText;
+    border-color: ButtonText;
+    box-shadow: none;
+  }
+  .zdl-switch__knob {
+    background: ButtonFace;
+    border: 1px solid ButtonText;
+  }
+  .zdl-theme-btn[aria-pressed="true"] {
+    border: 2px solid Highlight;
+    color: ButtonText;
+    background: ButtonFace;
+  }
 }

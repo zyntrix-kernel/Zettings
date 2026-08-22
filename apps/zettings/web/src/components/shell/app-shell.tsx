@@ -9,7 +9,8 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import type { CategorySummaryDto } from "@zettings/bindings";
 import type { Route } from "../../lib/router";
-import { NavRow } from "../zdl";
+import { categoryIcon } from "../../lib/category-icons";
+import { LiquidGlassSurface, NavRow } from "../zdl";
 import { SearchSurface } from "./search-surface";
 import { ThemeSelector } from "./theme-selector";
 
@@ -111,17 +112,31 @@ export function AppShell({
       ? (categories.find((c) => c.id === route.category) ?? null)
       : null;
 
+  const HomeIcon = categoryIcon("home");
   const navRows = (
     <>
-      <NavRow label="Home" current={route.kind === "home"} onActivate={() => onNavigate({ kind: "home" })} />
-      {categories.map((category) => (
-        <NavRow
-          key={category.id}
-          label={navMode === "expanded" ? category.title : category.title.split(" ")[0] ?? category.title}
-          current={route.kind === "category" && route.category === category.id}
-          onActivate={() => onNavigate({ kind: "category", category: category.id })}
-        />
-      ))}
+      <NavRow
+        label="Home"
+        icon={<HomeIcon size={18} />}
+        current={route.kind === "home"}
+        onActivate={() => onNavigate({ kind: "home" })}
+      />
+      {categories.map((category) => {
+        const Icon = categoryIcon(category.id);
+        return (
+          <NavRow
+            key={category.id}
+            label={
+              navMode === "expanded"
+                ? category.title
+                : (category.title.split(" ")[0] ?? category.title)
+            }
+            icon={<Icon size={18} />}
+            current={route.kind === "category" && route.category === category.id}
+            onActivate={() => onNavigate({ kind: "category", category: category.id })}
+          />
+        );
+      })}
     </>
   );
 
@@ -145,8 +160,23 @@ export function AppShell({
     </>
   );
 
+  // The rail is one of the few full-refraction Liquid Glass surfaces per
+  // view (skill perf contract). `display: contents` keeps the aside
+  // landmark while the glass panel becomes the flex child itself.
+  const railPanel = (
+    <LiquidGlassSurface
+      blur={30}
+      scale={-26}
+      className={`zlg--rail zdl-rail zdl-rail--${navMode === "overlay" ? "overlay" : navMode}`}
+    >
+      {railBody}
+    </LiquidGlassSurface>
+  );
+
   return (
     <div className="zdl-shell" data-nav-mode={navMode}>
+      <div className="zdl-aurora" aria-hidden="true" />
+
       <a className="skip-link" href="#main-content">
         Skip to main content
       </a>
@@ -169,12 +199,14 @@ export function AppShell({
 
       <div className="zdl-shell__body">
         {navMode === "overlay" ? (
-          <div id="app-nav" hidden={!overlayOpen} className="zdl-rail zdl-rail--overlay">
-            {railBody}
-          </div>
+          overlayOpen && (
+            <aside id="app-nav" className="zdl-rail-host">
+              {railPanel}
+            </aside>
+          )
         ) : (
-          <aside id="app-nav" className={`zdl-rail zdl-rail--${navMode}`}>
-            {railBody}
+          <aside id="app-nav" className="zdl-rail-host">
+            {railPanel}
           </aside>
         )}
 

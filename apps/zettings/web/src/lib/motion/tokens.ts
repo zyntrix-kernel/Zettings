@@ -10,11 +10,15 @@
 /** Spring for navigation-level transitions (page slides, rail morphs). */
 export const SPRING_NAVIGATION = { type: "spring", stiffness: 220, damping: 28, mass: 1.0 } as const;
 
-/** Spring for control feedback (toggles, knobs, press returns). */
-export const SPRING_CONTROL = { type: "spring", stiffness: 320, damping: 22, mass: 0.6 } as const;
+/**
+ * Spring for control feedback (toggle knob, press returns).
+ * Critically damped (ζ ≈ 1.0) per apple-design §4 — no overshoot; bounce is
+ * reserved for momentum gestures, which plain control changes are not.
+ */
+export const SPRING_CONTROL = { type: "spring", stiffness: 320, damping: 28, mass: 0.6 } as const;
 
-/** Spring for modal/dialog presentation. */
-export const SPRING_MODAL = { type: "spring", stiffness: 180, damping: 24, mass: 1.2 } as const;
+/** Modal/dialog presentation spring — critically damped settle. */
+export const SPRING_MODAL = { type: "spring", stiffness: 180, damping: 30, mass: 1.2 } as const;
 
 /** Standard decelerate curve for non-spring tweens. */
 export const EASE_STANDARD = [0.2, 0, 0, 1] as const;

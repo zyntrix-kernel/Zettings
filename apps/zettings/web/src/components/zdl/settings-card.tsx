@@ -1,4 +1,6 @@
 import type { ReactNode } from "react";
+import { motion } from "motion/react";
+import { useMotionPolicy } from "../../lib/motion";
 
 /**
  * Chevron glyph used by navigation affordances (decorative; the row's
@@ -57,6 +59,7 @@ export function SettingsCard({
   onActivate,
   disabled = false,
 }: SettingsCardProps) {
+  const policy = useMotionPolicy();
   const body = (
     <>
       {icon !== undefined && <span className="zdl-card__icon">{icon}</span>}
@@ -86,13 +89,15 @@ export function SettingsCard({
   }
 
   return (
-    <button
+    <motion.button
       type="button"
       className="zdl-card"
       onClick={onActivate}
       disabled={disabled}
+      {...(policy.press.whileTap !== undefined && { whileTap: policy.press.whileTap })}
+      {...(policy.press.transition !== undefined && { transition: policy.press.transition })}
     >
       {body}
-    </button>
+    </motion.button>
   );
 }

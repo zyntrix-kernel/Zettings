@@ -34,28 +34,33 @@
 
 ### 2.1 Primitive ramp — `--zdl-base-*`
 
-A warm neutral ramp (stone family) anchors all surfaces:
+A cool neutral ramp (zinc family) anchors all surfaces:
 
 | Token | Value | | Token | Value |
 |---|---|---|---|---|
-| `--zdl-base-50` | `#fafaf9` | | `--zdl-base-500` | `#78716c` |
-| `--zdl-base-100` | `#f5f5f4` | | `--zdl-base-600` | `#57534e` |
-| `--zdl-base-200` | `#e7e5e4` | | `--zdl-base-700` | `#44403c` |
-| `--zdl-base-300` | `#d6d3d1` | | `--zdl-base-800` | `#292524` |
-| `--zdl-base-400` | `#a8a29e` | | `--zdl-base-900` | `#1c1917` |
-| | | | `--zdl-base-950` | `#0c0a09` |
+| `--zdl-base-50` | `#fafafa` | | `--zdl-base-500` | `#71717a` |
+| `--zdl-base-100` | `#f4f4f5` | | `--zdl-base-600` | `#52525b` |
+| `--zdl-base-200` | `#e4e4e7` | | `--zdl-base-700` | `#3f3f46` |
+| `--zdl-base-300` | `#d4d4d8` | | `--zdl-base-800` | `#27272a` |
+| `--zdl-base-400` | `#a1a1aa` | | `--zdl-base-900` | `#18181b` |
+| | | | `--zdl-base-950` | `#09090b` |
 
-### 2.2 Accent — "Zyntrix Signal"
+### 2.2 Accent — "Zyntrix Aurora"
 
-The brand accent is a deep teal in light appearances and a luminous seafoam in
-dark appearances. It is used for selection, active navigation, primary actions,
-and focus rings — never for body text.
+The brand accent is a saturated violet in light appearances and a luminous
+lavender in dark appearances. It is used for selection, active navigation,
+primary actions, icon washes (`--accent-soft`), and focus rings — never for
+body text.
 
-| Role | Light / OLED-light | Dark / OLED |
+| Role | Light | Dark / OLED |
 |---|---|---|
-| `--accent` | `#0f766e` | `#2dd4bf` |
-| `--accent-strong` (hover/pressed) | `#115e59` | `#5eead4` |
-| `--on-accent` (text on accent fills) | `#ffffff` | `#042f2e` |
+| `--accent` | `#7c3aed` | `#a78bfa` |
+| `--accent-strong` (hover/pressed) | `#6d28d9` | `#c4b5fd` |
+| `--on-accent` (text on accent fills) | `#ffffff` | `#241145` |
+| `--accent-soft` (selection wash) | violet @ 12% | lavender @ 16% |
+
+Validated pairs: `--accent` on white ≈ 5.7:1 (AA text); dark accent on
+near-black ≈ 6.9:1; `--on-accent` pairs ≥ 4.5:1 in both appearances.
 
 Secondary signal (warnings/destructive confirmations) uses amber `#b45309`
 (light) / `#fbbf24` (dark); danger uses `#b91c1c` / `#f87171`. Status is never
@@ -145,19 +150,25 @@ Responsive breakpoints (content width, per spec §16): >1100 expanded nav ·
 
 ### 5.1 Liquid Glass stack
 
-Transient surfaces (dialogs, flyouts, search overlay) use the four-layer
-glass composition (per liquid-glass skill):
+Glass is the app's primary material and is layered over an **aurora
+wallpaper** (`.zdl-aurora`): a fixed violet/teal mesh gradient whose slow
+drift gives translucency something to refract. Composition per surface class:
 
 ```text
-L0 refraction  backdrop-filter: blur(24px) saturate(180%) [+ SVG displacement in Chromium]
-L1 tint        rgba(surface-tint, α)  — dark .65 / light .45
-L2 specular    inset 0 1px 0 rgba(255,255,255,.12) top rim
-L3 content     opaque-enough backing for AA text
+Full refraction (≤3 instances per view — rail panel, search flyout, topbar):
+  L0 refract  backdrop-filter: blur(18px) saturate(160%)
+              [+ SVG feDisplacementMap edge lensing in Chromium]
+  L1 tint     --glass-tint (light .42 white / dark .55 zinc-900)
+  L2 specular 4-edge inset rim highlights
+  L3 content
+
+Frost (bulk content — cards, lists):
+  translucent gradient + hairline border + specular top rim; NO per-card
+  backdrop-filter. The aurora behind is a smooth gradient, so skipping the
+  blur is visually identical at a fraction of the compositor cost.
 ```
 
-Long-lived surfaces (window background, nav pane) use **Mica-like** flat
-translucency: `backdrop-filter: blur(64px)` over wallpaper sampling at low
-opacity — calm, not showy.
+OLED and hc themes collapse every glass surface to opaque `--surface-elevated`.
 
 ### 5.2 Fallback ladder (legibility wins)
 
@@ -202,8 +213,11 @@ n_eff = 2 + (n − 2) · r / (min(w,h)/2)
 
 Implementation: `useSquircle()` generates a 128-sample cubic-bézier SVG path
 (`clip-path: path(...)`), recomputed on resize via ResizeObserver. Radii
-tokens: `--radius-control` 8 · `--radius-card` 12 · `--radius-panel` 16 ·
-`--radius-overlay` 20. Pill shapes (toggles, chips) use true capsules.
+tokens: `--radius-control` 10 · `--radius-card` 14 · `--radius-panel` 20 ·
+`--radius-overlay` 28. Pill shapes (toggles, chips) use true capsules.
+Interim note: the current build applies these as smooth CSS radii; squircle
+clip-path wiring per primitive is tracked as follow-up work and must not
+compromise focus-outline visibility when landed.
 
 ## 7. Iconography
 

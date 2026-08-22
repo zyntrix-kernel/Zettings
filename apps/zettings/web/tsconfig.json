@@ -15,7 +15,7 @@
     "skipLibCheck": true,
     "isolatedModules": true,
     "noEmit": true,
-    "types": [],
+    "types": ["vite/client"],
     "paths": {
       "@zettings/bindings": ["../../packages/ts-bindings/src/index.ts"]
     }

@@ -1,4 +1,6 @@
 import type { ReactNode } from "react";
+import { motion } from "motion/react";
+import { useMotionPolicy } from "../../lib/motion";
 
 export interface NavRowProps {
   /** Visible label; also the accessible name. */
@@ -12,17 +14,19 @@ export interface NavRowProps {
 }
 
 /**
- * Navigation pane row (DESIGN.md §11). Rendered as a native button; the rail
- * container owns roving-tabindex arrow-key behavior (Phase 4 shell), so this
- * component stays a plain tab stop until then.
+ * Navigation pane row (DESIGN.md §11). Native button semantics with spring
+ * press feedback; the rail container owns roving-tabindex arrow keys.
  */
 export function NavRow({ label, icon, current = false, onActivate }: NavRowProps) {
+  const policy = useMotionPolicy();
   return (
-    <button
+    <motion.button
       type="button"
       className="zdl-nav-row"
       aria-current={current ? "page" : undefined}
       onClick={onActivate}
+      {...(policy.press.whileTap !== undefined && { whileTap: policy.press.whileTap })}
+      {...(policy.press.transition !== undefined && { transition: policy.press.transition })}
     >
       {icon !== undefined && (
         <span aria-hidden="true" style={{ display: "inline-flex" }}>
@@ -30,6 +34,6 @@ export function NavRow({ label, icon, current = false, onActivate }: NavRowProps
         </span>
       )}
       <span>{label}</span>
-    </button>
+    </motion.button>
   );
 }

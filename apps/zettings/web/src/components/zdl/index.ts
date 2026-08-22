@@ -12,3 +12,5 @@ export { ComboBox } from "./combo-box";
 export type { ComboBoxProps } from "./combo-box";
 export { NavRow } from "./nav-row";
 export type { NavRowProps } from "./nav-row";
+export { LiquidGlassSurface } from "./liquid-glass";
+export type { LiquidGlassSurfaceProps } from "./liquid-glass";

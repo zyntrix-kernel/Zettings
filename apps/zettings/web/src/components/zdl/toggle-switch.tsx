@@ -1,3 +1,6 @@
+import { motion, useReducedMotion } from "motion/react";
+import { SPRING_CONTROL } from "../../lib/motion/tokens";
+
 export interface ToggleSwitchProps {
   /** Accessible name (visible label lives outside the switch). */
   label: string;
@@ -14,8 +17,9 @@ export interface ToggleSwitchProps {
  * `role="switch"` + `aria-checked`, so Enter/Space toggling, focus, and
  * screen-reader state reporting are provided by the platform.
  *
- * The visual track is 40×24 px; the wrapping hit area guarantees the 44 px
- * comfortable target without enlarging the visual.
+ * The knob travels on a control spring (ZDL motion tokens); under reduced
+ * motion it snaps without transition. The visual track is 40×24 px; the
+ * wrapping hit area guarantees the 44 px comfortable target.
  */
 export function ToggleSwitch({
   label,
@@ -23,6 +27,8 @@ export function ToggleSwitch({
   onChange,
   disabled = false,
 }: ToggleSwitchProps) {
+  const reduced = useReducedMotion() ?? false;
+
   return (
     <span className="zdl-switch-hit">
       <button
@@ -33,7 +39,17 @@ export function ToggleSwitch({
         className="zdl-switch"
         disabled={disabled}
         onClick={() => onChange(!checked)}
-      />
+      >
+        <motion.span
+          aria-hidden="true"
+          className="zdl-switch__knob"
+          initial={false}
+          animate={{ x: checked ? 16 : 0 }}
+          transition={
+            reduced ? { duration: 0 } : SPRING_CONTROL
+          }
+        />
+      </button>
     </span>
   );
 }
