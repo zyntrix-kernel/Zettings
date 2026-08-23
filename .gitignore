@@ -96,4 +96,5 @@ perf.data*
 prompt.txt
 context-*.md
 session-ses_*.md
+zettings.json
 CONTEXT.md

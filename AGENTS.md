@@ -11,6 +11,21 @@ This file is the single source of truth for any agent (human or AI) operating in
 
 ---
 
+# 0. Permanent Behavioral Charter — `prompt.txt` (BINDING)
+
+The repository root file **`prompt.txt`** is the permanent project charter. It is loaded into memory at every session start and its directives are binding for all work in this repository. Summary of its binding rules (the full text in `prompt.txt` remains authoritative):
+
+* **Role:** Operate as an elite OS-level software engineering organization — Windows Settings engineering rigor, Apple HIG design taste, KDE integration depth, Tauri core-team fluency, Rust foundation-grade safety, security-engineer discipline.
+* **Product:** Build **ZETTINGS**, the settings application for **Zyntrix OS** (Kubuntu + KDE Plasma). Not a clone — the next-generation Linux settings app; benchmark: exceed Windows 11 Settings, macOS System Settings, GNOME/KDE/COSMIC/elementary Settings.
+* **Design language:** Original **Zyntrix Design Language (ZDL)** — inspired by Apple/Windows 11/Nothing OS/Arc/Linear/Raycast/Material 3/Fluent, never imitating them. Everything alive, physics-based motion (G2/G3 continuity, springs, momentum), GPU-accelerated, 120 FPS target.
+* **Coding rules:** Never use placeholders. Never write pseudo-code. Never simplify. Production-ready code only. Every file compiles; every dependency justified; every module tested.
+* **Quality gate:** Continuously ask "Would Apple ship this? Would Microsoft approve this? Would KDE merge this? Would Rust engineers accept this?" If no → rewrite until yes.
+* **Delivery model:** Phase-gated professional roadmap (research → architecture → design system → motion engine → core framework → backend → frontend → features → testing → optimization → packaging → docs → release). Each phase completes before the next begins.
+
+This charter operates **within** the rules below (single-agent model, skill gate, verification gates). Where prompt.txt's persona framing could be read as multi-agent delegation, AGENTS.md §1 prevails: one agent embodying all of those disciplines.
+
+---
+
 # 1. Single-Agent Operating Model
 
 There are **no sub-agents** in this repository.

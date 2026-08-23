@@ -25,15 +25,18 @@ sudo apt install -y \
   build-essential pkg-config \
   libdbus-1-dev libglib2.0-dev libpolkit-gobject-1-dev \
   libpulse-dev libpipewire-0.3-dev \
-  libnetworkmanager-dev libnm0 \
+  libnm-dev \
   libbluetooth-dev \
   libupower-glib-dev \
   libudev-dev libinput-dev \
-  libimage-dev \
   libssl-dev \
   libsbc1 \
   flatpak snapd
 ```
+
+> Package notes: `libnetworkmanager-dev` and `libimage-dev` from the
+> original list do not exist in Ubuntu archives — NetworkManager headers
+> ship as `libnm-dev`, and no image dev package is required.
 
 Rust toolchain (matches `rust-toolchain.toml`):
 
@@ -56,7 +59,7 @@ sudo npm install -g pnpm@11.18.0
 From the WSL2 mount of the repo:
 
 ```bash
-cd /mnt/c/Users/USER/Desktop/Tanay\'s\ Project\ \(Dont\ Delete\)/Zyntrix\ OS/Zettings\ app
+cd "/mnt/c/Users/USER/Desktop/Zyntrix/Zyntrix OS/Zettings-app"
 cargo fmt --all --check
 cargo clippy --workspace --all-targets -- -D warnings
 cargo check --workspace --target x86_64-unknown-linux-gnu
