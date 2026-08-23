@@ -275,18 +275,27 @@
   content: "";
   position: absolute;
   inset: -20%;
+}
+/* Light-theme drift washes (backgrounds are unconditional so static mode
+   keeps the identical composition minus motion). */
+.zdl-aurora::before {
   background:
     radial-gradient(40% 34% at 30% 30%, rgba(139, 92, 246, 0.2) 0%, transparent 70%),
     radial-gradient(36% 30% at 72% 58%, rgba(167, 139, 250, 0.16) 0%, transparent 68%);
-  animation: zdl-aurora-drift 44s ease-in-out infinite alternate;
-  will-change: transform;
 }
 .zdl-aurora::after {
   background:
     radial-gradient(34% 30% at 66% 26%, rgba(45, 212, 191, 0.1) 0%, transparent 66%),
     radial-gradient(40% 36% at 24% 76%, rgba(196, 181, 253, 0.18) 0%, transparent 70%);
-  animation-duration: 56s;
-  animation-direction: alternate-reverse;
+}
+/* Live motion only when the user's wallpaper preference allows it. */
+[data-aurora="live"] .zdl-aurora::before {
+  animation: zdl-aurora-drift 44s ease-in-out infinite alternate;
+  will-change: transform;
+}
+[data-aurora="live"] .zdl-aurora::after {
+  animation: zdl-aurora-drift 56s ease-in-out infinite alternate-reverse;
+  will-change: transform;
 }
 @keyframes zdl-aurora-drift {
   from { transform: translate3d(-1.5%, -1%, 0) scale(1); }
@@ -559,6 +568,52 @@ h2 {
 }
 .zdl-rail-host {
   display: contents;
+}
+
+/* ------------------------------ Titlebar -------------------------------- */
+/* Frameless-window chrome: drag region + window controls (KDE placement,
+   right-aligned). Glass strip so it reads as part of the shell material. */
+.zdl-titlebar {
+  position: relative;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 44px;
+  padding: 0 var(--space-2) 0 var(--space-4);
+}
+.zdl-titlebar__title {
+  font: var(--text-title);
+  letter-spacing: var(--track-title-lg);
+  color: var(--text-muted);
+  user-select: none;
+  cursor: default;
+}
+.zdl-titlebar__controls {
+  display: flex;
+  gap: var(--space-1);
+}
+.zdl-titlebar__btn {
+  display: grid;
+  place-items: center;
+  min-inline-size: var(--target-comfortable);
+  min-block-size: 36px;
+  border: none;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background var(--motion-instant) var(--ease-standard),
+    color var(--motion-instant) var(--ease-standard);
+}
+/* Response on pointer-down, not release (apple-design §1). */
+.zdl-titlebar__btn:hover {
+  background: var(--accent-soft);
+  color: var(--text);
+}
+.zdl-titlebar__btn--close:hover {
+  background: var(--accent-danger);
+  color: #ffffff;
 }
 
 /* Topbar — thin transient glass strip (overlay widths only). */

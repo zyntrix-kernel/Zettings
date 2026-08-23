@@ -18,10 +18,20 @@
           mode !== "oled" &&
           mode !== "hc"
         ) {
-          return; // system: CSS media queries resolve the appearance
+          // system: CSS media queries resolve the appearance
+        } else {
+          document.documentElement.setAttribute("data-theme-mode", mode);
+          document.documentElement.setAttribute("data-theme", mode);
         }
-        document.documentElement.setAttribute("data-theme-mode", mode);
-        document.documentElement.setAttribute("data-theme", mode);
+        // Wallpaper motion preference — validated allowlist, default live.
+        var aurora = null;
+        try {
+          aurora = localStorage.getItem("zettings.wallpaper-motion");
+        } catch (e) {}
+        document.documentElement.setAttribute(
+          "data-aurora",
+          aurora === "static" ? "static" : "live"
+        );
       })();
     </script>
   </head>

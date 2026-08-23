@@ -1,12 +1,18 @@
 /**
- * Personalization L2 page — theme & appearance. The theme selector is REAL
- * (applies light/dark/OLED/high-contrast through the ZDL token cascade and
- * persists per user-personalization rules). Remaining areas render as
- * explained "arriving" rows for their KDE integrations.
+ * Personalization L2 page — theme & appearance. The theme selector and the
+ * live-wallpaper preference are REAL (applied through the ZDL token cascade
+ * / wallpaper module and persisted per user-personalization rules).
+ * Remaining areas render as explained "arriving" rows for their KDE
+ * integrations.
  */
+import { useState } from "react";
 import { ThemeSelector } from "./shell/theme-selector";
-import { categoryIcon } from "../lib/category-icons";
-import { SettingsCard } from "./zdl";
+import {
+  initWallpaper,
+  setWallpaperMotion,
+  type WallpaperMotion,
+} from "../lib/wallpaper";
+import { SettingsCard, ToggleSwitch } from "./zdl";
 
 const PLANNED_AREAS: ReadonlyArray<{ title: string; description: string; via: string }> = [
   {
@@ -27,7 +33,12 @@ const PLANNED_AREAS: ReadonlyArray<{ title: string; description: string; via: st
 ];
 
 export function PersonalizationPage() {
-  const planned = PLANNED_AREAS.map((area) => ({ ...area, Icon: categoryIcon("colors") }));
+  const [motion, setMotion] = useState<WallpaperMotion>(() => initWallpaper());
+
+  const setLive = (live: boolean): void => {
+    setWallpaperMotion(live ? "live" : "static");
+    setMotion(live ? "live" : "static");
+  };
 
   return (
     <>
@@ -47,9 +58,28 @@ export function PersonalizationPage() {
         />
       </div>
 
+      <h2 className="zdl-section-title">Wallpaper</h2>
+      <div className="zdl-card-grid">
+        <SettingsCard
+          title="Live wallpaper"
+          description={
+            motion === "live"
+              ? "The aurora drifts slowly behind the interface. It is always paused when your system requests reduced motion."
+              : "The aurora renders as a still image."
+          }
+          control={
+            <ToggleSwitch
+              label="Live wallpaper"
+              checked={motion === "live"}
+              onChange={setLive}
+            />
+          }
+        />
+      </div>
+
       <h2 className="zdl-section-title">More appearance settings</h2>
       <div className="zdl-card-grid">
-        {planned.map(({ title, description, via }) => (
+        {PLANNED_AREAS.map(({ title, description, via }) => (
           <SettingsCard
             key={title}
             title={title}

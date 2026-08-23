@@ -13,6 +13,7 @@ import { categoryIcon } from "../../lib/category-icons";
 import { LiquidGlassSurface, NavRow } from "../zdl";
 import { SearchSurface } from "./search-surface";
 import { ThemeSelector } from "./theme-selector";
+import { Titlebar } from "./titlebar";
 
 type NavMode = "expanded" | "compact" | "overlay";
 
@@ -176,6 +177,8 @@ export function AppShell({
   return (
     <div className="zdl-shell" data-nav-mode={navMode}>
       <div className="zdl-aurora" aria-hidden="true" />
+
+      <Titlebar />
 
       <a className="skip-link" href="#main-content">
         Skip to main content

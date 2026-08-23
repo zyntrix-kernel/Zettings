@@ -231,6 +231,9 @@ fn main() {
     };
 
     tauri::Builder::default()
+        // Persists window size/position/maximized state across sessions and
+        // restores onto the correct monitor in multi-display setups.
+        .plugin(tauri_plugin_window_state::Builder::default().build())
         .manage(std::sync::Arc::new(backends))
         .invoke_handler(tauri::generate_handler![
             registry_snapshot,

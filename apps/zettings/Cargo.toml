@@ -22,6 +22,7 @@ zettings-ipc = { workspace = true }
 zettings-backends = { workspace = true }
 zettings-polkit = { workspace = true }
 tauri = { version = "2", features = [] }
+tauri-plugin-window-state = "2"
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
