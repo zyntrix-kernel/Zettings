@@ -8,7 +8,11 @@
  * load it, and shipped settings always come from real adapters.
  */
 
-import type { RegistrySnapshotDto, SystemSnapshotDto } from "@zettings/bindings";
+import type {
+  RegistrySnapshotDto,
+  SystemSnapshotDto,
+  TimedateSnapshotDto,
+} from "@zettings/bindings";
 
 const registry: RegistrySnapshotDto = {
   categories: (
@@ -58,6 +62,8 @@ const state = {
     },
   ],
   bluetoothPowered: true,
+  timezone: "Etc/UTC",
+  ntpEnabled: true,
 };
 
 function snapshot(): SystemSnapshotDto {
@@ -107,6 +113,30 @@ function snapshot(): SystemSnapshotDto {
   };
 }
 
+/** Mirrors `MockTimedate`'s allowlist and defaults. */
+const MOCK_TIMEZONES = [
+  "Etc/UTC",
+  "Europe/Berlin",
+  "Europe/London",
+  "America/New_York",
+  "America/Los_Angeles",
+  "Asia/Kolkata",
+  "Asia/Tokyo",
+  "Australia/Sydney",
+];
+
+function timedateSnapshot(): TimedateSnapshotDto {
+  return {
+    capability: { state: "available" },
+    timezone: state.timezone,
+    ntp_enabled: state.ntpEnabled,
+    ntp_available: true,
+    ntp_synchronized: state.ntpEnabled,
+    local_rtc: false,
+    available_timezones: [...MOCK_TIMEZONES],
+  };
+}
+
 /**
  * Serves fixture responses for the commands the UI exercises.
  * Unknown commands reject honestly — fixtures never invent behavior.
@@ -130,6 +160,19 @@ export function devInvoke<T>(command: string, args?: Record<string, unknown>): T
     }
     case "system_snapshot":
       return snapshot() as T;
+    case "datetime_snapshot":
+      return timedateSnapshot() as T;
+    case "set_datetime": {
+      const a = args as { timezone?: string; ntp?: boolean };
+      if (a.timezone !== undefined) {
+        if (!MOCK_TIMEZONES.includes(a.timezone)) {
+          throw new Error(`unknown timezone ${String(a.timezone)}`);
+        }
+        state.timezone = a.timezone;
+      }
+      if (a.ntp !== undefined) state.ntpEnabled = a.ntp;
+      return undefined as T;
+    }
     case "set_power_profile":
       state.powerProfile = String((args as { profile?: string }).profile);
       return undefined as T;

@@ -10,6 +10,7 @@
 
 mod audio;
 mod bluetooth;
+mod datetime;
 mod display;
 mod error;
 mod network;
@@ -21,13 +22,14 @@ mod polkit_gateway;
 
 pub use audio::{AudioAdapter, AudioSink, MockAudio};
 pub use bluetooth::{BluetoothAdapter, BluetoothDevice, BluetoothStatus, MockBluetooth};
+pub use datetime::{MockTimedate, TimedateAdapter, TimedateSnapshot};
 pub use display::{DisplayAdapter, DisplayOutput, DisplayStatus, MockDisplay};
 pub use error::BackendError;
 pub use network::{MockNetwork, NetworkAdapter, NetworkDevice, NetworkDeviceKind, NetworkStatus};
 pub use power::{MockPowerProfiles, PowerProfileSnapshot, PowerProfilesAdapter};
 pub use session::{MockSession, SessionAdapter, SessionCapabilities};
 
-/// Real PolicyKit gateway (Linux builds only).
+/// Real `PolicyKit` gateway (Linux builds only).
 #[cfg(target_os = "linux")]
 pub use polkit_gateway::PolkitGateway;
 
@@ -51,6 +53,8 @@ pub struct BackendSet {
     pub bluetooth: Arc<dyn BluetoothAdapter>,
     /// Display topology (kernel DRM; read-only in this phase).
     pub display: Arc<dyn DisplayAdapter>,
+    /// System date & time (systemd `timedated`).
+    pub datetime: Arc<dyn TimedateAdapter>,
     /// Authorization seam for privileged mutations.
     pub auth: Arc<dyn zettings_polkit::AuthorizationGateway>,
 }
@@ -80,6 +84,7 @@ impl BackendSet {
                 audio: Arc::new(audio::LinuxAudio::new()),
                 bluetooth: Arc::new(bluetooth::LinuxBluetooth::new(conn.clone())),
                 display: Arc::new(display::LinuxDisplay::default()),
+                datetime: Arc::new(datetime::LinuxTimedate::new(conn.clone())),
                 auth: Arc::new(polkit_gateway::PolkitGateway::new(conn)),
             })
         }
@@ -99,6 +104,7 @@ impl BackendSet {
             audio: Arc::new(audio::MockAudio::default()),
             bluetooth: Arc::new(bluetooth::MockBluetooth::default()),
             display: Arc::new(display::MockDisplay::default()),
+            datetime: Arc::new(datetime::MockTimedate::default()),
             auth: Arc::new(zettings_polkit::MockGateway::new()),
         }
     }
@@ -147,6 +153,28 @@ mod tests {
         let status = set.network.status().await.expect("status");
         assert!(!status.wireless_enabled);
         assert_eq!(status.devices.len(), 2);
+    }
+
+    #[tokio::test]
+    async fn mock_timedate_round_trips_and_rejects_unknown_zones() {
+        let set = BackendSet::mocks();
+        let before = set.datetime.snapshot().await.expect("snapshot");
+        assert_eq!(before.timezone, "Etc/UTC");
+        assert!(before.ntp_enabled);
+        assert!(!before.available_timezones.is_empty());
+
+        set.datetime.set_ntp(false).await.expect("set ntp");
+        set.datetime
+            .set_timezone("Asia/Kolkata")
+            .await
+            .expect("set zone");
+        let after = set.datetime.snapshot().await.expect("snapshot");
+        assert_eq!(after.timezone, "Asia/Kolkata");
+        assert!(!after.ntp_enabled);
+        assert!(!after.ntp_synchronized);
+
+        let invalid = set.datetime.set_timezone("Mars/Olympus").await;
+        assert!(matches!(invalid, Err(BackendError::InvalidValue { .. })));
     }
 
     #[tokio::test]

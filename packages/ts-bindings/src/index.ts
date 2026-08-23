@@ -22,3 +22,4 @@ export type { BluetoothDeviceDto } from "./generated/bluetooth-device";
 export type { BluetoothStatusDto } from "./generated/bluetooth-status";
 export type { DisplayOutputDto } from "./generated/display-output";
 export type { DisplayStatusDto } from "./generated/display-status";
+export type { TimedateSnapshotDto } from "./generated/timedate-snapshot";

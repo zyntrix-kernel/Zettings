@@ -21,5 +21,5 @@ pub use search::{SearchHitDto, SearchResponseDto};
 pub use system::{
     AudioAreaDto, AudioSinkDto, BluetoothDeviceDto, BluetoothStatusDto, CapabilityStateDto,
     DisplayOutputDto, DisplayStatusDto, NetworkDeviceDto, NetworkStatusDto,
-    PowerProfileSnapshotDto, SessionCapabilitiesDto, SystemSnapshotDto,
+    PowerProfileSnapshotDto, SessionCapabilitiesDto, SystemSnapshotDto, TimedateSnapshotDto,
 };

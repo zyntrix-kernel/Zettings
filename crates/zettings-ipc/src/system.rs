@@ -2,7 +2,7 @@
 use serde::{Deserialize, Serialize};
 use zettings_backends::{
     AudioSink, BluetoothDevice, BluetoothStatus, DisplayOutput, DisplayStatus, NetworkDevice,
-    NetworkDeviceKind, NetworkStatus, PowerProfileSnapshot, SessionCapabilities,
+    NetworkDeviceKind, NetworkStatus, PowerProfileSnapshot, SessionCapabilities, TimedateSnapshot,
 };
 use zettings_core::CapabilityState;
 
@@ -154,6 +154,43 @@ pub struct SystemSnapshotDto {
     pub bluetooth: BluetoothStatusDto,
     /// Display area (read-only in this phase).
     pub display: DisplayStatusDto,
+}
+
+/// Date & time snapshot on the wire.
+// Wire mirror of timedated's boolean properties; grouping them into enums
+// would obscure the 1:1 backend mapping this contract guarantees.
+#[expect(clippy::struct_excessive_bools)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ts_rs::TS)]
+#[ts(export, export_to = "timedate-snapshot.ts")]
+pub struct TimedateSnapshotDto {
+    /// Adapter capability.
+    pub capability: CapabilityStateDto,
+    /// Active IANA timezone identifier.
+    pub timezone: String,
+    /// Whether NTP sync is enabled.
+    pub ntp_enabled: bool,
+    /// Whether the system can perform NTP sync at all.
+    pub ntp_available: bool,
+    /// Whether the clock currently reports successful synchronization.
+    pub ntp_synchronized: bool,
+    /// Whether the hardware RTC keeps local instead of UTC time.
+    pub local_rtc: bool,
+    /// Timezone identifiers selectable on this system.
+    pub available_timezones: Vec<String>,
+}
+
+impl From<&TimedateSnapshot> for TimedateSnapshotDto {
+    fn from(value: &TimedateSnapshot) -> Self {
+        Self {
+            capability: CapabilityStateDto::from(&value.capability),
+            timezone: value.timezone.clone(),
+            ntp_enabled: value.ntp_enabled,
+            ntp_available: value.ntp_available,
+            ntp_synchronized: value.ntp_synchronized,
+            local_rtc: value.local_rtc,
+            available_timezones: value.available_timezones.clone(),
+        }
+    }
 }
 
 #[cfg(test)]

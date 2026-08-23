@@ -34,4 +34,5 @@ fn export_typescript_bindings() {
     crate::BluetoothStatusDto::export(&config).expect("export BluetoothStatusDto");
     crate::DisplayOutputDto::export(&config).expect("export DisplayOutputDto");
     crate::DisplayStatusDto::export(&config).expect("export DisplayStatusDto");
+    crate::TimedateSnapshotDto::export(&config).expect("export TimedateSnapshotDto");
 }

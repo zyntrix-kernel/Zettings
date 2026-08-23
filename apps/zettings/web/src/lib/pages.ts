@@ -60,7 +60,7 @@ export const CATEGORY_AREAS: Readonly<Record<string, readonly SettingArea[]>> = 
     { slug: "sync", title: "Sync", description: "Roaming preferences across devices.", via: "KDED sync agents" },
   ],
   "time-language": [
-    { slug: "date-time", title: "Date & time", description: "Timezone and NTP synchronization.", via: "timedatectl" },
+    { slug: "date-time", title: "Date & time", description: "Timezone and NTP synchronization.", via: "timedatectl", live: true },
     { slug: "region", title: "Region", description: "Formats for dates, numbers and units.", via: "localeconf" },
     { slug: "language", title: "Language", description: "UI language and input methods.", via: "KDE localization" },
   ],

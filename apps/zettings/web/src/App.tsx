@@ -13,6 +13,7 @@ import { CategoryHub } from "./components/CategoryHub";
 import { BluetoothPage } from "./components/BluetoothPage";
 import { NetworkPage } from "./components/NetworkPage";
 import { PersonalizationPage } from "./components/PersonalizationPage";
+import { TimeLanguagePage } from "./components/TimeLanguagePage";
 import { SystemPage } from "./SystemPage";
 
 type LoadState =
@@ -25,6 +26,7 @@ const LIVE_PAGES: Readonly<Record<string, () => ReactNode>> = {
   "devices/bluetooth": () => <BluetoothPage />,
   "network/status": () => <NetworkPage />,
   "personalization/theme": () => <PersonalizationPage />,
+  "time-language/date-time": () => <TimeLanguagePage />,
 };
 
 function routeTitle(route: Route, categories: CategorySummaryDto[]): string {

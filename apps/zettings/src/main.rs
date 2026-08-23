@@ -210,6 +210,44 @@ async fn set_wireless_enabled(
         .map_err(|e| e.to_string())
 }
 
+/// Reads the system clock configuration (systemd `timedated`).
+#[tauri::command]
+async fn datetime_snapshot(
+    backends: tauri::State<'_, std::sync::Arc<BackendSet>>,
+) -> Result<zettings_ipc::TimedateSnapshotDto, String> {
+    let snapshot = backends
+        .datetime
+        .snapshot()
+        .await
+        .map_err(|e| e.to_string())?;
+    Ok(zettings_ipc::TimedateSnapshotDto::from(&snapshot))
+}
+
+/// Enables/disables NTP sync and/or applies a timezone; omitted fields are
+/// left unchanged. timedated enforces its own `PolicyKit` policy.
+#[tauri::command]
+async fn set_datetime(
+    timezone: Option<&str>,
+    ntp: Option<bool>,
+    backends: tauri::State<'_, std::sync::Arc<BackendSet>>,
+) -> Result<(), String> {
+    if let Some(timezone) = timezone {
+        backends
+            .datetime
+            .set_timezone(timezone)
+            .await
+            .map_err(|e| e.to_string())?;
+    }
+    if let Some(ntp) = ntp {
+        backends
+            .datetime
+            .set_ntp(ntp)
+            .await
+            .map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
 fn init_tracing() {
     let filter = tracing_subscriber::EnvFilter::try_from_default_env()
         .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("info"));
@@ -242,7 +280,9 @@ fn main() {
             set_power_profile,
             set_wireless_enabled,
             set_audio_sink,
-            set_bluetooth_powered
+            set_bluetooth_powered,
+            datetime_snapshot,
+            set_datetime
         ])
         .run(tauri::generate_context!())
         .expect("zettings runtime failure");
