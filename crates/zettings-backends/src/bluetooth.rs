@@ -110,24 +110,26 @@ impl LinuxBluetooth {
     pub const fn new(conn: zbus::Connection) -> Self {
         Self { conn }
     }
+
+    async fn object_manager(&self) -> zbus::Result<zbus::fdo::ObjectManagerProxy<'_>> {
+        zbus::fdo::ObjectManagerProxy::builder(&self.conn)
+            .destination(BUS_NAME)?
+            .path(ROOT_PATH)?
+            .build()
+            .await
+    }
 }
 
 #[cfg(target_os = "linux")]
 #[async_trait]
 impl BluetoothAdapter for LinuxBluetooth {
     async fn capability(&self) -> CapabilityState {
-        use zbus::fdo::{AsyncObjectServerProxyExt as _, ObjectManagerProxy};
-
-        let objects = ObjectManagerProxy::builder(&self.conn)
-            .destination(BUS_NAME)
-            .path(ROOT_PATH)
-            .and_then(|b| b.build());
-        match objects {
+        match self.object_manager().await {
             Ok(proxy) => match proxy.get_managed_objects().await {
                 Ok(map) => {
                     let has_adapter = map
                         .values()
-                        .any(|ifaces| ifaces.contains_key(ADAPTER_IFACE));
+                        .any(|ifaces| ifaces.keys().any(|k| k.as_str() == ADAPTER_IFACE));
                     crate::service_available(has_adapter, SERVICE)
                 }
                 Err(e) => CapabilityState::Unavailable {
@@ -141,14 +143,10 @@ impl BluetoothAdapter for LinuxBluetooth {
     }
 
     async fn status(&self) -> Result<BluetoothStatus, BackendError> {
-        use zbus::fdo::{AsyncObjectServerProxyExt as _, ObjectManagerProxy};
-
-        let proxy = ObjectManagerProxy::builder(&self.conn)
-            .destination(BUS_NAME)
-            .path(ROOT_PATH)
-            .and_then(|b| b.build())
-            .map_err(|e| BackendError::service(SERVICE, e))?;
-        let objects = proxy
+        let objects = self
+            .object_manager()
+            .await
+            .map_err(|e| BackendError::service(SERVICE, e))?
             .get_managed_objects()
             .await
             .map_err(|e| BackendError::service(SERVICE, e))?;
@@ -156,32 +154,37 @@ impl BluetoothAdapter for LinuxBluetooth {
         let mut powered = None;
         let mut devices = Vec::new();
         for (path, ifaces) in objects {
-            if let Some(adapter) = ifaces.get(ADAPTER_IFACE) {
-                if powered.is_none() {
-                    powered = adapter
-                        .get("Powered")
-                        .and_then(|v| <bool>::try_from(v.clone()).ok());
+            for (iface, props) in &ifaces {
+                match iface.as_str() {
+                    ADAPTER_IFACE => {
+                        if powered.is_none() {
+                            powered = props
+                                .get("Powered")
+                                .and_then(|v| <bool>::try_from(v.clone()).ok());
+                        }
+                    }
+                    DEVICE_IFACE => {
+                        let alias = props
+                            .get("Alias")
+                            .and_then(|v| <String>::try_from(v.clone()).ok())
+                            .unwrap_or_default();
+                        let paired = props
+                            .get("Paired")
+                            .and_then(|v| <bool>::try_from(v.clone()).ok())
+                            .unwrap_or(false);
+                        let connected = props
+                            .get("Connected")
+                            .and_then(|v| <bool>::try_from(v.clone()).ok())
+                            .unwrap_or(false);
+                        devices.push(BluetoothDevice {
+                            path: path.to_string(),
+                            alias,
+                            paired,
+                            connected,
+                        });
+                    }
+                    _ => {}
                 }
-            }
-            if let Some(device) = ifaces.get(DEVICE_IFACE) {
-                let alias = device
-                    .get("Alias")
-                    .and_then(|v| <String>::try_from(v.clone()).ok())
-                    .unwrap_or_default();
-                let paired = device
-                    .get("Paired")
-                    .and_then(|v| <bool>::try_from(v.clone()).ok())
-                    .unwrap_or(false);
-                let connected = device
-                    .get("Connected")
-                    .and_then(|v| <bool>::try_from(v.clone()).ok())
-                    .unwrap_or(false);
-                devices.push(BluetoothDevice {
-                    path: path.to_string(),
-                    alias,
-                    paired,
-                    connected,
-                });
             }
         }
         Ok(BluetoothStatus {
@@ -193,24 +196,21 @@ impl BluetoothAdapter for LinuxBluetooth {
 
     async fn set_powered(&self, powered: bool) -> Result<(), BackendError> {
         // First adapter path from the object tree.
-        use zbus::fdo::{AsyncObjectServerProxyExt as _, ObjectManagerProxy};
-
-        let proxy = ObjectManagerProxy::builder(&self.conn)
-            .destination(BUS_NAME)
-            .path(ROOT_PATH)
-            .and_then(|b| b.build())
-            .map_err(|e| BackendError::service(SERVICE, e))?;
-        let objects = proxy
+        let objects = self
+            .object_manager()
+            .await
+            .map_err(|e| BackendError::service(SERVICE, e))?
             .get_managed_objects()
             .await
             .map_err(|e| BackendError::service(SERVICE, e))?;
         let adapter_path = objects
             .into_iter()
-            .find(|(_, ifaces)| ifaces.contains_key(ADAPTER_IFACE))
+            .find(|(_, ifaces)| ifaces.keys().any(|k| k.as_str() == ADAPTER_IFACE))
             .map(|(path, _)| path)
             .ok_or_else(|| BackendError::service(SERVICE, "no bluetooth adapter present"))?;
 
         let adapter = zbus::Proxy::new(&self.conn, BUS_NAME, adapter_path.as_str(), ADAPTER_IFACE)
+            .await
             .map_err(|e| BackendError::service(SERVICE, e))?;
         adapter
             .set_property("Powered", zbus::zvariant::Value::from(powered))

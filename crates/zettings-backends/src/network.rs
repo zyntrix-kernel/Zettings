@@ -151,13 +151,14 @@ impl LinuxNetwork {
         Self { conn }
     }
 
-    fn proxy(&self) -> zbus::Result<zbus::Proxy<'_>> {
+    async fn proxy(&self) -> zbus::Result<zbus::Proxy<'_>> {
         zbus::Proxy::new(
             &self.conn,
             BUS_NAME,
             OBJECT_PATH,
             "org.freedesktop.NetworkManager",
         )
+        .await
     }
 
     fn classify(kind: u32) -> NetworkDeviceKind {
@@ -174,9 +175,11 @@ impl LinuxNetwork {
 #[async_trait]
 impl NetworkAdapter for LinuxNetwork {
     async fn capability(&self) -> CapabilityState {
-        let probe = self
-            .proxy()
-            .and_then(|proxy| proxy.get_property::<bool>("NetworkingEnabled").map(|_| ()));
+        let probe = async {
+            let proxy = self.proxy().await?;
+            let _: bool = proxy.get_property("NetworkingEnabled").await?;
+            Ok::<(), zbus::Error>(())
+        };
         match probe.await {
             Ok(()) => crate::service_available(true, SERVICE),
             Err(e) => CapabilityState::Unavailable {
@@ -188,6 +191,7 @@ impl NetworkAdapter for LinuxNetwork {
     async fn status(&self) -> Result<NetworkStatus, BackendError> {
         let proxy = self
             .proxy()
+            .await
             .map_err(|e| BackendError::service(SERVICE, e))?;
         let networking_enabled: bool = proxy
             .get_property("NetworkingEnabled")
@@ -209,7 +213,9 @@ impl NetworkAdapter for LinuxNetwork {
                 BUS_NAME,
                 path.as_str(),
                 "org.freedesktop.NetworkManager.Device",
-            ) else {
+            )
+            .await
+            else {
                 continue;
             };
             let interface: String = match device.get_property("Interface").await {
@@ -235,6 +241,7 @@ impl NetworkAdapter for LinuxNetwork {
     async fn set_wireless_enabled(&self, enabled: bool) -> Result<(), BackendError> {
         let proxy = self
             .proxy()
+            .await
             .map_err(|e| BackendError::service(SERVICE, e))?;
         proxy
             .set_property("WirelessEnabled", zbus::zvariant::Value::from(enabled))

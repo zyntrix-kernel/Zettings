@@ -68,13 +68,14 @@ impl LinuxSession {
         Self { conn }
     }
 
-    fn proxy(&self) -> zbus::Result<zbus::Proxy<'_>> {
-        zbus::Proxy::new(&self.conn, BUS_NAME, OBJECT_PATH, IFACE)
+    async fn proxy(&self) -> zbus::Result<zbus::Proxy<'_>> {
+        zbus::Proxy::new(&self.conn, BUS_NAME, OBJECT_PATH, IFACE).await
     }
 
     async fn string_property(&self, name: &str) -> Result<String, BackendError> {
         let proxy = self
             .proxy()
+            .await
             .map_err(|e| BackendError::service(SERVICE, e))?;
         proxy
             .get_property(name)

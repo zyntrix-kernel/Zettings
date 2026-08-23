@@ -116,7 +116,7 @@ impl AudioAdapter for MockAudio {
     }
 }
 
-/// Real adapter using the PulseAudio simple blocking pattern (Linux only).
+/// Real adapter using the `PulseAudio` simple blocking pattern (Linux only).
 ///
 /// Operations run on the blocking pool because libpulse drives its own
 /// mainloop; the async surface stays non-blocking for Tokio workers
@@ -132,14 +132,14 @@ impl LinuxAudio {
         Self
     }
 
-    fn run_blocking<T>(
+    async fn run_blocking<T>(
         f: impl FnOnce(
             &mut libpulse_binding::context::Context,
             &mut libpulse_binding::mainloop::standard::Mainloop,
         ) -> Result<T, BackendError>
         + Send
         + 'static,
-    ) -> impl std::future::Future<Output = Result<T, BackendError>> + Send
+    ) -> Result<T, BackendError>
     where
         T: Send + 'static,
     {
@@ -149,7 +149,7 @@ impl LinuxAudio {
 
             let mut mainloop = Mainloop::new()
                 .ok_or_else(|| BackendError::service(SERVICE, "failed to allocate mainloop"))?;
-            let mut context = Context::new(&mainloop, "org.zyntrix.zettings", None)
+            let mut context = Context::new(&mainloop, "org.zyntrix.zettings")
                 .ok_or_else(|| BackendError::service(SERVICE, "failed to allocate context"))?;
             context
                 .connect(None, FlagSet::NOFLAGS, None)
@@ -179,7 +179,8 @@ impl LinuxAudio {
             context.disconnect();
             outcome
         })
-        .map_err(|e| BackendError::service(SERVICE, e))
+        .await
+        .map_err(|e| BackendError::service(SERVICE, e))?
     }
 }
 
@@ -190,36 +191,47 @@ const PULSE_NORM: u32 = libpulse_binding::volume::Volume::NORMAL.0;
 #[async_trait]
 impl AudioAdapter for LinuxAudio {
     async fn capability(&self) -> CapabilityState {
-        Self::run_blocking(|ctx, ml| {
-            let default: Option<String> = {
-                let mut found = None;
-                let op = ctx.introspect().get_default_sink(|name, _| {
-                    found = Some(name.to_owned());
-                });
-                while op.get_state() == libpulse_binding::operation::OperationState::Running {
-                    if !matches!(
-                        ml.iterate(false),
-                        libpulse_binding::mainloop::standard::IterateResult::Success(_)
-                    ) {
-                        break;
-                    }
+        let probe = Self::run_blocking(|ctx, ml| {
+            use std::cell::RefCell;
+            use std::rc::Rc;
+
+            let found: Rc<RefCell<Option<String>>> = Rc::new(RefCell::new(None));
+            let sink = found.clone();
+            let op = ctx.introspect().get_server_info(move |info| {
+                *sink.borrow_mut() = info
+                    .default_sink_name
+                    .as_ref()
+                    .map(std::string::ToString::to_string);
+            });
+            while op.get_state() == libpulse_binding::operation::State::Running {
+                if !matches!(
+                    ml.iterate(false),
+                    libpulse_binding::mainloop::standard::IterateResult::Success(_)
+                ) {
+                    break;
                 }
-                found
-            };
+            }
+            drop(op);
+            let default = found.borrow().clone();
             Ok(match default {
                 Some(_) => crate::service_available(true, SERVICE),
                 None => CapabilityState::Unavailable {
                     reason: format!("{SERVICE} server did not answer"),
                 },
             })
-        })
-        .await
+        });
+        match probe.await {
+            Ok(state) => state,
+            Err(e) => CapabilityState::Unavailable {
+                reason: format!("{SERVICE} unavailable: {e}"),
+            },
+        }
     }
 
     async fn sinks(&self) -> Result<Vec<AudioSink>, BackendError> {
         Self::run_blocking(|ctx, ml| {
             use libpulse_binding::mainloop::standard::IterateResult;
-            use libpulse_binding::operation::OperationState;
+            use libpulse_binding::operation::State;
             use std::cell::RefCell;
             use std::rc::Rc;
 
@@ -236,11 +248,14 @@ impl AudioAdapter for LinuxAudio {
                     let desc = info
                         .description
                         .as_ref()
-                        .map(str::to_owned)
+                        .map(std::string::ToString::to_string)
                         .unwrap_or_default();
                     let vol = info.volume.avg().0;
                     collector.borrow_mut().push((
-                        info.name.as_ref().map(str::to_owned).unwrap_or_default(),
+                        info.name
+                            .as_ref()
+                            .map(std::string::ToString::to_string)
+                            .unwrap_or_default(),
                         desc,
                         info.mute,
                         vol,
@@ -251,11 +266,14 @@ impl AudioAdapter for LinuxAudio {
                     *finish.borrow_mut() = true;
                 }
             });
-            let op_default = ctx.introspect().get_default_sink(move |name, _| {
-                *dn.borrow_mut() = Some(name.to_owned());
+            let op_default = ctx.introspect().get_server_info(move |info| {
+                *dn.borrow_mut() = info
+                    .default_sink_name
+                    .as_ref()
+                    .map(std::string::ToString::to_string);
             });
 
-            while !*done.borrow() || op_default.get_state() == OperationState::Running {
+            while !*done.borrow() || op_default.get_state() == State::Running {
                 match ml.iterate(false) {
                     IterateResult::Success(_) => {}
                     _ => break,
@@ -268,7 +286,9 @@ impl AudioAdapter for LinuxAudio {
                 .borrow()
                 .iter()
                 .map(|(name, desc, muted, vol)| {
-                    let percent = (*vol as u64 * 100 / u64::from(PULSE_NORM)).min(150) as u32;
+                    let raw = u64::from(*vol) * 100 / u64::from(PULSE_NORM);
+                    // The clamp bounds the value to u32 range before conversion.
+                    let percent = u32::try_from(raw.min(150)).unwrap_or(150);
                     AudioSink {
                         name: name.clone(),
                         description: desc.clone(),
@@ -287,7 +307,7 @@ impl AudioAdapter for LinuxAudio {
         let sink = sink.to_owned();
         Self::run_blocking(move |ctx, ml| {
             use libpulse_binding::mainloop::standard::IterateResult;
-            use libpulse_binding::operation::OperationState;
+            use libpulse_binding::operation::State;
             use std::cell::Cell;
             use std::rc::Rc;
 
@@ -296,13 +316,15 @@ impl AudioAdapter for LinuxAudio {
             let ok2 = ok.clone();
             let done2 = done.clone();
             let name = sink.clone();
-            let op = ctx
-                .introspect()
-                .set_sink_mute_by_name(&name, muted, move |success| {
+            let op = ctx.introspect().set_sink_mute_by_name(
+                &name,
+                muted,
+                Some(Box::new(move |success| {
                     ok2.set(success);
                     done2.set(true);
-                });
-            while !done.get() || op.get_state() == OperationState::Running {
+                })),
+            );
+            while !done.get() || op.get_state() == State::Running {
                 match ml.iterate(false) {
                     IterateResult::Success(_) => {}
                     _ => break,
@@ -330,30 +352,32 @@ impl AudioAdapter for LinuxAudio {
         let sink = sink.to_owned();
         Self::run_blocking(move |ctx, ml| {
             use libpulse_binding::mainloop::standard::IterateResult;
-            use libpulse_binding::operation::OperationState;
+            use libpulse_binding::operation::State;
             use libpulse_binding::volume::{ChannelVolumes, Volume};
             use std::cell::Cell;
             use std::rc::Rc;
 
-            let target = Volume(
-                (u64::from(percent) * u64::from(PULSE_NORM) / 100)
-                    .min(u64::from(Volume::MAX_0DB * 3 / 2)) as u32,
-            );
+            let raw =
+                (u64::from(percent) * u64::from(PULSE_NORM) / 100).min(u64::from(Volume::MAX.0));
+            // The clamp above bounds the value to Volume::MAX.0 (u32 range).
+            let target = Volume(u32::try_from(raw).unwrap_or(Volume::MAX.0));
             let mut volumes = ChannelVolumes::default();
-            volumes.set(2usize, target);
+            volumes.set(2, target);
 
             let ok = Rc::new(Cell::new(false));
             let done = Rc::new(Cell::new(false));
             let ok2 = ok.clone();
             let done2 = done.clone();
             let name = sink.clone();
-            let op = ctx
-                .introspect()
-                .set_sink_volume_by_name(&name, &volumes, move |success| {
+            let op = ctx.introspect().set_sink_volume_by_name(
+                &name,
+                &volumes,
+                Some(Box::new(move |success| {
                     ok2.set(success);
                     done2.set(true);
-                });
-            while !done.get() || op.get_state() == OperationState::Running {
+                })),
+            );
+            while !done.get() || op.get_state() == State::Running {
                 match ml.iterate(false) {
                     IterateResult::Success(_) => {}
                     _ => break,

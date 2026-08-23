@@ -98,13 +98,14 @@ impl LinuxPowerProfiles {
         Self { conn }
     }
 
-    fn proxy(&self) -> zbus::Result<zbus::Proxy<'_>> {
+    async fn proxy(&self) -> zbus::Result<zbus::Proxy<'_>> {
         zbus::Proxy::new(
             &self.conn,
             BUS_NAME,
             OBJECT_PATH,
             "net.hadess.PowerProfiles",
         )
+        .await
     }
 }
 
@@ -112,9 +113,11 @@ impl LinuxPowerProfiles {
 #[async_trait]
 impl PowerProfilesAdapter for LinuxPowerProfiles {
     async fn capability(&self) -> CapabilityState {
-        let probe = self
-            .proxy()
-            .and_then(|proxy| proxy.get_property::<String>("ActiveProfile").map(|_| ()));
+        let probe = async {
+            let proxy = self.proxy().await?;
+            let _: String = proxy.get_property("ActiveProfile").await?;
+            Ok::<(), zbus::Error>(())
+        };
         match probe.await {
             Ok(()) => crate::service_available(true, SERVICE),
             Err(e) => CapabilityState::Unavailable {
@@ -126,6 +129,7 @@ impl PowerProfilesAdapter for LinuxPowerProfiles {
     async fn snapshot(&self) -> Result<PowerProfileSnapshot, BackendError> {
         let proxy = self
             .proxy()
+            .await
             .map_err(|e| BackendError::service(SERVICE, e))?;
         let active: String = proxy
             .get_property("ActiveProfile")
@@ -164,6 +168,7 @@ impl PowerProfilesAdapter for LinuxPowerProfiles {
         }
         let proxy = self
             .proxy()
+            .await
             .map_err(|e| BackendError::service(SERVICE, e))?;
         proxy
             .set_property("ActiveProfile", zbus::zvariant::Value::from(profile))

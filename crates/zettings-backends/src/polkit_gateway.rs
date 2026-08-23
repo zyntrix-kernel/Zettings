@@ -1,4 +1,4 @@
-//! Real PolicyKit gateway over the system bus (Linux only).
+//! Real `PolicyKit` gateway over the system bus (Linux only).
 //!
 //! Implements the crate-agnostic [`AuthorizationGateway`] seam defined by
 //! `zettings-polkit` using `org.freedesktop.PolicyKit1.Authority`.
@@ -16,7 +16,7 @@ const IFACE: &str = "org.freedesktop.PolicyKit1.Authority";
 /// `Allowed = 1 | Interaction = 2` — we request interactive authorization.
 const FLAGS_ALLOW_INTERACTION: u32 = 1;
 
-/// Gateway backed by the system PolicyKit authority.
+/// Gateway backed by the system `PolicyKit` authority.
 pub struct PolkitGateway {
     conn: zbus::Connection,
 }
@@ -32,6 +32,7 @@ impl PolkitGateway {
 impl AuthorizationGateway for PolkitGateway {
     async fn authorize(&self, action: &PolkitAction) -> Result<Decision, PolkitError> {
         let proxy = zbus::Proxy::new(&self.conn, BUS_NAME, OBJECT_PATH, IFACE)
+            .await
             .map_err(|_| PolkitError::AuthorityUnavailable)?;
 
         let subject: (String, (zbus::zvariant::Value<'_>,)) = (

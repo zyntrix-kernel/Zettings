@@ -48,19 +48,23 @@ pub trait DisplayAdapter: Send + Sync {
 }
 
 #[cfg(target_os = "linux")]
+use std::path::PathBuf;
+
+#[cfg(target_os = "linux")]
 fn drm_root() -> PathBuf {
     PathBuf::from("/sys/class/drm")
 }
 
 #[cfg(target_os = "linux")]
 fn read_modes(dir: &std::path::Path) -> Vec<String> {
-    let mut modes: Vec<String> = std::fs::read_dir(dir)
-        .into_iter()
-        .flatten()
-        .filter_map(|entry| entry.ok())
-        .filter_map(|entry| entry.file_name().into_string().ok())
-        .filter(|name| name.starts_with("mode-"))
-        .map(|name| name.trim_start_matches("mode-").replace('_', ":"))
+    // DRM exposes supported modes as newline-separated entries of the
+    // connector's `modes` attribute file.
+    let mut modes: Vec<String> = std::fs::read_to_string(dir.join("modes"))
+        .unwrap_or_default()
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty())
+        .map(str::to_owned)
         .collect();
     // Kernel emits preferred/active first via attributes; keep lexical order
     // stable for tests while deduplicating.
@@ -126,8 +130,7 @@ impl DisplayAdapter for LinuxDisplay {
     async fn capability(&self) -> CapabilityState {
         let exists = tokio::fs::metadata(&self.root)
             .await
-            .map(|m| m.is_dir())
-            .unwrap_or(false);
+            .is_ok_and(|m| m.is_dir());
         crate::service_available(exists, SERVICE)
     }
 
@@ -139,21 +142,22 @@ impl DisplayAdapter for LinuxDisplay {
 #[cfg(target_os = "linux")]
 impl LinuxDisplay {
     /// Binds to an explicit DRM root (tests inject a fixture directory).
+    #[cfg(test)]
     pub fn with_root(root: PathBuf) -> Self {
         Self { root }
     }
 
     async fn status_from(&self, root: &std::path::Path) -> Result<DisplayStatus, BackendError> {
-        let entries = tokio::fs::read_dir(root)
-            .await
-            .map_err(|e| BackendError::service(SERVICE, e))?
-            .entries()
-            .collect::<Result<Vec<_>, _>>()
+        let mut reader = tokio::fs::read_dir(root)
             .await
             .map_err(|e| BackendError::service(SERVICE, e))?;
 
         let mut outputs = Vec::new();
-        for entry in entries {
+        while let Some(entry) = reader
+            .next_entry()
+            .await
+            .map_err(|e| BackendError::service(SERVICE, e))?
+        {
             let file_name = entry.file_name().into_string().unwrap_or_default();
             if !file_name.contains('-') {
                 continue; // skip cardN dirs
@@ -185,11 +189,11 @@ impl LinuxDisplay {
             };
             // Preferred mode marker lives in the `modes` attribute's first
             // line when enabled; surface it at position 0 otherwise keep list.
-            if !current_mode.is_empty() {
-                if let Some(pos) = modes.iter().position(|m| m == &current_mode) {
-                    let current = modes.remove(pos);
-                    modes.insert(0, current);
-                }
+            if !current_mode.is_empty()
+                && let Some(pos) = modes.iter().position(|m| m == &current_mode)
+            {
+                let current = modes.remove(pos);
+                modes.insert(0, current);
             }
             outputs.push(DisplayOutput {
                 name: file_name,
@@ -202,5 +206,49 @@ impl LinuxDisplay {
             capability: crate::service_available(!outputs.is_empty(), SERVICE),
             outputs,
         })
+    }
+}
+
+#[cfg(all(test, target_os = "linux"))]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn parses_connector_fixture_topology() {
+        let fixture = std::env::temp_dir().join(format!("zettings-drm-{}", std::process::id()));
+        let card = fixture.join("card0-HDMI-A-1");
+        tokio::fs::create_dir_all(&card)
+            .await
+            .expect("create connector dir");
+        tokio::fs::write(card.join("status"), "connected\n")
+            .await
+            .expect("write status");
+        tokio::fs::write(card.join("enabled"), "enabled\n")
+            .await
+            .expect("write enabled");
+        tokio::fs::write(card.join("modes"), "1920x1080\n3840x2160\n1600x900\n")
+            .await
+            .expect("write modes");
+
+        let display = LinuxDisplay::with_root(fixture.clone());
+        let status = display.status().await.expect("status");
+
+        assert_eq!(status.outputs.len(), 1);
+        let output = &status.outputs[0];
+        assert_eq!(output.name, "card0-HDMI-A-1");
+        assert!(output.connected);
+        assert_eq!(output.current_mode, "1920x1080");
+        // Current mode is surfaced first; the remainder stays lexically sorted.
+        assert_eq!(
+            output.modes,
+            ["1920x1080", "1600x900", "3840x2160"]
+                .iter()
+                .map(|m| (*m).to_owned())
+                .collect::<Vec<String>>()
+        );
+
+        tokio::fs::remove_dir_all(&fixture)
+            .await
+            .expect("cleanup fixture");
     }
 }
