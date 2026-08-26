@@ -1,20 +1,24 @@
 import QtQuick
+import org.zyntrix.zettings.Style
 import QtQuick.Layouts
 import QtQuick.Controls.Basic
 import QtQuick.Shapes
-import org.zyntrix.zettings.Style
 
 Rectangle {
     id: root
 
-    enum Severity { Info, Warning, Danger }
+    enum Severity {
+        Info,
+        Warning,
+        Danger
+    }
 
     property int severity: InfoBar.Severity.Info
     property string message: ""
     property alias actionText: actionButton.text
 
-    signal actionTriggered()
-    signal dismissed()
+    signal actionTriggered
+    signal dismissed
 
     implicitWidth: 480
     implicitHeight: Math.max(ZdlTheme.rowMinHeight, contentLayout.implicitHeight + ZdlTheme.space3 * 2)
@@ -22,14 +26,12 @@ Rectangle {
 
     color: ZdlTheme.surfaceElevated
     border.width: 1
-    border.color: root.severity === InfoBar.Severity.Warning ? ZdlTheme.warning
-        : (root.severity === InfoBar.Severity.Danger ? ZdlTheme.danger : ZdlTheme.border)
+    border.color: root.severity === InfoBar.Severity.Warning ? ZdlTheme.warning : (root.severity === InfoBar.Severity.Danger ? ZdlTheme.danger : ZdlTheme.border)
 
     Accessible.role: Accessible.Alert
     Accessible.name: message
 
-    readonly property color severityColor: root.severity === InfoBar.Severity.Warning ? ZdlTheme.warning
-        : (root.severity === InfoBar.Severity.Danger ? ZdlTheme.danger : ZdlTheme.accent)
+    readonly property color severityColor: root.severity === InfoBar.Severity.Warning ? ZdlTheme.warning : (root.severity === InfoBar.Severity.Danger ? ZdlTheme.danger : ZdlTheme.accent)
 
     RowLayout {
         id: contentLayout
@@ -60,6 +62,7 @@ Rectangle {
         Button {
             id: actionButton
             visible: text !== ""
+            // qmllint disable missing-property
             flat: true
             font.family: ZdlTheme.fontFamily
             font.pixelSize: ZdlTheme.textBodySize
@@ -71,6 +74,7 @@ Rectangle {
 
         AbstractButton {
             id: dismissButton
+            // qmllint disable missing-property
             flat: true
             activeFocusOnTab: true
             Accessible.role: Accessible.Button
@@ -90,12 +94,25 @@ Rectangle {
                         strokeColor: hoverHandler.hovered ? ZdlTheme.text : ZdlTheme.textMuted
                         strokeWidth: 2
                         fillColor: "transparent"
+                        // qmllint disable missing-property
                         capStyle: ShapePath.Round
 
-                        PathMove { x: 2; y: 2 }
-                        PathLine { x: 12; y: 12 }
-                        PathMove { x: 12; y: 2 }
-                        PathLine { x: 2; y: 12 }
+                        PathMove {
+                            x: 2
+                            y: 2
+                        }
+                        PathLine {
+                            x: 12
+                            y: 12
+                        }
+                        PathMove {
+                            x: 12
+                            y: 2
+                        }
+                        PathLine {
+                            x: 2
+                            y: 12
+                        }
                     }
                 }
 

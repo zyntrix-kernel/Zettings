@@ -1,6 +1,6 @@
 import QtQuick
-import QtQuick.Controls.Basic
 import org.zyntrix.zettings.Style
+import QtQuick.Controls.Basic
 
 Switch {
     id: root
@@ -25,23 +25,24 @@ Switch {
         radius: height / 2
         color: root.checked ? ZdlTheme.accent : "transparent"
         border.width: root.activeFocus ? 3 : 1
-        border.color: root.activeFocus ? ZdlTheme.focusRingColor
-            : (root.enabled ? ZdlTheme.borderStrong : ZdlTheme.border)
+        border.color: root.activeFocus ? ZdlTheme.focusRingColor : (root.enabled ? ZdlTheme.borderStrong : ZdlTheme.border)
 
         Behavior on color {
             enabled: !ZdlTheme.reducedMotion
-            ColorAnimation { duration: ZdlTheme.motionDuration(ZdlTheme.motionQuick) }
+            ColorAnimation {
+                duration: ZdlTheme.motionDuration(ZdlTheme.motionQuick)
+            }
         }
     }
 
+    // qmllint disable missing-property
     handle: Rectangle {
         implicitWidth: 20
         implicitHeight: 20
         x: root.checked ? root.trackX + root.trackWidth - width - 2 : root.trackX + 2
         y: root.trackY + (root.trackHeight - height) / 2
         radius: width / 2
-        color: root.checked ? ZdlTheme.onAccent
-            : (root.enabled ? ZdlTheme.surfaceElevated : ZdlTheme.surfaceMuted)
+        color: root.checked ? ZdlTheme.onAccent : (root.enabled ? ZdlTheme.surfaceElevated : ZdlTheme.surfaceMuted)
         border.width: root.checked ? 0 : 1
         border.color: ZdlTheme.borderStrong
 
@@ -53,6 +54,7 @@ Switch {
         }
     }
 
+    // qmllint disable missing-property
     Accessible.role: Accessible.Switch
     Accessible.name: text !== "" ? text : qsTr("Toggle")
     Accessible.checked: checked

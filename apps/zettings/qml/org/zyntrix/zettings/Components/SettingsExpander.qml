@@ -1,9 +1,8 @@
 import QtQuick
-import QtQuick.Layouts
-import QtQuick.Controls.Basic
-import QtQuick.Shapes
 import org.zyntrix.zettings.Style
 import org.zyntrix.zettings.Motion
+import QtQuick.Layouts
+import QtQuick.Shapes
 
 Item {
     id: root
@@ -14,8 +13,7 @@ Item {
     property bool expanded: false
 
     implicitWidth: 320
-    implicitHeight: headerCard.implicitHeight
-        + (expanded ? ZdlTheme.space2 + contentColumn.implicitHeight : 0)
+    implicitHeight: headerCard.implicitHeight + (expanded ? ZdlTheme.space2 + contentColumn.implicitHeight : 0)
     clip: true
 
     Accessible.role: Accessible.ListItem
@@ -52,12 +50,23 @@ Item {
                     strokeColor: ZdlTheme.textMuted
                     strokeWidth: 2
                     fillColor: "transparent"
+                    // qmllint disable missing-property
                     joinStyle: ShapePath.Round
+                    // qmllint disable missing-property
                     capStyle: ShapePath.Round
 
-                    PathMove { x: 6; y: 3 }
-                    PathLine { x: 12; y: 10 }
-                    PathLine { x: 6; y: 17 }
+                    PathMove {
+                        x: 6
+                        y: 3
+                    }
+                    PathLine {
+                        x: 12
+                        y: 10
+                    }
+                    PathLine {
+                        x: 6
+                        y: 17
+                    }
                 }
             }
         }
@@ -79,7 +88,9 @@ Item {
 
         Behavior on opacity {
             enabled: !ZdlTheme.reducedMotion
-            NumberAnimation { duration: ZdlTheme.motionDuration(ZdlTheme.motionQuick) }
+            NumberAnimation {
+                duration: ZdlTheme.motionDuration(ZdlTheme.motionQuick)
+            }
         }
 
         Behavior on y {

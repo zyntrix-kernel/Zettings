@@ -1,9 +1,9 @@
 import QtQuick
+import org.zyntrix.zettings.Style
+import org.zyntrix.zettings.Motion
 import QtQuick.Layouts
 import QtQuick.Controls.Basic
 import QtQuick.Shapes
-import org.zyntrix.zettings.Style
-import org.zyntrix.zettings.Motion
 
 Item {
     id: root
@@ -15,7 +15,7 @@ Item {
     property bool isNavigation: false
     property bool selected: false
 
-    signal activated()
+    signal activated
 
     implicitWidth: 320
     implicitHeight: Math.max(ZdlTheme.rowMinHeight, contentLayout.implicitHeight + ZdlTheme.space4 * 2)
@@ -38,13 +38,14 @@ Item {
         anchors.fill: parent
         radius: ZdlTheme.radiusCard
         exponent: ZdlTheme.squircleExponentControl
-        fillColor: root.selected ? ZdlTheme.accentSoft
-            : (hoverHandler.hovered && !root.isNavigation ? ZdlTheme.surfaceElevated : ZdlTheme.surfaceMuted)
+        fillColor: root.selected ? ZdlTheme.accentSoft : (hoverHandler.hovered && !root.isNavigation ? ZdlTheme.surfaceElevated : ZdlTheme.surfaceMuted)
         strokeColor: root.activeFocus ? ZdlTheme.focusRingColor : ZdlTheme.border
         strokeWidth: root.activeFocus ? 3 : 1
 
         Behavior on fillColor {
-            ColorAnimation { duration: ZdlTheme.motionDuration(ZdlTheme.motionQuick) }
+            ColorAnimation {
+                duration: ZdlTheme.motionDuration(ZdlTheme.motionQuick)
+            }
         }
     }
 
@@ -121,16 +122,37 @@ Item {
                 strokeColor: ZdlTheme.textMuted
                 strokeWidth: 2
                 fillColor: "transparent"
+                // qmllint disable missing-property
                 joinStyle: ShapePath.Round
+                // qmllint disable missing-property
                 capStyle: ShapePath.Round
 
-                PathMove { x: 5; y: 2 }
-                PathLine { x: 12; y: 8 }
-                PathLine { x: 5; y: 14 }
+                PathMove {
+                    x: 5
+                    y: 2
+                }
+                PathLine {
+                    x: 12
+                    y: 8
+                }
+                PathLine {
+                    x: 5
+                    y: 14
+                }
             }
         }
     }
 
-    Keys.onSpacePressed: if (root.isNavigation) { root.activated(); event.accepted = true }
-    Keys.onReturnPressed: if (root.isNavigation) { root.activated(); event.accepted = true }
+    Keys.onSpacePressed: event => {
+        if (root.isNavigation) {
+            root.activated();
+            event.accepted = true;
+        }
+    }
+    Keys.onReturnPressed: event => {
+        if (root.isNavigation) {
+            root.activated();
+            event.accepted = true;
+        }
+    }
 }

@@ -12,7 +12,6 @@ Transition {
         property: "x"
         from: 0
         to: -16
-        duration: ZdlTheme.motionDuration(ZdlTheme.motionQuick)
-        enabled: !ZdlTheme.reducedMotion
+        duration: ZdlTheme.reducedMotion ? 0 : ZdlTheme.motionQuick
     }
 }

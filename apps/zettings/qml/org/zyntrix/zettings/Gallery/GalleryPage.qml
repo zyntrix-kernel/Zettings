@@ -1,8 +1,8 @@
 import QtQuick
-import QtQuick.Controls.Basic
-import QtQuick.Layouts
 import org.zyntrix.zettings.Style
 import org.zyntrix.zettings.Components
+import QtQuick.Controls.Basic
+import QtQuick.Layouts
 
 Page {
     id: root
@@ -26,10 +26,22 @@ Page {
 
             Repeater {
                 model: [
-                    { label: qsTr("Light"), mode: ZdlTheme.ThemeMode.Light },
-                    { label: qsTr("Dark"), mode: ZdlTheme.ThemeMode.Dark },
-                    { label: qsTr("OLED"), mode: ZdlTheme.ThemeMode.Oled },
-                    { label: qsTr("High contrast"), mode: ZdlTheme.ThemeMode.HighContrast }
+                    {
+                        label: qsTr("Light"),
+                        mode: ZdlTheme.ThemeMode.Light
+                    },
+                    {
+                        label: qsTr("Dark"),
+                        mode: ZdlTheme.ThemeMode.Dark
+                    },
+                    {
+                        label: qsTr("OLED"),
+                        mode: ZdlTheme.ThemeMode.Oled
+                    },
+                    {
+                        label: qsTr("High contrast"),
+                        mode: ZdlTheme.ThemeMode.HighContrast
+                    }
                 ]
 
                 Button {
@@ -44,7 +56,9 @@ Page {
                 }
             }
 
-            Item { Layout.fillWidth: true }
+            Item {
+                Layout.fillWidth: true
+            }
 
             ToggleSwitch {
                 checked: !ZdlTheme.compactDensity
@@ -76,7 +90,7 @@ Page {
                 spacing: ZdlTheme.space2
 
                 Label {
-                    text: qsTr("Cards — rest · hover · selected · disabled · navigation")
+                    text: qsTr("Cards â€” rest Â· hover Â· selected Â· disabled Â· navigation")
                     font.family: ZdlTheme.fontFamily
                     font.pixelSize: ZdlTheme.textTitleLgSize
                     font.weight: Font.DemiBold
@@ -95,7 +109,9 @@ Page {
                     title: qsTr("Selected card")
                     description: qsTr("Accent wash communicates selection; focus ring is separate.")
                     selected: true
-                    control: ToggleSwitch { checked: true }
+                    control: ToggleSwitch {
+                        checked: true
+                    }
                 }
 
                 SettingsCard {
@@ -118,7 +134,7 @@ Page {
                 spacing: ZdlTheme.space2
 
                 Label {
-                    text: qsTr("Expander — one level deep")
+                    text: qsTr("Expander â€” one level deep")
                     font.family: ZdlTheme.fontFamily
                     font.pixelSize: ZdlTheme.textTitleLgSize
                     font.weight: Font.DemiBold
@@ -158,9 +174,18 @@ Page {
 
                 Repeater {
                     model: [
-                        { label: qsTr("System"), badge: "" },
-                        { label: qsTr("Network & internet"), badge: "3" },
-                        { label: qsTr("Personalization"), badge: "" }
+                        {
+                            label: qsTr("System"),
+                            badge: ""
+                        },
+                        {
+                            label: qsTr("Network & internet"),
+                            badge: "3"
+                        },
+                        {
+                            label: qsTr("Personalization"),
+                            badge: ""
+                        }
                     ]
 
                     NavRow {
@@ -179,7 +204,7 @@ Page {
                 spacing: ZdlTheme.space2
 
                 Label {
-                    text: qsTr("Info bars — info · warning · danger")
+                    text: qsTr("Info bars â€” info Â· warning Â· danger")
                     font.family: ZdlTheme.fontFamily
                     font.pixelSize: ZdlTheme.textTitleLgSize
                     font.weight: Font.DemiBold
@@ -212,7 +237,7 @@ Page {
                 spacing: ZdlTheme.space2
 
                 Label {
-                    text: qsTr("Motion — press feedback · reveal · frame budget")
+                    text: qsTr("Motion â€” press feedback Â· reveal Â· frame budget")
                     font.family: ZdlTheme.fontFamily
                     font.pixelSize: ZdlTheme.textTitleLgSize
                     font.weight: Font.DemiBold
@@ -233,7 +258,7 @@ Page {
                 }
 
                 Label {
-                    text: qsTr("Press and hold any card or row to feel the control spring; expanders reveal with the same spring while their height snaps — only transform and opacity animate, per the 8.3 ms frame budget.")
+                    text: qsTr("Press and hold any card or row to feel the control spring; expanders reveal with the same spring while their height snaps â€” only transform and opacity animate, per the 8.3 ms frame budget.")
                     font.family: ZdlTheme.fontFamily
                     font.pixelSize: ZdlTheme.textBodySize
                     color: ZdlTheme.textMuted
@@ -245,14 +270,11 @@ Page {
     }
 
     function openFeedback() {
-        infoActionFeedback.open()
-        feedbackCloseTimer.restart()
+        infoActionFeedback.open();
+        feedbackCloseTimer.restart();
     }
 
-    readonly property string frameText: qsTr("Rolling average %1 ms · worst-in-window %2 ms · budget %3 ms")
-        .arg(ZdlTheme.frameAverageMs.toFixed(2))
-        .arg(ZdlTheme.frameWorstMs.toFixed(2))
-        .arg(ZdlTheme.frameBudgetMs)
+    readonly property string frameText: qsTr("Rolling average %1 ms Â· worst-in-window %2 ms Â· budget %3 ms").arg(ZdlTheme.frameAverageMs.toFixed(2)).arg(ZdlTheme.frameWorstMs.toFixed(2)).arg(ZdlTheme.frameBudgetMs)
 
     Timer {
         id: feedbackCloseTimer
@@ -266,7 +288,7 @@ Page {
         x: (parent.width - width) / 2
         y: parent.height - height - ZdlTheme.space8
         modal: false
-        closePolicy: Popup.AutoClose
+        closePolicy: Popup.CloseOnPressOutside
 
         background: Squircle {
             radius: ZdlTheme.radiusControl

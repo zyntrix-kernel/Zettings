@@ -1,8 +1,8 @@
 import QtQuick
-import QtQuick.Layouts
-import QtQuick.Controls.Basic
 import org.zyntrix.zettings.Style
 import org.zyntrix.zettings.Motion
+import QtQuick.Layouts
+import QtQuick.Controls.Basic
 
 Item {
     id: root
@@ -12,7 +12,7 @@ Item {
     property string badge: ""
     property bool selected: false
 
-    signal activated()
+    signal activated
 
     implicitWidth: 240
     implicitHeight: ZdlTheme.rowMinHeight
@@ -32,13 +32,14 @@ Item {
         anchors.fill: parent
         radius: ZdlTheme.radiusControl
         exponent: ZdlTheme.squircleExponentControl
-        fillColor: root.selected ? ZdlTheme.accentSoft
-            : (hoverHandler.hovered ? ZdlTheme.surfaceMuted : "transparent")
+        fillColor: root.selected ? ZdlTheme.accentSoft : (hoverHandler.hovered ? ZdlTheme.surfaceMuted : "transparent")
         strokeColor: root.activeFocus ? ZdlTheme.focusRingColor : "transparent"
         strokeWidth: 3
 
         Behavior on fillColor {
-            ColorAnimation { duration: ZdlTheme.motionDuration(ZdlTheme.motionQuick) }
+            ColorAnimation {
+                duration: ZdlTheme.motionDuration(ZdlTheme.motionQuick)
+            }
         }
     }
 
@@ -98,6 +99,12 @@ Item {
         }
     }
 
-    Keys.onSpacePressed: { root.activated(); event.accepted = true }
-    Keys.onReturnPressed: { root.activated(); event.accepted = true }
+    Keys.onSpacePressed: event => {
+        root.activated();
+        event.accepted = true;
+    }
+    Keys.onReturnPressed: event => {
+        root.activated();
+        event.accepted = true;
+    }
 }
