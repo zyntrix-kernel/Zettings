@@ -22,10 +22,7 @@ pub trait BackendAdapter: Send + Sync {
     async fn read(&self, key: &ValueKey) -> Result<SettingValue, ZettingsError>;
 
     /// Apply a validated, already-authorized write.
-    async fn write(&self, op: &Operation) -> Result<(), ZettingsError>;
-
-    /// Subscribe to external change signals (D-Bus property changes etc.).
-    fn subscribe(&self) -> broadcast::Receiver<BackendEvent>;
+    async fn write(&self, operation: &OperationKey, value: &SettingValue) -> Result<(), ZettingsError>;
 }
 ```
 
@@ -35,6 +32,11 @@ Guarantees:
   down adapter return `ZettingsError::BackendUnreachable`, they never block
   startup.
 - All adapter methods are cancel-safe (tokio select-friendly).
+- Change-notification (`broadcast::Receiver<BackendEvent>`) is deliberately
+  NOT part of this trait: it would pull tokio into the dependency-free domain
+  crate. Event streaming is an extension surface defined by `zettings-backends`
+  and consumed by bridges; bridges depend on the extension, never on concrete
+  adapters.
 
 ## Error taxonomy (`zettings-core`)
 
