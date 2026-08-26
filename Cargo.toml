@@ -32,3 +32,8 @@ missing_errors_doc = "allow"
 missing_panics_doc = "allow"
 missing_fields_in_debug = "allow"
 multiple_crate_versions = "allow"
+
+# Local patch: rustc >=1.97 forbids macros inside unsafe extern blocks;
+# cxx-qt-gen 0.10 emits include! fragments there. Downgraded to plain
+[patch.crates-io]
+cxx-qt-gen = { path = "vendor/cxx-qt-gen" }

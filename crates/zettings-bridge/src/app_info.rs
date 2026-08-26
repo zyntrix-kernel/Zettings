@@ -1,32 +1,33 @@
-﻿#[cxx_qt::bridge(namespace = "org::zyntrix::zettings")]
+#[cxx_qt::bridge(namespace = "org::zyntrix::zettings")]
 mod app_info {
-    #[namespace = ""]
-    unsafe extern "C++" {
-        include!("cxx-qt-lib/qstring.h");
-        type QString = cxx_qt_lib::QString;
-    }
-
-    unsafe extern "RustQt" {
+    extern "RustQt" {
         #[qobject]
         type AppInfoBridge = super::AppInfoBridgeRust;
 
         #[qinvokable]
-        fn app_name(self: &AppInfoBridge) -> QString;
+        fn version_major(self: &AppInfoBridge) -> u32;
 
         #[qinvokable]
-        fn version(self: &AppInfoBridge) -> QString;
+        fn version_minor(self: &AppInfoBridge) -> u32;
+
+        #[qinvokable]
+        fn version_patch(self: &AppInfoBridge) -> u32;
     }
 }
 
 pub struct AppInfoBridgeRust;
 
 impl AppInfoBridgeRust {
-    pub fn app_name(&self) -> QString {
-        QString::from("Zettings")
+    pub fn version_major(&self) -> u32 {
+        env!("CARGO_PKG_VERSION_MAJOR").parse().unwrap_or(0)
     }
 
-    pub fn version(&self) -> QString {
-        QString::from(env!("CARGO_PKG_VERSION"))
+    pub fn version_minor(&self) -> u32 {
+        env!("CARGO_PKG_VERSION_MINOR").parse().unwrap_or(0)
+    }
+
+    pub fn version_patch(&self) -> u32 {
+        env!("CARGO_PKG_VERSION_PATCH").parse().unwrap_or(0)
     }
 }
 
@@ -36,11 +37,9 @@ mod tests {
 
     #[test]
     fn version_matches_workspace_crate_version() {
-        assert_eq!(AppInfoBridgeRust.version().to_string(), env!("CARGO_PKG_VERSION"));
-    }
-
-    #[test]
-    fn app_name_is_stable() {
-        assert_eq!(AppInfoBridgeRust.app_name().to_string(), "Zettings");
+        let info = AppInfoBridgeRust;
+        assert_eq!(info.version_major(), 0);
+        assert_eq!(info.version_minor(), 1);
+        assert_eq!(info.version_patch(), 0);
     }
 }

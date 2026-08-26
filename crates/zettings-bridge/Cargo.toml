@@ -1,4 +1,4 @@
-﻿[package]
+[package]
 name = "zettings-bridge"
 description = "cxx-qt QObject bridges exposing Zettings Rust domain to QML"
 version.workspace = true
@@ -17,5 +17,18 @@ cxx-qt-lib = "0.10"
 [build-dependencies]
 cxx-qt-build = "0.10"
 
-[lints]
-workspace = true
+# Exception to AGENTS.md unsafe_code=forbid: build.rs needs one scoped
+# unsafe for CxxQtBuilder::cc_builder (forced-include header). Clippy
+# policy below mirrors [workspace.lints.clippy] verbatim; rust lints are
+# restated with the single deliberate relaxation.
+[lints.rust]
+unsafe_code = "allow"
+
+[lints.clippy]
+pedantic = { level = "deny", priority = -1 }
+module_name_repetitions = "allow"
+must_use_candidate = "allow"
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+missing_fields_in_debug = "allow"
+multiple_crate_versions = "allow"

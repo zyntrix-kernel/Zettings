@@ -1,42 +1,47 @@
 # zettings-bridge — cxx-qt QObject bridges
 
-Status: **quarantined** (`[workspace.exclude]`) pending one upstream-shaped
-patch. Everything else in the workspace builds and tests green without it.
+Status: **quarantined** (`[workspace.exclude]` — the member line is removed
+from the root manifest; re-add after the unblock below).
 
-## Blocker (fully diagnosed 2026-08-26)
+## Blocker (diagnosis as of 2026-08-26, empirically established)
 
-rustc 1.97 forbids macro invocations inside `unsafe extern` blocks.
-`#[cxx_qt::bridge]` re-emits user foreign blocks (normalized) plus its own
-additions into the final `cxx::bridge`, and several emitted fragments carry
-`include!` inside `unsafe extern "C++"`:
+rustc 1.97 rejects `include!` inside `unsafe extern` blocks. Every
+`#[cxx_qt::bridge]` expansion contains such a fragment **even when the input
+bridge declares no foreign C++ types at all** — verified with a primitives-
+only bridge (`u32` invokables, zero `extern "C++"` in input) still failing
+with:
 
-| Emission site (cxx-qt-gen 0.10.0) | Trigger |
+```
+error: non-foreign item macro in foreign item position: include
+error: expected one of ... found `/`
+```
+
+Both diagnostics are attributed to the macro invocation site, i.e. they are
+produced from the macro's EXPANDED output.
+
+### What was ruled out
+
+| Hypothesis | Disproved by |
 |---|---|
-| `src/generator/rust/qobject.rs:47` | `qml_metadata.is_some()` |
-| `src/generator/rust/qobject.rs:210` | same (second site) |
-| `src/generator/rust/threading.rs:65` | `threading` enabled |
-| `src/generator/rust/threading.rs:207` | same |
+| User `include!` syntax | fails with no user include at all |
+| cxx::bridge can't handle it on 1.97 | cxx-qt-lib compiles from source |
+| Edition 2024 parsing | same failure on edition 2021 |
+| syn version drift | pinning syn 2.0.98 (upstream's lock) changes nothing |
+| Emissions in writer/qobject/threading/signals | all four patched to plain extern; failure persists |
 
-User-passed `include!("cxx-qt-lib/qstring.h")` also fails even when the input
-block is written as plain `extern "C++"`, i.e. pass-through lands under
-`unsafe` too.
+The responsible emission therefore lives elsewhere in the
+cxx-qt-macro/cxx-qt-gen chain (or in how the macro wraps its output) and must
+be located by expanding the macro output directly.
 
-## Fix shape (next session)
+## Unblock procedure (next session)
 
-Vendor the crate and flip the four emission sites (and/or the pass-through
-normalization) to plain `extern "C++"` — legal with macros on every edition —
-then wire `[patch.crates-io] cxx-qt-gen = { path = "vendor/cxx-qt-gen" }`.
-Upstream issue worth filing with KDAB referencing rustc restriction
-("macros in unsafe extern blocks").
-
-## Ready-to-go contents
-
-* `build.rs`: CxxQtBuilder 0.10 + `.qt_module("Quick")`
-* `app_info.rs`: AppInfoBridge (two-name QObject pattern, three invokables),
-  mirrors official `test_inputs/invokables.rs` shape
-* Workspace rejoin: remove the `exclude` entry after the patch lands.
-
-Gates to run on rejoin: cargo fmt/clippy/check/test, then Corrosion wiring
-into apps/zettings/CMakeLists.txt (FetchContent corrosion-rs/corrosion,
-`corrosion_import_crate(... CRATES zettings-bridge CRATE_TYPES staticlib)`),
-instantiate in main.cpp, surface in Gallery footer.
+1. On a NIGHTLY toolchain in a scratch copy:
+   `cargo rustc -p zettings-macro-probe -- -Zunpretty=expanded` to dump the
+   expanded bridge and find the exact remaining `unsafe extern { include! }`.
+2. Patch that site in `vendor/cxx-qt-gen` (or upstream crate) to plain
+   `extern "C++"`.
+3. Re-add `"crates/zettings-bridge"` to workspace members.
+4. Full gates, then Corrosion wiring into apps/zettingss CMake
+   (see git history: scaffold + build.rs force-include already prepared;
+   QString-returning invokables additionally need the cc_builder
+   `-include cxx-qt-lib/qstring.h` trick already in build.rs).
