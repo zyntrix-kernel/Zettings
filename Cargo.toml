@@ -4,6 +4,7 @@ members = [
     "crates/zettings-core",
     "crates/zettings-search",
     "crates/zettings-polkit",
+    "crates/zettings-backends",
 ]
 
 [workspace.package]
