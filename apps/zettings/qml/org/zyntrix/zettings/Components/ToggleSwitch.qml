@@ -1,6 +1,6 @@
-import QtQuick
-import org.zyntrix.zettings.Style
+﻿import QtQuick
 import QtQuick.Controls.Basic
+import org.zyntrix.zettings.Style
 
 Switch {
     id: root
@@ -14,14 +14,12 @@ Switch {
 
     readonly property int trackWidth: 40
     readonly property int trackHeight: 24
-    readonly property int trackX: (width - trackWidth) / 2
-    readonly property int trackY: (height - trackHeight) / 2
 
     indicator: Rectangle {
         implicitWidth: root.trackWidth
         implicitHeight: root.trackHeight
-        x: root.trackX
-        y: root.trackY
+        x: (root.width - width) / 2
+        y: (root.height - height) / 2
         radius: height / 2
         color: root.checked ? ZdlTheme.accent : "transparent"
         border.width: root.activeFocus ? 3 : 1
@@ -33,23 +31,23 @@ Switch {
                 duration: ZdlTheme.motionDuration(ZdlTheme.motionQuick)
             }
         }
-    }
 
-    // qmllint disable missing-property
-    handle: Rectangle {
-        implicitWidth: 20
-        implicitHeight: 20
-        x: root.checked ? root.trackX + root.trackWidth - width - 2 : root.trackX + 2
-        y: root.trackY + (root.trackHeight - height) / 2
-        radius: width / 2
-        color: root.checked ? ZdlTheme.onAccent : (root.enabled ? ZdlTheme.surfaceElevated : ZdlTheme.surfaceMuted)
-        border.width: root.checked ? 0 : 1
-        border.color: ZdlTheme.borderStrong
+        Rectangle {
+            readonly property int knobTravel: parent.width - width - 4
+            x: root.checked ? knobTravel + 2 : 2
+            y: (parent.height - height) / 2
+            width: 20
+            height: 20
+            radius: width / 2
+            color: root.checked ? ZdlTheme.accentText : (root.enabled ? ZdlTheme.surfaceElevated : ZdlTheme.surfaceMuted)
+            border.width: root.checked ? 0 : 1
+            border.color: ZdlTheme.borderStrong
 
-        Behavior on x {
-            NumberAnimation {
-                duration: ZdlTheme.motionDuration(ZdlTheme.motionQuick)
-                easing.type: Easing.OutCubic
+            Behavior on x {
+                NumberAnimation {
+                    duration: ZdlTheme.motionDuration(ZdlTheme.motionQuick)
+                    easing.type: Easing.OutCubic
+                }
             }
         }
     }

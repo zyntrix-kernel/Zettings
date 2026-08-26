@@ -281,10 +281,11 @@ OLED forces opaque blacks and disables glass; hc per §2.5.
 
 Durations: `--motion-instant` 80 ms · `--motion-quick` 140 ms ·
 `--motion-normal` 220 ms · `--motion-deliberate` 320 ms.
-Easing: standard `cubic-bezier(0.2, 0, 0, 1)`; emphasized transitions use
-spring physics `{stiffness, damping}` pairs — navigation 220/28, controls
-320/22, modals 180/24 (mass 1.0/0.6/1.2). Velocity is preserved across
-interruptions; overshoot allowed only on control-scale feedback (≤ 4%).
+Easing: standard `cubic-bezier(0.2, 0, 0, 1)`; emphasized transitions use the
+QQuickSpringAnimation parameter pairs `{spring, damping}` — navigation 30/25,
+controls 40/20, modals 20/30 (strength scaled ÷10, damping ÷100 into engine
+units at the token layer). Velocity is preserved across interruptions;
+overshoot allowed only on control-scale feedback (≤ 4%).
 
 Reduced motion: the platform reduce-motion preference (surfaced as
 `ZdlTheme.reducedMotion`, wired to the desktop setting in the

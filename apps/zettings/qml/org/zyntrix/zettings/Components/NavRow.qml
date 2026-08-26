@@ -94,7 +94,7 @@ Item {
                 font.family: ZdlTheme.fontFamily
                 font.pixelSize: ZdlTheme.textCaptionSize
                 font.weight: Font.DemiBold
-                color: ZdlTheme.onAccent
+                color: ZdlTheme.accentText
             }
         }
     }

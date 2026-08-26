@@ -33,8 +33,8 @@ Item {
     readonly property color accentDark: "#a78bfa"
     readonly property color accentStrongLight: "#6d28d9"
     readonly property color accentStrongDark: "#c4b5fd"
-    readonly property color onAccentLight: "#ffffff"
-    readonly property color onAccentDark: "#241145"
+    readonly property color accentTextLight: "#ffffff"
+    readonly property color accentTextDark: "#241145"
 
     readonly property color warningLight: "#b45309"
     readonly property color warningDark: "#fbbf24"
@@ -43,7 +43,7 @@ Item {
 
     readonly property color accent: darkAppearance ? accentDark : accentLight
     readonly property color accentStrong: darkAppearance ? accentStrongDark : accentStrongLight
-    readonly property color onAccent: darkAppearance ? onAccentDark : onAccentLight
+    readonly property color accentText: darkAppearance ? accentTextDark : accentTextLight
     readonly property color accentSoft: Qt.rgba(accent.r, accent.g, accent.b, isHighContrast ? 0.0 : (darkAppearance ? 0.16 : 0.12))
 
     readonly property color surface: {
@@ -173,17 +173,12 @@ Item {
     readonly property int motionNormal: 220
     readonly property int motionDeliberate: 320
 
-    readonly property int springNavigationStiffness: 220
-    readonly property int springNavigationDamping: 28
-    readonly property real springNavigationMass: 1.0
-
-    readonly property int springControlsStiffness: 320
-    readonly property int springControlsDamping: 22
-    readonly property real springControlsMass: 0.6
-
-    readonly property int springModalStiffness: 180
-    readonly property int springModalDamping: 24
-    readonly property real springModalMass: 1.2
+    readonly property int springNavigationStrength: 30
+    readonly property int springNavigationDamping: 25
+    readonly property int springControlsStrength: 40
+    readonly property int springControlsDamping: 20
+    readonly property int springModalStrength: 20
+    readonly property int springModalDamping: 30
 
     property bool debugFrames: false
 

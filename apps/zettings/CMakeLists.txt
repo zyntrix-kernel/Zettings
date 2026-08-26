@@ -70,6 +70,7 @@ qt_add_executable(zettings
 qt_add_qml_module(zettings
     URI org.zyntrix.zettings
     VERSION 1.0
+    DEPENDENCIES QtQuick org.zyntrix.zettings.Style org.zyntrix.zettings.Components org.zyntrix.zettings.Gallery
     OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/org/zyntrix/zettings
     QML_FILES
         qml/org/zyntrix/zettings/Main.qml

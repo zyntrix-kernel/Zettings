@@ -60,7 +60,7 @@ Shape {
 
         PathSvg {
             // qmllint disable missing-property
-            pathData: root.width > 0 && root.height > 0 ? root.buildPathData(96) : ""
+            path: root.width > 0 && root.height > 0 ? root.buildPathData(96) : ""
         }
     }
 }

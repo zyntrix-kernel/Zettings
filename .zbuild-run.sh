@@ -1,0 +1,1 @@
+export QT_QPA_PLATFORM=offscreen; timeout 3 /usr/lib/qt6/bin/qml "/mnt/c/Users/USER/Desktop/Zyntrix/Zyntrix OS/Zettings-app/build/shapestest.qml" 2>&1 | grep -vE "libEGL|MESA|swrast|EGL" | head -6; echo EXIT=$?

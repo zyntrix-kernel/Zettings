@@ -62,8 +62,6 @@ Rectangle {
         Button {
             id: actionButton
             visible: text !== ""
-            // qmllint disable missing-property
-            flat: true
             font.family: ZdlTheme.fontFamily
             font.pixelSize: ZdlTheme.textBodySize
             palette.buttonText: root.severityColor
@@ -74,8 +72,6 @@ Rectangle {
 
         AbstractButton {
             id: dismissButton
-            // qmllint disable missing-property
-            flat: true
             activeFocusOnTab: true
             Accessible.role: Accessible.Button
             Accessible.name: qsTr("Dismiss")

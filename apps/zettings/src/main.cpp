@@ -1,19 +1,20 @@
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
 
+using namespace Qt::Literals::StringLiterals;
+
 int main(int argc, char *argv[])
 {
     QGuiApplication app(argc, argv);
 
     QQmlApplicationEngine engine;
-    const QUrl url = QUrl(u"qrc:/qt/qml/org/zyntrix/zettings/Main.qml"_s);
     QObject::connect(
         &engine,
         &QQmlApplicationEngine::objectCreationFailed,
         &app,
         []() { QCoreApplication::exit(1); },
         Qt::QueuedConnection);
-    engine.load(url);
+    engine.loadFromModule(u"org.zyntrix.zettings"_s, u"Main"_s);
 
     return app.exec();
 }
