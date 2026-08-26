@@ -1,0 +1,19 @@
+[package]
+name = "zettings-search"
+description = "Settings search index and ranking pipeline for Zettings"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+zettings-core.workspace = true
+serde.workspace = true
+unicode-normalization = "0.1"
+
+[dev-dependencies]
+serde_json.workspace = true
+
+[lints]
+workspace = true

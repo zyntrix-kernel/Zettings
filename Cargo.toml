@@ -2,6 +2,8 @@
 resolver = "3"
 members = [
     "crates/zettings-core",
+    "crates/zettings-search",
+    "crates/zettings-polkit",
 ]
 
 [workspace.package]
