@@ -1,4 +1,4 @@
-# Zettings repository — do not edit by hand. Regenerate via `tools/format` if needed.
+# Zettings repository ignore rules — native Qt 6 + Rust era
 
 # -----------------------------
 # Rust / Cargo
@@ -7,55 +7,25 @@ target/
 **/*.rs.bk
 *.pdb
 Cargo.lock.bak
-*.rs.png
 
 # -----------------------------
-# Node / pnpm / Vite
+# Qt / CMake
 # -----------------------------
-node_modules/
-dist/
-dist-ssr/
-.vite/
-.turbo/
-.cache/
-.parcel-cache/
-.next/
-.nuxt/
-*.local
-*.log
-*.tsbuildinfo
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-.pnpm-store/
-
-# -----------------------------
-# Tauri
-# -----------------------------
-src-tauri/target/
-src-tauri/gen/
-src-tauri/WixTools/
-src-tauri/.cargo/
-**/tauri.conf.json.bak
-
-# ts-rs generated bindings are committed only when deterministic and used in CI.
-# Ignored here per module-local convention; central bindings ARE committed.
-apps/*/src-tauri/bindings/
-crates/*/bindings/
-!packages/ts-bindings/
+build/
+build-*/
+CMakeLists.txt.user
+*.qmlc
+*.jsc
+*.qsb
+.qtc_clangd/
+.cmake/
 
 # -----------------------------
 # Testing / coverage
 # -----------------------------
 .tarpaulin/
-target/tarpaulin/
 coverage/
-.nyc_output/
 *.lcov
-.playwright/
-playwright-report/
-test-results/
 
 # -----------------------------
 # Editor / OS
@@ -87,14 +57,23 @@ secrets.toml
 # -----------------------------
 # Operational scratch
 # -----------------------------
+*.log
 *.bench.svg
 *.profraw
 flamegraph.svg
 perf.data*
 
-# DSH session / context snapshots and capture files (not tracked)
+# Local design reference assets at repo root (not tracked); real assets stay trackable
+*.png
+!packaging/**/*.png
+!docs/**/*.png
+!crates/**/*.png
+!apps/**/*.png
+
+# Agent session / context snapshots (not tracked)
 prompt.txt
 context-*.md
 session-ses_*.md
 zettings.json
 CONTEXT.md
+opencode_autocontinue.py

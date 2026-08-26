@@ -6,7 +6,8 @@ This file is the single source of truth for any agent (human or AI) operating in
 
 * **Working Path:** `C:\Users\USER\Desktop\Zyntrix\Zyntrix OS\Zettings-app`
 * **Project Name:** **Zettings** — system settings application for **Zyntrix OS** (Kubuntu 24.04 / KDE Plasma 5.27).
-* **Tech Stack:** Tauri v2 (Rust 1.97), React 19 + TypeScript (pnpm 11), Tailwind v4.
+* **Tech Stack:** Native **Qt 6 (QML)** UI bridged from **Rust 1.97** via **cxx-qt**. No webview, no Node/JS toolchain. Backend: pure Rust (tokio, zbus).
+* **History:** The previous Tauri v2 implementation is fully preserved at `archive/tauri-v2` (branch + tag, pushed). The project restarted clean-slate on the native stack; that history is reference material, never a merge target.
 * **License:** Dual-licensed under MIT OR Apache-2.0 at the user's option.
 
 ---
@@ -96,19 +97,19 @@ Identify every technical/domain concern involved.
 
 Examples:
 
-* React UI
-* TypeScript
-* Tailwind/CSS
+* Qt 6 / QML UI
+* cxx-qt bridging
+* CMake build integration
 * ZDL visual design
 * G2/G3 geometry
 * Liquid Glass
 * animation/motion
 * accessibility
 * frontend architecture
-* Tauri
+* Qt
 * Rust
 * IPC
-* Linux/KDE integration
+* D-Bus / Linux/KDE integration
 * system settings
 * security
 * permissions/Polkit
@@ -181,9 +182,9 @@ Every applicable concern must have an authoritative loaded skill.
 Example:
 
 ```text
-React UI        → frontend skill       → YES → required
+QML UI          → Qt/QML skill         → YES → required
 ZDL geometry    → ZDL/UI skill         → YES → required
-Tauri IPC       → Tauri skill          → YES → required
+cxx-qt bridge   → Rust FFI skill       → YES → required
 Rust backend    → Rust skill           → YES → required
 Testing         → testing skill        → YES → required
 ```
@@ -209,7 +210,7 @@ Examples of boundaries:
 * UI/UX strategy ≠ Liquid Glass/material implementation
 * Motion/animation ≠ general visual design
 * Accessibility ≠ visual styling
-* Frontend architecture ≠ Tauri/Rust architecture
+* Frontend architecture ≠ Qt/Rust architecture
 * Security ≠ generic code quality
 * Performance profiling ≠ functional implementation
 * Testing/QA ≠ feature implementation
@@ -304,11 +305,10 @@ The agent MUST stop and ask for clarification or report the blocker if:
 # 8. Critical Conventions
 
 * **Crate Naming:** All crates use `zettings-` prefix (with `t`). Rust import names: `zettings_polkit`, `zettings_core`, etc.
-* **Tauri Commands:** Keep `#[tauri::command]` off lib functions; apply it in `main.rs` when registering with `generate_handler!`.
-* **ts-rs v12:** Use `#[ts(export, export_to = "<filename>.ts")]` with just the filename. The export test computes the absolute workspace path from `CARGO_MANIFEST_DIR`.
-* **Frontend Imports:** Import IPC payload types from `@zettings/bindings` (the workspace package). Never hand-type duplicate frontend payloads.
-* **TypeScript Strict Mode:** `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `noUnusedLocals`, `noUnusedParameters`, `verbatimModuleSyntax` are all ON. Use `import type` for type-only imports.
-* **CSS:** Standard `border-radius` is forbidden for major cards/panels — use G2/G3 squircle clip-paths instead.
+* **Workspace Layout:** Virtual manifest at repo root (no root `[package]`); members under `crates/*` and `apps/*`. Shared metadata, dependencies, and lints are pinned in `[workspace.package]` / `[workspace.dependencies]` / `[workspace.lints]`; members opt in with `.workspace = true`. Dependency direction: backend/domain crates must never depend on the application shell.
+* **cxx-qt Bridges:** QML-visible types and invokables are defined in Rust behind `#[cxx_qt::bridge]` modules. Never hand-write C++ duplicates of Rust-owned types. Keep bridge modules per backend domain, not one monolith.
+* **QML Modules:** All QML lives under a single application import URI with explicit versioning. Never copy-paste component variants across pages; extract shared components.
+* **QML Geometry:** Standard rectangular `radius` is forbidden for major cards/panels — use ZDL G2/G3 squircle shapes instead.
 * **Clippy:** `pedantic` is deny-by-default. Selective allows: `module_name_repetitions`, `must_use_candidate`, `missing_errors_doc`, `missing_panics_doc`, `missing_fields_in_debug`, `multiple_crate_versions`.
 
 ---
@@ -362,14 +362,22 @@ Keep changes scoped to the requested task unless a necessary dependency or corre
 
 Run the applicable verification gates before considering work complete.
 
-For phase/commit completion, all four gates are mandatory:
+For phase/commit completion, all gates that apply to existing code are mandatory:
 
 ```cmd
 cargo fmt --all --check
 cargo clippy --workspace --all-targets -- -D warnings
 cargo check --workspace
-pnpm -r typecheck
 ```
+
+Once QML sources exist, add the QML gate:
+
+```cmd
+qmllint <changed .qml files>
+qmlformat --check <changed .qml files>
+```
+
+The Rust and QML gates run in WSL2 (the Linux target). The Windows host is documentation/planning only; never claim a gate passed on the Windows host for Linux-target code.
 
 For changes that affect:
 
@@ -395,13 +403,13 @@ If a check cannot be run in the current environment:
 
 ## Windows Host
 
-Used for frontend iteration using the `zettings-mock` feature.
+Documentation, planning, and repository management only. No Qt runtime work targets Windows; the product target is Linux only.
 
 Parent paths MUST NOT contain single quotes (`'`).
 
 ## WSL2 Kubuntu 24.04 LTS
 
-Used for real backend integration targeting:
+The primary development and verification environment targeting:
 
 ```text
 x86_64-unknown-linux-gnu
@@ -409,6 +417,7 @@ x86_64-unknown-linux-gnu
 
 with:
 
+* Qt 6 (base + declarative/QML) system packages
 * system `zbus`
 * PipeWire
 * PulseAudio
@@ -486,7 +495,7 @@ Before completion:
 [ ] cargo fmt --all --check
 [ ] cargo clippy --workspace --all-targets -- -D warnings
 [ ] cargo check --workspace
-[ ] pnpm -r typecheck
+[ ] qmllint / qmlformat on changed QML files (when QML exists)
 [ ] Additional task-specific checks completed
 [ ] No unverified claims
 ```

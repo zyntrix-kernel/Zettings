@@ -1,14 +1,16 @@
-# PLAN.md — ZETTINGS Master Implementation Roadmap
+﻿# PLAN.md â€” ZETTINGS Master Implementation Roadmap
 
-> **Status:** Authoritative implementation roadmap
+> **Status:** Authoritative implementation roadmap (native Qt 6 + Rust era â€” clean-slate rebuild)
 >
-> **Project:** ZETTINGS — Zyntrix OS Settings
+> **Project:** ZETTINGS â€” Zyntrix OS Settings
+>
+> **Stack:** Native **Qt 6 (QML)** UI bridged from **Rust** via **cxx-qt**; backend pure Rust (tokio, zbus). No webview, no Node toolchain.
 >
 > **Target:** Kubuntu 24.04 / KDE Plasma 5.27
 >
 > **Primary inputs:** `prompt.txt`, `ZETTINGS_Windows_11_Settings_Deep_UI_Spec.md`, `AGENTS.md`, `DESIGN.md`
 >
-> **Rule:** `prompt.txt` is a mandatory product requirement. The Windows 11 specification is the reference for information architecture, navigation, reusable settings patterns, search, and observable UX—not a license to copy Microsoft's proprietary implementation.
+> **Rule:** `prompt.txt` is a mandatory product requirement. The Windows 11 specification is the reference for information architecture, navigation, reusable settings patterns, search, and observable UXâ€”not a license to copy Microsoft's proprietary implementation.
 
 ---
 
@@ -41,15 +43,15 @@ The agent must maintain a **Prompt Compliance Matrix** throughout the project:
 
 ```text
 Prompt requirement
-    ↓
+    â†“
 PLAN phase / feature
-    ↓
+    â†“
 Implementation
-    ↓
+    â†“
 Verification
-    ↓
+    â†“
 Evidence
-    ↓
+    â†“
 PASS / FAIL / BLOCKED
 ```
 
@@ -60,7 +62,7 @@ No requirement may silently disappear because it was not convenient to implement
 The project uses sequential phases:
 
 ```text
-Phase 0 → Phase 1 → Phase 2 → ... → Phase 12
+Phase 0 â†’ Phase 1 â†’ Phase 2 â†’ ... â†’ Phase 12
 ```
 
 A phase must be completed and accepted before the next phase begins.
@@ -78,14 +80,14 @@ It must combine:
 - Windows 11's strong settings information architecture and discoverability;
 - Apple's refinement, hierarchy, responsiveness, and interaction quality;
 - KDE/Linux-native system integration;
-- Rust/Tauri security and maintainability;
+- Rust/Qt security and maintainability;
 - an original Zyntrix Design Language (ZDL).
 
 It is **not a Windows clone**.
 
-The Windows reference explicitly defines the target as the Windows Settings mental model plus Windows/Fluent grammar, KDE/Linux-native implementation, data-driven registry, strong search, deep links, native adapters, accessibility, and responsive navigation. fileciteturn2file0L122-L148
+The Windows reference explicitly defines the target as the Windows Settings mental model plus Windows/Fluent grammar, KDE/Linux-native implementation, data-driven registry, strong search, deep links, native adapters, accessibility, and responsive navigation.
 
-`prompt.txt` requires the finished product to exceed major desktop settings applications in UI, UX, animation, architecture, performance, integration, accessibility, consistency, extensibility, and maintainability. fileciteturn2file3L734-L770
+`prompt.txt` requires the finished product to exceed major desktop settings applications in UI, UX, animation, architecture, performance, integration, accessibility, consistency, extensibility, and maintainability.
 
 ---
 
@@ -132,7 +134,7 @@ At release, ZETTINGS must satisfy all applicable requirements in these domains:
 - No janky or blocking animation.
 - Target 120 FPS.
 
-These requirements are explicitly specified by `prompt.txt`. fileciteturn1file1L593-L693
+These requirements are explicitly specified by `prompt.txt`.
 
 ## System integration
 
@@ -160,7 +162,7 @@ The architecture must support the complete requested integration surface, includ
 - environment variables / power profiles;
 - BIOS / kernel / CPU / GPU / memory / sensors / fans / thermals.
 
-This inventory comes directly from `prompt.txt`; unsupported hardware or platform capabilities must be represented honestly rather than faked. fileciteturn1file0L11-L109
+This inventory comes directly from `prompt.txt`; unsupported hardware or platform capabilities must be represented honestly rather than faked.
 
 ---
 
@@ -170,25 +172,25 @@ Use a data-driven settings graph:
 
 ```text
 Canonical Registry
-      ↓
+      â†“
 Category
-      ↓
+      â†“
 Page
-      ↓
+      â†“
 Section
-      ↓
+      â†“
 Setting Definition
-      ↓
+      â†“
 Reusable Control Renderer
-      ↓
+      â†“
 Capability / Permission Layer
-      ↓
+      â†“
 Backend Adapter
-      ↓
+      â†“
 Native Linux / KDE subsystem
 ```
 
-The Windows reconstruction reference specifically recommends a registry → page definition → section definition → setting definition → control renderer → native Linux backend pipeline. fileciteturn2file5L1229-L1275
+The Windows reconstruction reference specifically recommends a registry â†’ page definition â†’ section definition â†’ setting definition â†’ control renderer â†’ native Linux backend pipeline.
 
 Every setting must have at least:
 
@@ -237,7 +239,7 @@ Privacy & security
 Windows Update
 ```
 
-The reference identifies this as the recognizable Windows Settings mental model. fileciteturn2file6L1407-L1427
+The reference identifies this as the recognizable Windows Settings mental model.
 
 Use the following hierarchy:
 
@@ -251,7 +253,7 @@ L5 Inline expander / sub-setting
 L6 Dialog / flyout / picker / advanced page
 ```
 
-This hierarchy is explicitly identified in the Windows reconstruction specification. fileciteturn2file4L1079-L1120
+This hierarchy is explicitly identified in the Windows reconstruction specification.
 
 Reusable templates must include:
 
@@ -292,27 +294,27 @@ Required capabilities:
 - predictive suggestions;
 - searchable settings index.
 
-These requirements are explicit in `prompt.txt`. fileciteturn1file0L111-L141
+These requirements are explicit in `prompt.txt`.
 
 Recommended pipeline:
 
 ```text
 Query
- ↓
+ â†“
 Normalization
- ↓
+ â†“
 Exact title/ID match
- ↓
+ â†“
 Keyword / alias match
- ↓
+ â†“
 Fuzzy match
- ↓
+ â†“
 Semantic retrieval
- ↓
+ â†“
 Context/recent/frequency boosts
- ↓
+ â†“
 Ranked settings
- ↓
+ â†“
 Direct route
 ```
 
@@ -329,27 +331,27 @@ recently used            +10
 fuzzy spelling            +5
 ```
 
-Direct settings must rank above broad category pages. fileciteturn2file7L1651-L1683
+Direct settings must rank above broad category pages.
 
 AI-assisted setting changes must always use:
 
 ```text
 Intent
- ↓
+ â†“
 Candidate setting
- ↓
+ â†“
 Explanation
- ↓
+ â†“
 Preview
- ↓
+ â†“
 Explicit user confirmation
- ↓
+ â†“
 Validated backend action
- ↓
+ â†“
 Result
 ```
 
-Never allow AI to silently change arbitrary system configuration. fileciteturn2file7L1622-L1647
+Never allow AI to silently change arbitrary system configuration.
 
 ---
 
@@ -377,7 +379,7 @@ zettings://privacy/microphone
 zettings://updates
 ```
 
-The Windows specification explicitly recommends a ZETTINGS route scheme rather than copying `ms-settings:`. fileciteturn2file9L2019-L2045
+The Windows specification explicitly recommends a ZETTINGS route scheme rather than copying `ms-settings:`.
 
 Rules:
 
@@ -390,13 +392,13 @@ Rules:
 
 ---
 
-# 7. DESIGN SYSTEM — ZDL
+# 7. DESIGN SYSTEM â€” ZDL
 
 `prompt.txt` requires an original design language named **Zyntrix Design Language (ZDL)**.
 
 Do not copy Windows, macOS, GNOME, KDE, or another product.
 
-Take inspiration from them while producing an original visual system. fileciteturn1file2L834-L864
+Take inspiration from them while producing an original visual system.
 
 ZDL must define:
 
@@ -427,7 +429,7 @@ Accessibility variants
 
 Repository `DESIGN.md` remains authoritative for exact ZDL values.
 
-The Windows reference supplies reusable UI anatomy such as SettingsCard, SettingsExpander, navigation, constrained content, and standard controls; ZDL must translate those concepts into Zyntrix's own geometry and materials. fileciteturn2file4L1124-L1193
+The Windows reference supplies reusable UI anatomy such as SettingsCard, SettingsExpander, navigation, constrained content, and standard controls; ZDL must translate those concepts into Zyntrix's own geometry and materials.
 
 ---
 
@@ -439,17 +441,17 @@ Architecture:
 
 ```text
 Interaction
- ↓
+ â†“
 Motion intent
- ↓
+ â†“
 Context
- ↓
+ â†“
 Physics parameters
- ↓
+ â†“
 Interpolation
- ↓
+ â†“
 GPU-composited animation
- ↓
+ â†“
 Accessibility/reduced-motion policy
 ```
 
@@ -472,7 +474,7 @@ Motion engine must support:
 - adaptive duration;
 - context-aware motion.
 
-`prompt.txt` explicitly requires these motion primitives and a 120 FPS target. fileciteturn1file1L643-L693
+`prompt.txt` explicitly requires these motion primitives and a 120 FPS target.
 
 Reduced-motion mode must disable or simplify non-essential motion without breaking interaction.
 
@@ -497,22 +499,22 @@ Required principles:
 - No unsafe arbitrary command execution.
 - Privileged operations isolated in backend adapters.
 
-These are explicit `prompt.txt` requirements. fileciteturn2file1L317-L341
+These are explicit `prompt.txt` requirements.
 
 Additional rules:
 
 ```text
-React/UI
+QML/UI
   NEVER directly modifies system files.
 
 UI
-  → typed Tauri command
-  → capability/authorization layer
-  → backend adapter
-  → native API
+  â†’ typed cxx-qt invokable / D-Bus call
+  â†’ capability/authorization layer
+  â†’ backend adapter
+  â†’ native API
 ```
 
-System changes must go through backend adapters and privileged operations must be isolated and validated. fileciteturn2file8L1792-L1825
+System changes must go through backend adapters and privileged operations must be isolated and validated.
 
 ---
 
@@ -535,7 +537,7 @@ Required strategies:
 - asynchronous system queries;
 - parallel independent backend queries;
 - memoized selectors;
-- zero unnecessary React re-renders;
+- no unnecessary QML re-evaluation or over-draw;
 - resource cleanup;
 - no memory leaks;
 - GPU-accelerated animations;
@@ -543,7 +545,7 @@ Required strategies:
 - bounded caches;
 - incremental rendering for large lists.
 
-These targets and techniques are specified in `prompt.txt`. fileciteturn2file1L343-L365
+These targets and techniques are specified in `prompt.txt`.
 
 Every performance claim must be measured.
 
@@ -564,7 +566,7 @@ Target:
 - accessible animation;
 - voice-navigation-ready semantics.
 
-These requirements are explicitly listed in `prompt.txt`. fileciteturn2file1L367-L387
+These requirements are explicitly listed in `prompt.txt`.
 
 Every interactive control must have:
 
@@ -605,7 +607,7 @@ Comfort mode
 Developer mode
 ```
 
-These requirements come from `prompt.txt`. fileciteturn2file1L389-L415
+These requirements come from `prompt.txt`.
 
 All theme values must flow through ZDL tokens.
 
@@ -621,7 +623,8 @@ Primary backend technologies required by `prompt.txt` include:
 
 ```text
 Rust
-Tauri v2
+Qt 6 (QML)
+cxx-qt
 Tokio
 zbus
 D-Bus
@@ -644,8 +647,7 @@ Snap
 AppImage
 Debian packaging
 ```
-
-fileciteturn1file1L519-L567
+
 
 Suggested adapter boundaries:
 
@@ -685,7 +687,7 @@ Each adapter exposes typed capabilities and reports unavailable functionality ho
 
 ---
 
-# 14. PHASE 0 — RESEARCH
+# 14. PHASE 0 â€” RESEARCH
 
 ## Objectives
 
@@ -702,7 +704,7 @@ Establish the factual and architectural baseline before implementation.
 - Identify authoritative skill for every technical concern.
 - Load all required skills before repository work.
 - Build Prompt Compliance Matrix.
-- Build Windows → Zyntrix feature mapping.
+- Build Windows â†’ Zyntrix feature mapping.
 - Identify Linux backend feasibility.
 - Identify unsupported/optional platform features.
 - Establish terminology.
@@ -726,7 +728,7 @@ No unresolved architectural contradiction.
 
 ---
 
-# 15. PHASE 1 — ARCHITECTURE
+# 15. PHASE 1 â€” ARCHITECTURE
 
 ## Objectives
 
@@ -736,7 +738,7 @@ Create the production architecture.
 
 - Define workspace boundaries.
 - Define Rust crates using `zettings-` naming.
-- Define Tauri IPC architecture.
+- Define cxx-qt bridge architecture (QML â†” Rust) and D-Bus IPC architecture.
 - Define frontend/backend boundary.
 - Define capability system.
 - Define backend adapter interface.
@@ -773,7 +775,7 @@ Architecture review passes and Prompt Compliance Matrix remains complete.
 
 ---
 
-# 16. PHASE 2 — DESIGN SYSTEM
+# 16. PHASE 2 â€” DESIGN SYSTEM
 
 ## Objectives
 
@@ -806,7 +808,7 @@ Core components visually and semantically satisfy `DESIGN.md` and Windows refere
 
 ---
 
-# 17. PHASE 3 — MOTION ENGINE
+# 17. PHASE 3 â€” MOTION ENGINE
 
 ## Objectives
 
@@ -835,7 +837,7 @@ Motion primitives are reusable, measurable, accessible, and do not block renderi
 
 ---
 
-# 18. PHASE 4 — CORE FRAMEWORK
+# 18. PHASE 4 â€” CORE FRAMEWORK
 
 ## Objectives
 
@@ -876,11 +878,11 @@ Narrow
   overlay/minimal navigation
 ```
 
-The Windows specification explicitly warns against keeping a giant always-open sidebar at every width. fileciteturn2file4L1075-L1120
+The Windows specification explicitly warns against keeping a giant always-open sidebar at every width.
 
 ---
 
-# 19. PHASE 5 — BACKEND INTEGRATION
+# 19. PHASE 5 â€” BACKEND INTEGRATION
 
 ## Objectives
 
@@ -929,7 +931,7 @@ real Linux integration path
 
 ---
 
-# 20. PHASE 6 — FRONTEND
+# 20. PHASE 6 â€” FRONTEND
 
 ## Objectives
 
@@ -954,17 +956,17 @@ Privacy & security
 Updates
 ```
 
-The Windows reference establishes these categories as the baseline information architecture. fileciteturn2file6L1407-L1427
+The Windows reference establishes these categories as the baseline information architecture.
 
-Do not blindly reproduce every historical Windows Settings URI. The reference explicitly warns that some entries are deprecated or conditional. fileciteturn2file9L1948-L2015
+Do not blindly reproduce every historical Windows Settings URI. The reference explicitly warns that some entries are deprecated or conditional.
 
 ---
 
-# 21. PHASE 7 — FEATURE MODULES
+# 21. PHASE 7 â€” FEATURE MODULES
 
 Build modules from highest-value/core system capabilities to extended integrations.
 
-## Tier 1 — Core desktop
+## Tier 1 â€” Core desktop
 
 - Display.
 - Audio.
@@ -977,7 +979,7 @@ Build modules from highest-value/core system capabilities to extended integratio
 - Users.
 - Accessibility.
 
-## Tier 2 — System management
+## Tier 2 â€” System management
 
 - Apps.
 - Packages.
@@ -990,7 +992,7 @@ Build modules from highest-value/core system capabilities to extended integratio
 - Startup.
 - Processes.
 
-## Tier 3 — KDE/Zyntrix
+## Tier 3 â€” KDE/Zyntrix
 
 - KWin.
 - Window rules.
@@ -1002,7 +1004,7 @@ Build modules from highest-value/core system capabilities to extended integratio
 - Theme engine.
 - Zyntrix-specific settings.
 
-## Tier 4 — Advanced ecosystem
+## Tier 4 â€” Advanced ecosystem
 
 - Containers.
 - Flatpak.
@@ -1022,7 +1024,7 @@ Each module must consume the canonical registry and reusable components.
 
 ---
 
-# 22. PHASE 8 — TESTING
+# 22. PHASE 8 â€” TESTING
 
 ## Test layers
 
@@ -1072,7 +1074,7 @@ Measure the explicit `prompt.txt` targets rather than claiming them.
 
 ---
 
-# 23. PHASE 9 — OPTIMIZATION
+# 23. PHASE 9 â€” OPTIMIZATION
 
 ## Objectives
 
@@ -1083,7 +1085,7 @@ Meet or improve the performance budget.
 - cold launch profiling;
 - hot launch profiling;
 - memory profiling;
-- React render profiling;
+- QML scene-graph/render-loop profiling;
 - Rust profiling;
 - IPC latency;
 - backend query parallelization;
@@ -1107,7 +1109,7 @@ If hardware/environment prevents a target from being met, document the measured 
 
 ---
 
-# 24. PHASE 10 — PACKAGING
+# 24. PHASE 10 â€” PACKAGING
 
 ## Objectives
 
@@ -1116,7 +1118,7 @@ Produce installable Zyntrix artifacts.
 ## Tasks
 
 - Debian packaging.
-- Tauri packaging.
+- Application binary + QML asset packaging.
 - Dependency declarations.
 - Desktop entry.
 - Icons.
@@ -1131,7 +1133,7 @@ Produce installable Zyntrix artifacts.
 
 ---
 
-# 25. PHASE 11 — DOCUMENTATION
+# 25. PHASE 11 â€” DOCUMENTATION
 
 Required documentation:
 
@@ -1153,11 +1155,11 @@ Packaging guide
 Release guide
 ```
 
-`prompt.txt` explicitly requires folder/architecture diagrams, sequence/component/data-flow diagrams, modules, API contracts, testing strategy, CI/CD, documentation, README, Developer Guide, and Contribution Guide. fileciteturn1file0L269-L303
+`prompt.txt` explicitly requires folder/architecture diagrams, sequence/component/data-flow diagrams, modules, API contracts, testing strategy, CI/CD, documentation, README, Developer Guide, and Contribution Guide.
 
 ---
 
-# 26. PHASE 12 — RELEASE
+# 26. PHASE 12 â€” RELEASE
 
 ## Final release gate
 
@@ -1170,7 +1172,7 @@ PASS
 or explicitly:
 
 ```text
-BLOCKED — documented reason
+BLOCKED â€” documented reason
 ```
 
 No silent omissions.
@@ -1181,7 +1183,8 @@ Final verification:
 cargo fmt --all --check
 cargo clippy --workspace --all-targets -- -D warnings
 cargo check --workspace
-pnpm -r typecheck
+qmllint <changed .qml files>
+qmlformat --check <changed .qml files>
 ```
 
 Then run all relevant tests, security checks, packaging checks, runtime integration checks, performance benchmarks, and visual/accessibility checks required by the affected modules.
@@ -1199,8 +1202,8 @@ Maintain this matrix throughout the project.
 | Windows-inspired architecture | YES | Registry/navigation tests |
 | Apple-quality interaction target | YES | UX/visual review |
 | KDE/Linux-native backend | YES | Integration tests |
-| Rust + Tauri v2 | YES | Workspace |
-| React 19 + TypeScript | YES | Frontend |
+| Rust + Qt 6 via cxx-qt | YES | Workspace |
+| QML frontend (single module URI) | YES | Frontend |
 | Advanced motion engine | YES | Motion tests |
 | G2/G3 | YES | Motion/design tests |
 | 120 FPS target | YES | Performance benchmark |
@@ -1266,7 +1269,7 @@ Is it maintainable?
 
 If any answer is **NO**, the work is not complete.
 
-`prompt.txt` explicitly establishes the quality bar as production-ready, fully tested, benchmarked, and continuously evaluated against Apple, Microsoft, KDE, and Rust engineering standards. fileciteturn2file1L513-L547
+`prompt.txt` explicitly establishes the quality bar as production-ready, fully tested, benchmarked, and continuously evaluated against Apple, Microsoft, KDE, and Rust engineering standards.
 
 ---
 
@@ -1276,6 +1279,6 @@ ZETTINGS is successful when it becomes:
 
 > A beautiful, intelligent, fluid, secure, accessible, deeply integrated, Linux-native settings application for Zyntrix OS that uses the recognizable information architecture and discoverability principles of Windows Settings while remaining an original Zyntrix product.
 
-The Windows reference explicitly defines the final reconstruction target as Windows information architecture + Fluent grammar + KDE/Linux-native implementation + data-driven registry + strong search + stable deep links + native adapters + accessibility + responsive navigation. fileciteturn2file0L122-L148
+The Windows reference explicitly defines the final reconstruction target as Windows information architecture + Fluent grammar + KDE/Linux-native implementation + data-driven registry + strong search + stable deep links + native adapters + accessibility + responsive navigation.
 
-The product goal from `prompt.txt` is broader: a flagship Tauri + Rust + KDE Plasma application that is native, fluid, intelligent, deeply integrated, modular, secure, maintainable, and suitable for long-term evolution into Zyntrix OS's official settings application. fileciteturn2file1L549-L557
+The product goal from `prompt.txt` is broader: a flagship Qt + Rust + KDE Plasma application that is native, fluid, intelligent, deeply integrated, modular, secure, maintainable, and suitable for long-term evolution into Zyntrix OS's official settings application.

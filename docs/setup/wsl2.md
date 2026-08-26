@@ -1,9 +1,9 @@
 # WSL2 Kubuntu setup
 
 Zettings targets Kubuntu 24.04 LTS as its first-class Linux runtime. The
-Windows host compiles the frontend natively; the backend crates link
-against Linux system libraries, so they must be built inside WSL2
-(or any equivalent Kubuntu 24.04 userland).
+product is a native **Qt 6 (QML)** application bridged from **Rust** via
+**cxx-qt** — everything must be built inside WSL2 (or any equivalent
+Kubuntu 24.04 userland). The Windows host is documentation/planning only.
 
 This doc lists every package you must install and how to run the real
 application. The Zettings project never runs `apt`, `winget`, or `brew`
@@ -30,27 +30,43 @@ default=<your-user>
 
 Apply with `wsl --shutdown` from Windows, then reopen the distro.
 
-Inside WSL2 (running as your normal user), install the build + gate deps:
+## Build dependencies
+
+Inside WSL2 (running as your normal user), install the compiler toolchain
+and library headers:
 
 ```bash
 sudo apt update
 sudo apt install -y \
   build-essential pkg-config \
+  cmake ninja-build \
+  clang libclang-dev \
   libdbus-1-dev libpolkit-gobject-1-dev \
   libpulse-dev libudev-dev \
   libssl-dev
 ```
 
-Install the Tauri v2 runtime prerequisites (the same set CI installs —
-see `.github/workflows/ci.yml`):
+Install the Qt 6 development stack (base + declarative/QML + the Quick
+runtime modules the UI composes from; the exact module list is finalized
+in PLAN Phase 2):
 
 ```bash
-sudo apt install -y --no-install-recommends \
-  libgtk-3-dev \
-  libwebkit2gtk-4.1-dev \
-  libayatana-appindicator3-dev \
-  librsvg2-dev \
-  libxdo-dev
+sudo apt install -y \
+  qt6-base-dev \
+  qt6-declarative-dev \
+  qml6-module-qtquick \
+  qml6-module-qtquick-controls \
+  qml6-module-qtquick-layouts \
+  qml6-module-qtquick-templates \
+  qml6-module-qtquick-window \
+  qml6-module-qtqml-workerscript
+```
+
+Qt tooling (`qmllint`, `qmlformat`) ships under `/usr/lib/qt6/bin/`;
+ensure it is on `PATH` for the verification gates:
+
+```bash
+export PATH="/usr/lib/qt6/bin:$PATH"
 ```
 
 Rust toolchain (matches `rust-toolchain.toml`):
@@ -60,11 +76,7 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --defaul
 source "$HOME/.cargo/env"
 ```
 
-Node/pnpm are NOT required inside WSL: the frontend is built on the
-Windows host (`pnpm -F zettings-web build`) and the produced
-`apps/zettings/web/dist` is embedded into the Linux binary at compile
-time. Only install Node inside WSL if you specifically want to run the
-web toolchain there.
+Node/pnpm are NOT required anywhere: there is no web frontend anymore.
 
 ## Verification gates (Linux target)
 
@@ -76,59 +88,34 @@ cargo fmt --all --check
 cargo clippy --workspace --all-targets -- -D warnings
 cargo check --workspace
 cargo test --workspace
-cargo test -p zettings-ipc --features export-bindings
-git diff --exit-code -- packages/ts-bindings/src/generated
 ```
 
-Frontend gates run on the Windows host: `pnpm -r typecheck` and
-`pnpm -F zettings-web test`.
+Once QML sources exist, add the QML gate:
+
+```bash
+qmllint <changed .qml files>
+qmlformat --check <changed .qml files>
+```
 
 ## Run the real application under WSLg
 
-Build the frontend on the Windows host first:
-
-```powershell
-pnpm -F zettings-web build
-```
-
-Then inside WSL2:
+Qt renders natively under WSLg (Wayland or XWayland); no webview
+workarounds are needed.
 
 ```bash
 cd "/mnt/c/Users/USER/Desktop/Zyntrix/Zyntrix OS/Zettings-app"
-cargo run --release -p zettings --features custom-protocol
-```
-
-`custom-protocol` is mandatory for embedded-asset runs: tauri-macros
-serves `build.devUrl` whenever the feature is off, regardless of
-`--release`, which fails with `Could not connect to localhost` unless a
-Vite dev server is listening on port 1420. (Hot-reload alternative: run
-`pnpm -F zettings-web dev` on the Windows host and a plain
-`cargo run -p zettings` debug build in WSL — localhost is shared.)
-
-Required environment for WSLg (export before `cargo run`):
-
-```bash
-export DISPLAY=:0
-export GDK_BACKEND=x11                 # XWayland path is the stable one
+export QT_QPA_PLATFORM=wayland   # fall back to xcb if the compositor misbehaves
 export XDG_RUNTIME_DIR=/run/user/$(id -u)
-# WebKitGTK has no GPU under WSLg; the DMABUF renderer yields a blank
-# window. Force software rendering:
-export WEBKIT_DISABLE_DMABUF_RENDERER=1
-export WEBKIT_DISABLE_COMPOSITING_MODE=1
-export LIBGL_ALWAYS_SOFTWARE=1
+cargo run --release -p zettings
 ```
-
-`libEGL`/`MESA/ZINK` warnings in the output are cosmetic; the webview
-falls back to llvmpipe.
 
 ### Troubleshooting
 
 | Symptom | Cause | Fix |
 | --- | --- | --- |
-| `Could not connect to localhost` | Ran without `custom-protocol`, no dev server | Add the feature or start Vite on :1420 |
-| Window opens but is blank | WebKit DMABUF renderer under WSLg | The three `WEBKIT_*`/`LIBGL_*` exports above |
-| Window registered but never appears (weston log shows `appId:zettings`) | Wedged WSLg RemoteApp session after many relaunches | `wsl --shutdown` from Windows, relaunch |
-| `frontendDist ... doesn't exist` at compile | `web/dist` not built | Run `pnpm -F zettings-web build` on Windows |
+| Window never appears after many relaunches | Wedged WSLg RemoteApp session | `wsl --shutdown` from Windows, relaunch |
+| Blank/garbled rendering on Wayland | WSLg compositor quirk | `QT_QPA_PLATFORM=xcb` |
+| Missing QML module error at startup | Runtime module not installed | Install the matching `qml6-module-*` package |
 
 ## Integration daemons (real backends inside WSL)
 

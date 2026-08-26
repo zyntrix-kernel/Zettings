@@ -1,89 +1,67 @@
-# Zettings
+# ZETTINGS
 
-> Next-generation system settings application for **Zyntrix OS** (Kubuntu 24.04
-> LTS / KDE Plasma). Built with Tauri v2 (Rust backend) and React 19
-> (TypeScript frontend), integrating Linux system services through typed,
-> capability-honest adapters.
+The settings application for **Zyntrix OS** — Kubuntu 24.04 LTS / KDE Plasma 5.27.
 
-Dual-licensed under **MIT OR Apache-2.0** at the user's option.
+Native **Qt 6 (QML)** UI bridged from **Rust** via [cxx-qt](https://github.com/KDAB/cxx-qt). Backend logic is pure Rust (tokio, zbus, D-Bus/PolicyKit/systemd integration). No webview. No Node toolchain.
 
-## Status — generation-2 rebuild
+> This repository was restarted clean-slate on the native stack. The previous Tauri v2
+> implementation is fully preserved at `archive/tauri-v2` (branch + tag) as reference
+> material only — never a merge target.
 
-This branch (`rebuild/v2`) is a clean-slate rebuild executed phase-by-phase per
-`PLAN.md`:
+## Product goals
 
-| Phase | Scope | State |
-|---|---|---|
-| 0 | Research baseline (`docs/research/`) | ✅ |
-| 1 | Workspace architecture, typed IPC pipeline, security seams | ✅ |
-| 2 | ZDL design language (`DESIGN.md` + token cascade + primitives) | ✅ |
-| 3 | Motion engine (physics tokens, reduced-motion policy, frame monitor) | ✅ |
-| 4 | Core framework (responsive shell, real search, theme engine, routing) | ✅ |
-| 5 | Backend tier 1: zbus foundation, PolicyKit, power/network/session | ✅ |
-| 6 | Frontend: System page live on adapters; category hubs honest-empty | ✅ core |
-| 7 | Feature modules: audio (PulseAudio), Bluetooth (BlueZ), display (DRM) | ✅ tier 2 |
-| 8 | Testing: Rust suites, vitest component/state suites, axe structural scans | ✅ part 1–2 |
-| 9–12 | Optimization, packaging, full docs set, release gate | ⏳ planned |
+* Exceed Windows 11 Settings, macOS System Settings, and GNOME/KDE/COSMIC Settings in UI, UX, motion, architecture, performance, integration, accessibility, and maintainability.
+* Original **Zyntrix Design Language (ZDL)**: G2/G3 curvature, Liquid Glass materials, physics-based (spring/momentum) motion, GPU-accelerated, 120 FPS target.
+* Windows-inspired information architecture with a data-driven settings registry, first-class search, and stable deep links (`zyntrix-settings:`).
+* Honest system integration: real D-Bus backends; unavailable hardware reported honestly, never faked.
 
-Honest environment note: real D-Bus/PulseAudio/BlueZ behavior and launch/frame
-benchmarks are verified on WSL2 Kubuntu / target hardware; Windows-host runs
-use deterministic mock adapters by design.
-
-## Architecture
+## Repository layout
 
 ```text
-React shell ──typed IPC──▶ Tauri commands ──▶ BackendSet adapters ──▶ Linux/KDE services
-     ▲                                                        │
-     └── generated bindings (@zettings/bindings) ◀── ts-rs ◀──┘
+AGENTS.md            Operating directives for any agent working here (read first)
+PLAN.md              Master phase-gated implementation roadmap
+DESIGN.md            Zyntrix Design Language specification (authoritative for UI)
+prompt.txt           Permanent behavioral charter (binding)
+ZETTINGS_Windows_11_Settings_Deep_UI_Spec.md   Windows 11 settings reference analysis
+docs/
+  research/          Stack-agnostic research: capability matrix, threat model,
+                     performance baseline, Windows→Zyntrix mapping, prompt compliance
+  setup/wsl2.md      WSL2 Kubuntu 24.04 development environment setup
+packaging/           Polkit policy, systemd unit, desktop entry templates
+crates/              Rust crates (zettings-* prefix) — populated in PLAN Phase 1+
+apps/zettings        Application shell — populated in PLAN Phase 4+
 ```
 
-| Crate | Responsibility |
-|---|---|
-| `zettings-core` | Domain model: registry graph, routes, capability states, errors |
-| `zettings-ipc` | Wire DTOs; `ts-rs` → committed TypeScript bindings |
-| `zettings-bus` | Typed tokio broadcast events (setting/capability changes) |
-| `zettings-polkit` | Fail-closed authorization gateway seam (+ mock) |
-| `zettings-plugin-sdk` | ed25519-signed module manifests |
-| `zettings-search` | Weighted ranking kernel (spec §9 weights) |
-| `zettings-backends` | Adapters: power profiles, NetworkManager, login1, PulseAudio, BlueZ, DRM sysfs — real impls on Linux, state-machine mocks elsewhere |
+## Development environment
 
-Diagrams with structured text alternatives: `docs/architecture/`.
+Primary development and verification environment: **WSL2 Kubuntu 24.04** targeting
+`x86_64-unknown-linux-gnu`. See [`docs/setup/wsl2.md`](docs/setup/wsl2.md) for the full,
+manual package installation procedure (Qt 6 dev stack, Rust 1.97 via `rust-toolchain.toml`,
+integration daemons, polkit sandbox rule).
 
-## Quick start
-
-| Task | Command |
-|---|---|
-| Install JS deps | `pnpm i` |
-| Frontend dev (browser; honest no-runtime state) | `pnpm dev` |
-| Full desktop app (Windows host = mock adapters) | `cargo run --manifest-path apps/zettings/Cargo.toml` |
-| Real backend dev (WSL2 Kubuntu) | see `docs/setup/wsl2.md`, then run without mocks |
-| Regenerate TS bindings | `pnpm bindings` |
-| Typecheck | `pnpm -r typecheck` |
-| Web unit + a11y tests | `pnpm -F zettings-web test` |
-| Rust tests | `cargo test --workspace` |
-| Full CI dry-run | `pnpm ci:check && pnpm -F zettings-web test` |
+The Windows host is documentation/planning only — the product targets Linux exclusively.
 
 ## Verification gates
 
-Every change passes:
+All gates run in WSL2:
 
-```cmd
+```bash
 cargo fmt --all --check
 cargo clippy --workspace --all-targets -- -D warnings
 cargo check --workspace
-pnpm -r typecheck
+qmllint <changed .qml files>          # once QML sources exist
+qmlformat --check <changed .qml files>
 ```
 
-CI (`.github/workflows/ci.yml`) additionally verifies binding determinism and
-compiles/tests the Linux adapter path on Ubuntu 24.04 runners.
+## Governance
 
-## Security model
-
-Zero Trust, least privilege: the webview holds only `core:default`
-capabilities; privileged mutations flow through the PolicyKit gateway;
-adapters never spawn shells; secrets never cross IPC. See
-`docs/research/threat-model.md`.
+| Document | Role |
+| --- | --- |
+| `prompt.txt` | Permanent behavioral charter — binding at every session |
+| `AGENTS.md` | Skill gate, conventions, verification rules |
+| `PLAN.md` | Phase-gated roadmap; no phase skipping |
+| `DESIGN.md` | ZDL tokens, geometry, materials, motion — authoritative |
 
 ## License
 
-Dual MIT OR Apache-2.0. Contributions must be granted under the same terms.
+Dual-licensed under [MIT](LICENSE-MIT) OR [Apache-2.0](LICENSE-APACHE) at your option.
