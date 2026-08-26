@@ -1,0 +1,38 @@
+flowchart TD
+    accTitle: Zettings workspace crate dependency graph
+    accDescr {
+      The Rust workspace is a five-layer directed acyclic graph. zettings-core
+      sits at the bottom with no internal dependencies. zettings-search and
+      zettings-polkit depend only on core. zettings-backends depends on core
+      and polkit. zettings-bridge depends on core, search, backends, and polkit,
+      and is the only crate that talks to QML. The application shell under
+      apps/zettings consumes zettings-bridge plus the Qt 6 runtime through CMake.
+    }
+
+    subgraph workspace["Cargo workspace (virtual manifest)"]
+        direction TB
+        CORE["zettings-core<br/>registry types · routes · capabilities · errors"]
+        SEARCH["zettings-search<br/>index · ranking pipeline"]
+        POLKIT["zettings-polkit<br/>authorization gateway"]
+        BACKENDS["zettings-backends<br/>D-Bus adapters"]
+        BRIDGE["zettings-bridge<br/>cxx-qt QObject bridges"]
+    end
+
+    subgraph qt["Qt 6 / QML side (CMake)"]
+        APP["apps/zettings<br/>executable + QML modules"]
+        QMLUI["QML: Shell · Pages · Components · Style"]
+    end
+
+    SEARCH --> CORE
+    POLKIT --> CORE
+    BACKENDS --> CORE
+    BACKENDS --> POLKIT
+    BRIDGE --> CORE
+    BRIDGE --> SEARCH
+    BRIDGE --> BACKENDS
+    BRIDGE --> POLKIT
+    APP --> BRIDGE
+    APP --> QMLUI
+
+    DBUS[("System D-Bus daemons<br/>timedate1 · NetworkManager · BlueZ ·<br/>UPower · power-profiles · login1 · PulseAudio")]
+    BACKENDS -. "zbus" .-> DBUS

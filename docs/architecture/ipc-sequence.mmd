@@ -1,0 +1,48 @@
+sequenceDiagram
+    accTitle: Setting write path across QML, bridge, authorization, and D-Bus
+    accDescr {
+      A user changes a setting in QML. The page calls a bridge invokable which
+      validates the value against the registry constraints. If the setting
+      requires authorization the polkit gateway consults PolicyKit1; a denial
+      is audited and returned as an error while a grant proceeds to the backend
+      adapter, which performs the D-Bus call. Success or failure travels back
+      as an operation result and backend change events update the exposed
+      property so all bound QML views refresh.
+    }
+    autonumber
+
+    participant Page as QML SettingsPage
+    participant Bridge as zettings-bridge<br/>(QObject)
+    participant Cap as Capability layer
+    participant Polkit as polkit gateway
+    participant PK1 as org.freedesktop.PolicyKit1
+    participant Adapter as BackendAdapter
+    participant Bus as System daemon<br/>(e.g. timedate1)
+
+    Page->>Bridge: setNtpEnabled(true)
+    Bridge->>Bridge: spawn op (returns token immediately)
+    Bridge->>Cap: evaluate(SettingDefinition.permission)
+    alt RequiresAuth
+        Cap->>Polkit: authorize(action)
+        Polkit->>PK1: CheckAuthorization(subject, action)
+        PK1-->>Polkit: AuthenticationRequired
+        Note over Page,PK1: KDE polkit agent dialog runs outside Zettings UI
+        PK1-->>Polkit: Allowed (after user authenticates)
+    else SessionOnly / None
+        Cap-->>Bridge: allowed
+    end
+    Bridge->>Bridge: validate(value, ValueConstraint)
+    Bridge->>Adapter: write(Operation)
+    Adapter->>Bus: D-Bus method call
+    alt success
+        Bus-->>Adapter: ack + PropertiesChanged signal
+        Adapter-->>Bridge: Ok(())
+        Bridge-->>Page: opCompleted(token, Ok)
+        Bridge-->>Page: property changed signal (bound views refresh)
+        Bridge->>Polkit: audit(entry: actor, action, outcome)
+    else failure
+        Bus-->>Adapter: D-Bus error
+        Adapter-->>Bridge: Err(ZettingsError)
+        Bridge-->>Page: opCompleted(token, Err{code, message})
+        Bridge->>Polkit: audit(entry: outcome=failed)
+    end

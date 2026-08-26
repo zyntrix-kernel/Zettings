@@ -1,0 +1,35 @@
+flowchart TD
+    accTitle: Application startup and shutdown lifecycle
+    accDescr {
+      On launch the process checks single-instance activation first: a second
+      launch forwards its deep link to the running instance and exits. The
+      first instance initializes logging and the tokio runtime, loads the
+      settings registry, builds the search index, connects backend adapters
+      with per-adapter degradation so a missing daemon never blocks startup,
+      then loads the QML shell and resolves the target route from session
+      state or the activation URL. Shutdown is user-initiated only; tasks
+      unwind through channel closure and state stores flush atomically.
+    }
+
+    START([Process start]) --> SINGLE{Already running?}
+    SINGLE -- "yes" --> FWD["Send route URL to running instance<br/>via org.zyntrix.Zettings /activate"] --> EXIT1([Second process exits])
+    SINGLE -- "no" --> OBS["Init tracing + audit log<br/>(RUST_LOG filter)"]
+    OBS --> RT["Start tokio runtime"]
+    RT --> REG["Build RegistrySnapshot<br/>(static defs + i18n catalog)<br/>hard-fail on invariant violation"]
+    REG --> IDX["Construct SearchIndex + load UsageStats"]
+    IDX --> ADAPT
+
+    subgraph ADAPT ["Connect adapters (parallel, per-backend timeout)"]
+        A1[timedate] --- A2[network] --- A3[audio] --- A4[power] --- A5[bluetooth]
+    end
+    ADAPT -- "each adapter reports Up / Degraded / Down independently" --> QMLLOAD
+    QMLLOAD["Load QML engine + Shell window"]
+    QMLLOAD --> ROUTE{"Activation route?<br/>(deep link vs session restore)"}
+    ROUTE -- "deep link" --> NAVDL["RouterBridge.replace(route)"]
+    ROUTE -- "restored / none" --> NAVDEF["Restore last route or hub default"]
+    NAVDL --> READY([Ready — event loop running])
+    NAVDEF --> READY
+
+    READY -- "user quits" --> FLUSH["Flush usage/session stores<br/>(atomic replace)"]
+    FLUSH --> STOP["Runtime shutdown:<br/>broadcast channels close,<br/>adapter tasks join with timeout"]
+    STOP --> EXIT2([Clean exit])

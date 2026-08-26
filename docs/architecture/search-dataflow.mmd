@@ -1,0 +1,38 @@
+flowchart TD
+    accTitle: Search indexing and query ranking dataflow
+    accDescr {
+      At startup the search index is built from the frozen registry snapshot:
+      titles, aliases, keywords, and descriptions are normalized, tokenized,
+      synonym-expanded, and stored in an inverted index together with route
+      targets. Usage statistics contribute recency and frequency boosts. A
+      user query flows through normalization, then exact id or title match,
+      keyword and alias match, bounded fuzzy matching, and a reserved semantic
+      retrieval stage, after which context boosts apply. The highest ranked
+      hits are returned as a list model that navigates directly to the target
+      route on activation.
+    }
+
+    subgraph INDEXING ["Startup indexing"]
+        SNAP["RegistrySnapshot"] --> NORM["Normalize + tokenize<br/>(fold case, strip diacritics)"]
+        NORM --> SYN["Synonym / alias expansion"]
+        SYN --> INV["Inverted index<br/>term -> setting ids"]
+        USAGE["UsageStats<br/>(recent · frequent · pinned)"] --> META["Rank metadata per entry"]
+        INV --> IDX[("SearchIndex")]
+        META --> IDX
+    end
+
+    subgraph QUERY ["Query pipeline (per keystroke, debounced)"]
+        Q["Query string from QML"] --> QN["Normalize"]
+        QN --> S1{"Exact id /<br/>title match?"}
+        S1 -- "yes: +100" --> RANK
+        S2["Keyword match: +80<br/>Alias match: +70<br/>Page/category match: +50<br/>Description match: +35"] --> RANK
+        S1 -- "partial" --> FUZZY["Bounded fuzzy match<br/>(edit distance ≤ 2, len ≥ 4): +5"]
+        FUZZY --> SEMANTIC["Semantic retrieval slot<br/>(defined contract, empty provider): +30"]
+        SEMANTIC --> CTX["Context boosts:<br/>recent +10 · pinned · frequency · current category"]
+        S2 --> RANK
+        CTX --> RANK
+    end
+
+    RANK["Deterministic sort<br/>(score, search_weight, registry order)"] --> CAP["Cap 50 hits"]
+    CAP --> MODEL["SearchHitsModel (QAbstractListModel)"]
+    MODEL --> ACT["Activate hit → RouterBridge.navigate(route)"]
