@@ -13,6 +13,11 @@ publish.workspace = true
 # Selects deterministic mock backend providers so the Windows host can run the
 # full shell without Linux services. Real adapters ignore this flag.
 zettings-mock = []
+# Embeds the built web assets (frontendDist) instead of proxying build.devUrl;
+# required for production-style runs (`cargo run --features custom-protocol`,
+# enabled automatically by `tauri build`). Off by default so debug runs use
+# the live Vite dev server.
+custom-protocol = ["tauri/custom-protocol"]
 
 [dependencies]
 tracing = { workspace = true }
