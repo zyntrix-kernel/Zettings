@@ -6,6 +6,14 @@ members = [
     "crates/zettings-polkit",
     "crates/zettings-backends",
 ]
+# zettings-bridge is excluded: cxx-qt 0.10.0 emits an
+# `unsafe extern { include!(<QtCore/QObject>) }` internally, which rustc 1.97
+# rejects ("non-foreign item macro in foreign item position"). Re-join once
+# upstream releases a 1.97-compatible gen, or after evaluating a pinned
+# pre-restriction toolchain for the whole workspace.
+exclude = [
+    "crates/zettings-bridge",
+]
 
 [workspace.package]
 version = "0.1.0"

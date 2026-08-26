@@ -1,0 +1,21 @@
+﻿[package]
+name = "zettings-bridge"
+description = "cxx-qt QObject bridges exposing Zettings Rust domain to QML"
+version.workspace = true
+edition = "2021"
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lib]
+crate-type = ["staticlib", "rlib"]
+
+[dependencies]
+cxx-qt = "0.10"
+cxx-qt-lib = "0.10"
+
+[build-dependencies]
+cxx-qt-build = "0.10"
+
+[lints]
+workspace = true
