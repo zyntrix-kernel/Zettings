@@ -4,8 +4,9 @@
 > spatial, material, motion, and accessibility-affecting presentation in
 > ZETTINGS. Project rules (`AGENTS.md`) and product requirements (`prompt.txt`)
 > override it only where they explicitly conflict. Implementation lives in
-> `apps/zettings/web/src/styles/zdl.css` (tokens) and `src/components/zdl/`
-> (primitives); this document specifies intent and exact values.
+> `apps/zettings/qml/org/zyntrix/zettings/Style/ZdlTheme.qml` (tokens) and
+> `apps/zettings/qml/org/zyntrix/zettings/Components/` (primitives); this
+> document specifies intent and exact values.
 >
 > **Originality clause.** ZDL is an original language for Zyntrix OS. The
 > Windows 11 reconstruction spec supplies information architecture and
@@ -172,10 +173,11 @@ OLED and hc themes collapse every glass surface to opaque `--surface-elevated`.
 
 ### 5.2 Fallback ladder (legibility wins)
 
-1. Chromium: full refraction pipeline.
-2. Non-Chromium engines: blur+tint only (graceful degradation).
-3. Compositing disabled / `prefers-reduced-transparency` / hc theme /
-   OLED: **opaque** `--surface-elevated`; zero backdrop-filter.
+1. RHI hardware path: full refraction pipeline (glass tint + aurora behind).
+2. Software rendering (llvmpipe under WSLg): blur+tint only, effect counts
+   reduced to the ≤3 full-refraction surfaces.
+3. OLED theme / high-contrast theme / reduced-transparency preference:
+   **opaque** `--surface-elevated`; zero refraction layers.
 
 Text over glass always sits on the tint layer validated against the *least
 favorable* wallpaper region; if validation fails, opacity increases before
@@ -211,13 +213,13 @@ order as `r/min(w,h)/2` grows, so small radii stay visually consistent:
 n_eff = 2 + (n − 2) · r / (min(w,h)/2)
 ```
 
-Implementation: `useSquircle()` generates a 128-sample cubic-bézier SVG path
-(`clip-path: path(...)`), recomputed on resize via ResizeObserver. Radii
-tokens: `--radius-control` 10 · `--radius-card` 14 · `--radius-panel` 20 ·
+Implementation: the QML `Squircle` primitive samples the superellipse into a
+96-point `PathSvg` inside a `Shape`, recomputed on resize; `exponent` follows
+the blending rule above so small radii stay visually consistent. Radii tokens:
+`--radius-control` 10 · `--radius-card` 14 · `--radius-panel` 20 ·
 `--radius-overlay` 28. Pill shapes (toggles, chips) use true capsules.
-Interim note: the current build applies these as smooth CSS radii; squircle
-clip-path wiring per primitive is tracked as follow-up work and must not
-compromise focus-outline visibility when landed.
+Focus outlines are drawn as part of the squircle stroke so clipping never
+hides them.
 
 ## 7. Iconography
 
@@ -261,16 +263,18 @@ use roving tabindex with arrow keys per APG.
 ### 8.4 Keyboard contract (app-wide)
 
 Ctrl+F search · Alt+Backspace back · arrows navigate lists/rail · Enter/Space
-activate · Esc dismisses overlays · Tab traversal logical. Dialogs use native
-`<dialog>`/`showModal()` semantics with focus restore.
+activate · Esc dismisses overlays · Tab traversal logical. Dialogs use Qt
+Quick Controls `Dialog` with `modality`, explicit initial focus, and focus
+restore on close.
 
 ## 9. Themes
 
 Selection model follows the three-option pattern (System / Light / Dark +
 OLED and High-contrast entries), stored as `system|light|dark|oled|hc`,
-applied via `data-theme-mode` + resolved `data-theme` attributes, anti-flash
-inline bootstrap, `color-scheme` synced, storage wrapped in try/catch.
-Theme changes occur **only** on explicit activation — never on focus/hover.
+applied through `ZdlTheme.themeMode`. The `system` entry resolves from the
+desktop color-scheme signal and is wired when the desktop-integration phase
+lands; the four explicit modes are fully functional now. Theme changes occur
+**only** on explicit activation — never on focus/hover.
 OLED forces opaque blacks and disables glass; hc per §2.5.
 
 ## 10. Motion (token layer; engine lands Phase 3)
@@ -282,9 +286,11 @@ spring physics `{stiffness, damping}` pairs — navigation 220/28, controls
 320/22, modals 180/24 (mass 1.0/0.6/1.2). Velocity is preserved across
 interruptions; overshoot allowed only on control-scale feedback (≤ 4%).
 
-Reduced motion: `prefers-reduced-motion: reduce` collapses all transforms to
-opacity cross-fades ≤ 120 ms or zero duration; parallax and secondary motion
-are disabled entirely. Theme changes never animate color.
+Reduced motion: the platform reduce-motion preference (surfaced as
+`ZdlTheme.reducedMotion`, wired to the desktop setting in the
+desktop-integration phase) collapses all transforms to opacity cross-fades
+≤ 120 ms or zero duration; parallax and secondary motion are disabled
+entirely. Theme changes never animate color.
 
 GPU discipline: animate only `transform`/`opacity`/`clip-path`/`filter`;
 layout properties are never animated. Frame budget 8.3 ms; instrumentation
