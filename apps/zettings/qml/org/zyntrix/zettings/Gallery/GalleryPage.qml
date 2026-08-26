@@ -206,6 +206,41 @@ Page {
                     message: qsTr("No network connection. Some pages report honest unavailable states.")
                 }
             }
+
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: ZdlTheme.space2
+
+                Label {
+                    text: qsTr("Motion — press feedback · reveal · frame budget")
+                    font.family: ZdlTheme.fontFamily
+                    font.pixelSize: ZdlTheme.textTitleLgSize
+                    font.weight: Font.DemiBold
+                    color: ZdlTheme.text
+                }
+
+                SettingsCard {
+                    Layout.fillWidth: true
+                    title: qsTr("Frame instrumentation")
+                    description: root.frameText
+                    isNavigation: false
+
+                    control: ToggleSwitch {
+                        checked: ZdlTheme.debugFrames
+                        Accessible.name: qsTr("Report frame statistics")
+                        onToggled: ZdlTheme.debugFrames = checked
+                    }
+                }
+
+                Label {
+                    text: qsTr("Press and hold any card or row to feel the control spring; expanders reveal with the same spring while their height snaps — only transform and opacity animate, per the 8.3 ms frame budget.")
+                    font.family: ZdlTheme.fontFamily
+                    font.pixelSize: ZdlTheme.textBodySize
+                    color: ZdlTheme.textMuted
+                    wrapMode: Text.WordWrap
+                    Layout.fillWidth: true
+                }
+            }
         }
     }
 
@@ -213,6 +248,11 @@ Page {
         infoActionFeedback.open()
         feedbackCloseTimer.restart()
     }
+
+    readonly property string frameText: qsTr("Rolling average %1 ms · worst-in-window %2 ms · budget %3 ms")
+        .arg(ZdlTheme.frameAverageMs.toFixed(2))
+        .arg(ZdlTheme.frameWorstMs.toFixed(2))
+        .arg(ZdlTheme.frameBudgetMs)
 
     Timer {
         id: feedbackCloseTimer

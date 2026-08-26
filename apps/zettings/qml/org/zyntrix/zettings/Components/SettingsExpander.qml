@@ -1,7 +1,9 @@
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls.Basic
+import QtQuick.Shapes
 import org.zyntrix.zettings.Style
+import org.zyntrix.zettings.Motion
 
 Item {
     id: root
@@ -9,9 +11,13 @@ Item {
     property string title: ""
     property string description: ""
     default property alias content: contentColumn.children
+    property bool expanded: false
 
     implicitWidth: 320
-    implicitHeight: headerCard.implicitHeight + (expanded ? contentColumn.implicitHeight + ZdlTheme.space4 : 0)
+    implicitHeight: headerCard.implicitHeight
+        + (expanded ? ZdlTheme.space2 + contentColumn.implicitHeight : 0)
+    clip: true
+
     Accessible.role: Accessible.ListItem
     Accessible.name: title
     Accessible.checked: expanded
@@ -59,15 +65,26 @@ Item {
         onActivated: root.expanded = !root.expanded
     }
 
-    property bool expanded: false
-
     ColumnLayout {
         id: contentColumn
         anchors.top: headerCard.bottom
+        anchors.topMargin: ZdlTheme.space2
         anchors.left: parent.left
         anchors.right: parent.right
-        anchors.margins: ZdlTheme.space2
-        visible: root.expanded
         spacing: ZdlTheme.space2
+        visible: root.expanded
+
+        opacity: root.expanded ? 1 : 0
+        y: root.expanded ? 0 : -8
+
+        Behavior on opacity {
+            enabled: !ZdlTheme.reducedMotion
+            NumberAnimation { duration: ZdlTheme.motionDuration(ZdlTheme.motionQuick) }
+        }
+
+        Behavior on y {
+            enabled: !ZdlTheme.reducedMotion
+            ControlSpring {}
+        }
     }
 }

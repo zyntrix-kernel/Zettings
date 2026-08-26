@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls.Basic
 import org.zyntrix.zettings.Style
+import org.zyntrix.zettings.Motion
 
 Item {
     id: root
@@ -19,6 +20,13 @@ Item {
     Accessible.role: Accessible.ListItem
     Accessible.name: label + (badge !== "" ? ", " + badge : "")
     Accessible.selected: selected
+
+    scale: tapHandler.pressed && !ZdlTheme.reducedMotion ? 0.98 : 1.0
+
+    Behavior on scale {
+        enabled: !ZdlTheme.reducedMotion
+        ControlSpring {}
+    }
 
     Squircle {
         anchors.fill: parent
@@ -40,6 +48,7 @@ Item {
     }
 
     TapHandler {
+        id: tapHandler
         onTapped: root.activated()
     }
 

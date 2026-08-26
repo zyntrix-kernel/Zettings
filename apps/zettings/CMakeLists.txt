@@ -42,6 +42,21 @@ qt_add_qml_module(zettings
 )
 
 qt_add_qml_module(zettings
+    URI org.zyntrix.zettings.Motion
+    VERSION 1.0
+    QML_FILES
+        qml/org/zyntrix/zettings/Motion/MotionEase.qml
+        qml/org/zyntrix/zettings/Motion/ControlSpring.qml
+        qml/org/zyntrix/zettings/Motion/NavSpring.qml
+        qml/org/zyntrix/zettings/Motion/ModalSpring.qml
+        qml/org/zyntrix/zettings/Motion/PageEnter.qml
+        qml/org/zyntrix/zettings/Motion/PageExit.qml
+    DEPENDENCIES
+        QtQuick
+        org.zyntrix.zettings.Style
+)
+
+qt_add_qml_module(zettings
     URI org.zyntrix.zettings.Components
     VERSION 1.0
     QML_FILES
@@ -57,6 +72,7 @@ qt_add_qml_module(zettings
         QtQuick.Shapes
         QtQuick.Layouts
         org.zyntrix.zettings.Style
+        org.zyntrix.zettings.Motion
 )
 
 qt_add_qml_module(zettings

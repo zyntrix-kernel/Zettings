@@ -149,10 +149,51 @@ Item {
     readonly property int motionNormal: 220
     readonly property int motionDeliberate: 320
 
-    function standardEasing(curve) {
-        curve.type = Easing.Bezier
-        curve.controlPoint1 = Qt.point(0.2, 0)
-        curve.controlPoint2 = Qt.point(0, 1)
+    readonly property int springNavigationStiffness: 220
+    readonly property int springNavigationDamping: 28
+    readonly property real springNavigationMass: 1.0
+
+    readonly property int springControlsStiffness: 320
+    readonly property int springControlsDamping: 22
+    readonly property real springControlsMass: 0.6
+
+    readonly property int springModalStiffness: 180
+    readonly property int springModalDamping: 24
+    readonly property real springModalMass: 1.2
+
+    property bool debugFrames: false
+
+    readonly property real frameBudgetMs: 8.3
+    property real frameAverageMs: 0
+    property real frameWorstMs: 0
+
+    property bool _primedFrames: false
+    property int _windowSamples: 0
+
+    FrameAnimation {
+        running: true
+
+        onTriggered: {
+            if (!ZdlTheme._primedFrames) {
+                ZdlTheme._primedFrames = true
+                return
+            }
+            const dtMs = (frameTime - previousFrameTime) * 1000
+            if (dtMs <= 0 || dtMs > 500)
+                return
+            ZdlTheme.frameAverageMs = ZdlTheme.frameAverageMs * 0.9 + dtMs * 0.1
+            if (dtMs > ZdlTheme.frameWorstMs || ZdlTheme._windowSamples === 0)
+                ZdlTheme.frameWorstMs = dtMs
+            ZdlTheme._windowSamples++
+            if (ZdlTheme.debugFrames && ZdlTheme._windowSamples >= 300) {
+                console.info("frame stats:",
+                             "avg", ZdlTheme.frameAverageMs.toFixed(2), "ms",
+                             "worst(300f)", ZdlTheme.frameWorstMs.toFixed(2), "ms",
+                             "budget", ZdlTheme.frameBudgetMs, "ms")
+                ZdlTheme._windowSamples = 0
+                ZdlTheme.frameWorstMs = 0
+            }
+        }
     }
 
     property bool reducedMotion: false
