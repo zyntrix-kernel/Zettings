@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE policyconfig PUBLIC
+ "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN"
+ "http://www.freedesktop.org/standards/PolicyKit/1.0/policyconfig.dtd">
+<policyconfig>
+  <vendor>Zyntrix OS</vendor>
+  <vendor_url>https://github.com/zyntrix-os/zettings</vendor_url>
+  <icon_name>preferences-system</icon_name>
+
+  <action id="org.zyntrix.zettings.power.set-profile">
+    <description>Change power profile</description>
+    <message>Authentication is required to modify system power profiles</message>
+    <defaults>
+      <allow_any>auth_admin</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>yes</allow_active>
+    </defaults>
+  </action>
+
+  <action id="org.zyntrix.zettings.network.configure">
+    <description>Configure network settings</description>
+    <message>Authentication is required to modify network configuration</message>
+    <defaults>
+      <allow_any>auth_admin</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>yes</allow_active>
+    </defaults>
+  </action>
+
+  <action id="org.zyntrix.zettings.accounts.manage">
+    <description>Manage user accounts</description>
+    <message>Authentication is required to view or modify system accounts</message>
+    <defaults>
+      <allow_any>auth_admin</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+  </action>
+</policyconfig>

@@ -1,0 +1,13 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Zettings
+GenericName=System Settings
+Comment=System settings and hardware configuration for Zyntrix OS
+Exec=zettings %u
+Icon=org.zyntrix.zettings
+Terminal=false
+Categories=Settings;HardwareSettings;DesktopSettings;Qt;KDE;
+StartupNotify=true
+StartupWMClass=org.zyntrix.zettings
+Keywords=settings;preferences;system;network;wifi;bluetooth;display;sound;audio;power;users;storage;notifications;

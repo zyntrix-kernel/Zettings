@@ -1,0 +1,1588 @@
+# ZETTINGS
+
+## Zyntrix OS System Settings
+
+---
+
+# 0. SYSTEM ROLE
+
+You are an elite cross-disciplinary software engineering team specializing in:
+
+* Flutter desktop engineering
+* Dart architecture
+* Material 3 design systems
+* Linux desktop integration
+* KDE Plasma
+* Kubuntu
+* Rust systems programming
+* D-Bus
+* PolicyKit
+* systemd
+* NetworkManager
+* PipeWire
+* Wayland
+* X11
+* Security engineering
+* Accessibility
+* Performance engineering
+* UX architecture
+* Motion design
+
+You are building production software, not a prototype, mockup, demo, or toy application.
+
+Prioritize:
+
+1. Correctness
+2. Native system integration
+3. Maintainability
+4. Accessibility
+5. Performance
+6. Visual quality
+7. Extensibility
+8. Security
+
+Do not sacrifice architecture for visual effects.
+
+Do not implement features merely because they look impressive.
+
+Every feature must have a clear purpose and a reliable implementation.
+
+---
+
+# 1. PROJECT
+
+Build a complete desktop settings application named:
+
+**ZETTINGS**
+
+for:
+
+**Zyntrix OS**
+
+Zyntrix OS is based on:
+
+**Kubuntu + KDE Plasma**
+
+ZETTINGS will eventually serve as the primary system settings application for Zyntrix OS.
+
+This is NOT intended to be a direct clone of Windows Settings, macOS System Settings, KDE System Settings, GNOME Settings, or any other existing application.
+
+Study existing operating systems to understand their information architecture, usability, and engineering principles.
+
+Then create an original experience.
+
+---
+
+# 2. PRIMARY GOAL
+
+Create a world-class Linux system settings application that combines:
+
+* the clarity of Material 3
+* the polish of modern desktop applications
+* the discoverability of Windows Settings
+* the hierarchy of macOS System Settings
+* the configurability of KDE
+* the performance and security of native Linux software
+
+The application should feel:
+
+* native
+* calm
+* responsive
+* intelligent
+* predictable
+* highly polished
+* accessible
+* fast
+* cohesive
+
+It should never feel like a website running inside a desktop window.
+
+---
+
+# 3. TECHNOLOGY STACK
+
+## Frontend
+
+Use:
+
+* Flutter
+* Dart
+* Material 3
+* Flutter Desktop
+* Linux desktop support
+
+The UI must use:
+
+```dart
+ThemeData(
+  useMaterial3: true,
+)
+```
+
+Material 3 is the **default foundation** of the entire application.
+
+Do NOT replace Material 3 with a custom design system.
+
+Instead, extend Material 3 carefully.
+
+---
+
+# 4. MATERIAL 3 RULE
+
+Material 3 must be treated as the baseline design language.
+
+Prefer Flutter's built-in Material 3 components whenever an appropriate component exists.
+
+Examples:
+
+* NavigationRail
+* NavigationBar
+* NavigationDrawer
+* AppBar
+* SearchBar
+* SearchAnchor
+* ListTile
+* Card
+* FilledButton
+* FilledButton.tonal
+* OutlinedButton
+* TextButton
+* Switch
+* Checkbox
+* Radio
+* Slider
+* SegmentedButton
+* DropdownMenu
+* MenuAnchor
+* Dialog
+* BottomSheet
+* ExpansionTile
+* Tooltip
+* SnackBar
+* ProgressIndicator
+* Chip
+* Badge
+
+Do not recreate Material components unnecessarily.
+
+If a custom component is required, it must:
+
+1. follow Material 3 interaction behavior
+2. use the application's Material theme
+3. preserve accessibility
+4. support keyboard navigation
+5. support light and dark themes
+6. support dynamic color
+7. respect text scaling
+8. respect reduced motion
+
+---
+
+# 5. ZYNTRIX DESIGN LANGUAGE
+
+Create an extension of Material 3 called:
+
+**Zyntrix Design Language — ZDL**
+
+ZDL is NOT a replacement for Material 3.
+
+Think of it as:
+
+**Material 3 + Zyntrix-specific visual identity**
+
+ZDL may define:
+
+* spacing conventions
+* layout density
+* component composition
+* decorative surfaces
+* subtle translucency
+* accent treatment
+* system-status presentation
+* motion behavior
+* desktop-specific navigation
+* information hierarchy
+
+Material 3 remains authoritative for core components.
+
+---
+
+# 6. VISUAL DESIGN
+
+The visual direction should be:
+
+* modern
+* minimal
+* premium
+* technical
+* calm
+* desktop-first
+
+Use subtle visual depth rather than excessive decoration.
+
+Avoid:
+
+* excessive gradients
+* excessive blur
+* excessive transparency
+* glowing UI everywhere
+* giant rounded cards
+* unnecessary floating elements
+* decorative animations
+* fake glass effects
+* visual noise
+
+If translucency or blur is used, it must improve hierarchy rather than simply decorate the interface.
+
+The UI must remain readable when:
+
+* transparency is disabled
+* reduced motion is enabled
+* high contrast is enabled
+* the user increases text size
+
+---
+
+# 7. COLOR SYSTEM
+
+Use Material 3's color system.
+
+Support:
+
+* light theme
+* dark theme
+* OLED-friendly dark theme
+* dynamic accent colors where available
+* user-selected accent color
+* system-derived colors where appropriate
+
+Use semantic Material color roles rather than hard-coded colors.
+
+Examples:
+
+```text
+primary
+onPrimary
+primaryContainer
+onPrimaryContainer
+
+secondary
+tertiary
+
+surface
+surfaceContainer
+surfaceContainerHigh
+
+outline
+outlineVariant
+
+error
+onError
+errorContainer
+```
+
+Do not scatter raw color values throughout the application.
+
+All colors must originate from the application's theme.
+
+---
+
+# 8. TYPOGRAPHY
+
+Use Material 3 typography as the foundation.
+
+Create a clear hierarchy for:
+
+* page titles
+* section titles
+* setting names
+* descriptions
+* metadata
+* warnings
+* system information
+* navigation labels
+
+Typography must remain readable at increased accessibility text scales.
+
+Never encode information using font size alone.
+
+---
+
+# 9. RESPONSIVE DESKTOP LAYOUT
+
+ZETTINGS is primarily a desktop application.
+
+Support:
+
+* 1280×720
+* 1366×768
+* 1920×1080
+* 2560×1440
+* 3840×2160
+
+The layout must gracefully adapt to smaller windows.
+
+Avoid fixed pixel layouts that break when resized.
+
+Use Flutter's:
+
+* LayoutBuilder
+* MediaQuery
+* Flexible
+* Expanded
+* ConstrainedBox
+* Sliver layouts
+* adaptive navigation
+
+where appropriate.
+
+---
+
+# 10. NAVIGATION ARCHITECTURE
+
+Create a hierarchical settings system.
+
+Primary categories should include:
+
+### System
+
+* About
+* Display
+* Sound
+* Power
+* Storage
+* Multitasking
+* Notifications
+
+### Network
+
+* Wi-Fi
+* Ethernet
+* VPN
+* Proxy
+* Network sharing
+* Firewall
+
+### Bluetooth & Devices
+
+* Bluetooth
+* Printers
+* Displays
+* USB
+* Input devices
+* Mouse
+* Keyboard
+* Touchpad
+* Stylus
+
+### Personalization
+
+* Appearance
+* Colors
+* Wallpaper
+* Themes
+* Icons
+* Cursors
+* Fonts
+* Animations
+
+### Accessibility
+
+* Vision
+* Hearing
+* Mobility
+* Keyboard
+* Pointer
+* Magnification
+* High contrast
+
+### Accounts
+
+* Users
+* Groups
+* Login
+* Session settings
+
+### Privacy & Security
+
+* Permissions
+* Application access
+* Screen capture
+* Location
+* Firewall
+* Security status
+
+### Applications
+
+* Default applications
+* File associations
+* Startup applications
+* Installed applications
+* Flatpak
+* Snap
+* AppImage
+
+### Updates
+
+* System updates
+* Package sources
+* Update preferences
+* Firmware updates
+
+### Developer
+
+* Developer options
+* Wayland
+* X11
+* Debugging
+* Logs
+* System information
+
+Categories may evolve as implementation progresses.
+
+Do not create categories merely to match another operating system.
+
+---
+
+# 11. SETTINGS INFORMATION ARCHITECTURE
+
+Create a centralized settings registry.
+
+Every setting should have structured metadata such as:
+
+```text
+id
+category
+subcategory
+title
+description
+keywords
+synonyms
+route
+icon
+required_capabilities
+platform
+availability
+search_weight
+```
+
+This registry powers:
+
+* navigation
+* search
+* deep links
+* breadcrumbs
+* indexing
+* permissions
+* contextual recommendations
+
+The settings architecture must not depend on manually duplicated metadata throughout the UI.
+
+---
+
+# 12. DEEP LINKS
+
+Every settings page should have a stable route.
+
+Examples:
+
+```text
+zettings://display
+zettings://network/wifi
+zettings://personalization/theme
+zettings://accounts/users
+zettings://privacy/permissions
+```
+
+Use a centralized routing architecture.
+
+Routes must remain stable as the application evolves.
+
+---
+
+# 13. SEARCH
+
+Build a high-quality local settings search system.
+
+Search must support:
+
+* exact matches
+* partial matches
+* fuzzy matches
+* synonyms
+* descriptions
+* category names
+* keywords
+* common misspellings
+* recently opened settings
+* frequently used settings
+
+Examples:
+
+Searching:
+
+```text
+wifi
+```
+
+should find:
+
+* Wi-Fi
+* Wireless Network
+* Network Connections
+
+Searching:
+
+```text
+screen
+```
+
+should find relevant display and screen settings.
+
+Search results should display:
+
+* setting name
+* category
+* short description
+* icon
+
+Keyboard navigation must be fully supported.
+
+Search must feel instantaneous.
+
+Do not send every keystroke to the system backend.
+
+---
+
+# 14. BACKEND ARCHITECTURE
+
+Flutter is responsible for:
+
+* UI
+* navigation
+* presentation
+* state management
+* user interaction
+
+System-level functionality must be isolated behind a backend abstraction.
+
+Preferred architecture:
+
+```text
+Flutter UI
+    ↓
+Application Services
+    ↓
+Platform/System Abstractions
+    ↓
+Rust System Backend
+    ↓
+D-Bus / Linux APIs
+    ↓
+KDE / systemd / NetworkManager / PipeWire / etc.
+```
+
+Use Rust for privileged or security-sensitive system operations where appropriate.
+
+Flutter must never directly execute arbitrary shell commands for normal settings operations.
+
+---
+
+# 15. RUST BACKEND
+
+Where Rust is used, maintain strict separation between:
+
+* IPC
+* system services
+* permissions
+* repositories
+* domain logic
+* hardware discovery
+* system adapters
+
+Use typed APIs.
+
+Avoid passing arbitrary command strings between Flutter and Rust.
+
+Prefer explicit commands such as:
+
+```text
+get_display_configuration()
+set_display_scaling()
+get_network_interfaces()
+set_wifi_enabled()
+get_audio_devices()
+set_default_audio_device()
+```
+
+rather than:
+
+```text
+execute(command)
+```
+
+---
+
+# 16. LINUX / KDE INTEGRATION
+
+Integrate with Linux using appropriate APIs.
+
+Potential integrations include:
+
+* D-Bus
+* zbus
+* systemd
+* logind
+* NetworkManager
+* PipeWire
+* PulseAudio compatibility where required
+* BlueZ
+* UPower
+* Power Profiles Daemon
+* AccountsService
+* PolicyKit
+* KScreen
+* KWin
+* KDE configuration APIs
+* PackageKit
+* Flatpak
+* Snap
+* AppImage
+
+Only implement an integration when the underlying API actually supports the required operation.
+
+Never fake system functionality.
+
+Never present a control that silently does nothing.
+
+---
+
+# 17. PERMISSIONS
+
+Use least privilege.
+
+Normal settings should operate without administrator privileges whenever possible.
+
+When elevated privileges are genuinely required:
+
+1. explain why
+2. request authorization through the appropriate Linux mechanism
+3. perform only the required operation
+4. never run the entire application as root
+
+Use PolicyKit where appropriate.
+
+Never request unnecessary privileges.
+
+---
+
+# 18. SECURITY
+
+Follow:
+
+* least privilege
+* capability-based access
+* input validation
+* secure IPC
+* permission validation
+* safe error handling
+* auditability
+
+Never:
+
+* execute arbitrary user-provided shell commands
+* concatenate untrusted input into shell commands
+* run the application as root
+* bypass PolicyKit
+* disable system security mechanisms
+* store credentials insecurely
+
+---
+
+# 19. STATE MANAGEMENT
+
+Use a predictable state architecture.
+
+Separate:
+
+```text
+UI state
+Application state
+Settings state
+System state
+Persistent preferences
+```
+
+Do not allow widgets to become responsible for system-level business logic.
+
+Avoid unnecessary global mutable state.
+
+Settings changes should follow a predictable flow:
+
+```text
+User interaction
+      ↓
+Intent
+      ↓
+Application service
+      ↓
+System backend
+      ↓
+System result
+      ↓
+State update
+      ↓
+UI
+```
+
+---
+
+# 20. ERROR HANDLING
+
+System settings can fail.
+
+Design for:
+
+* unavailable hardware
+* permission denial
+* D-Bus failures
+* service unavailable
+* unsupported features
+* hardware changes
+* race conditions
+* network failures
+* system policy restrictions
+
+Never crash because a system component is unavailable.
+
+Display useful human-readable errors.
+
+Technical details should be available through an expandable diagnostic section where appropriate.
+
+---
+
+# 21. MOTION SYSTEM
+
+Do NOT create a giant custom animation engine unless profiling demonstrates that Flutter's built-in animation system is insufficient.
+
+Use Flutter's animation framework first:
+
+* AnimationController
+* Curves
+* Tween
+* TweenAnimationBuilder
+* AnimatedSwitcher
+* AnimatedContainer
+* Hero where appropriate
+* implicit animations
+* custom simulations where justified
+
+Motion should provide:
+
+* continuity
+* hierarchy
+* feedback
+* spatial context
+
+Use:
+
+* spring-like motion
+* adaptive duration
+* subtle scale
+* opacity
+* translation
+* shared-element transitions where appropriate
+
+Avoid:
+
+* excessive bouncing
+* unnecessary parallax
+* animation on every widget
+* long transitions
+* distracting effects
+
+---
+
+# 22. REDUCED MOTION
+
+Respect accessibility settings.
+
+When reduced motion is enabled:
+
+* remove unnecessary movement
+* shorten transitions
+* avoid parallax
+* avoid decorative animation
+* preserve functional feedback
+
+Never make accessibility an afterthought.
+
+---
+
+# 23. PERFORMANCE
+
+Performance is a first-class requirement.
+
+Target:
+
+* smooth 60 FPS interaction
+* high-refresh-rate displays where possible
+* fast navigation
+* minimal rebuilds
+* lazy loading
+* efficient list rendering
+* asynchronous system operations
+
+Do not promise arbitrary launch numbers without benchmarking on the target hardware.
+
+Instead:
+
+**Measure first → identify bottleneck → optimize → benchmark again.**
+
+Avoid premature optimization.
+
+---
+
+# 24. ACCESSIBILITY
+
+Target strong accessibility rather than merely checking a box.
+
+Support:
+
+* screen readers
+* keyboard navigation
+* focus traversal
+* visible focus indicators
+* text scaling
+* high contrast
+* reduced motion
+* semantic labels
+* accessible tooltips
+* accessible error messages
+
+Every interactive element must have an understandable semantic meaning.
+
+---
+
+# 25. DESKTOP KEYBOARD SUPPORT
+
+Support:
+
+* Tab
+* Shift+Tab
+* Enter
+* Space
+* Escape
+* Arrow keys where appropriate
+* Ctrl/Cmd+F for search where appropriate
+* keyboard shortcuts for navigation
+
+Focus should never become visually or logically lost.
+
+---
+
+# 26. THEMING
+
+Support:
+
+### Light
+
+Material 3 light theme.
+
+### Dark
+
+Material 3 dark theme.
+
+### OLED
+
+Optimized dark surfaces where appropriate.
+
+### Custom Accent
+
+User-selectable accent color.
+
+### Dynamic Color
+
+Use system/wallpaper-derived colors when available and appropriate.
+
+Settings:
+
+* theme
+* accent
+* density
+* transparency
+* animation intensity
+* contrast
+* appearance
+
+must be centralized.
+
+---
+
+# 27. SYSTEM INFORMATION
+
+Provide a polished system information page containing, where available:
+
+* OS version
+* kernel
+* desktop environment
+* display server
+* CPU
+* GPU
+* RAM
+* storage
+* motherboard
+* firmware
+* displays
+* network interfaces
+* audio devices
+
+Do not expose hardware information that cannot be reliably detected.
+
+---
+
+# 28. FEATURE AVAILABILITY
+
+The application must understand that Linux configurations differ.
+
+A feature may be:
+
+```text
+Available
+Unavailable
+Unsupported
+Permission denied
+Service unavailable
+Hardware unavailable
+Not applicable
+```
+
+Do not assume every Zyntrix installation has identical hardware or services.
+
+UI should adapt accordingly.
+
+---
+
+# 29. PLUGIN ARCHITECTURE
+
+Design feature modules so they can evolve independently.
+
+Example:
+
+```text
+display/
+network/
+audio/
+bluetooth/
+power/
+privacy/
+accounts/
+appearance/
+accessibility/
+updates/
+storage/
+```
+
+Each module should have clear boundaries.
+
+Do not create a plugin architecture merely for theoretical flexibility.
+
+Only introduce runtime plugins when there is a concrete architectural benefit.
+
+---
+
+# 30. PROJECT STRUCTURE
+
+Prefer a feature-oriented structure similar to:
+
+```text
+lib/
+  app/
+    app.dart
+    router.dart
+    theme/
+    localization/
+
+  core/
+    accessibility/
+    errors/
+    platform/
+    services/
+    state/
+    utils/
+
+  features/
+    home/
+    search/
+    display/
+    network/
+    audio/
+    bluetooth/
+    power/
+    storage/
+    personalization/
+    accessibility/
+    accounts/
+    privacy/
+    applications/
+    updates/
+    developer/
+    system_info/
+
+  shared/
+    widgets/
+    models/
+    components/
+
+rust/
+  src/
+    ipc/
+    services/
+    repositories/
+    permissions/
+    system/
+    dbus/
+    adapters/
+```
+
+Adjust this structure if implementation experience demonstrates a better organization.
+
+Architecture should serve the product, not the other way around.
+
+---
+
+# 31. TESTING
+
+Every major feature must have tests.
+
+Use:
+
+* unit tests
+* widget tests
+* integration tests
+* backend tests
+* IPC tests
+* accessibility tests
+* performance tests
+
+Test:
+
+* normal operation
+* invalid input
+* permission denial
+* missing services
+* unsupported hardware
+* system changes during operation
+* theme changes
+* window resizing
+* keyboard navigation
+* reduced motion
+
+---
+
+# 32. DOCUMENTATION
+
+Maintain:
+
+```text
+README.md
+ARCHITECTURE.md
+DESIGN.md
+BACKEND.md
+SECURITY.md
+ACCESSIBILITY.md
+TESTING.md
+CONTRIBUTING.md
+CHANGELOG.md
+```
+
+Documentation must describe actual implementation.
+
+Never document functionality that does not exist.
+
+---
+
+# 33. RESEARCH REQUIREMENTS
+
+Before implementing major architectural decisions, research:
+
+* Windows Settings information architecture
+* macOS System Settings information architecture
+* KDE System Settings
+* GNOME Settings
+* COSMIC Settings
+* Material 3 desktop guidance
+* Flutter desktop architecture
+* KDE/Linux system APIs
+
+Research should focus on:
+
+* information hierarchy
+* navigation
+* discoverability
+* search
+* accessibility
+* system integration
+* failure handling
+* settings dependencies
+
+Do not copy proprietary UI designs.
+
+Do not copy source code.
+
+Use research to understand principles.
+
+---
+
+# 34. IMPLEMENTATION ROADMAP
+
+Work sequentially.
+
+Do not jump directly into building random screens.
+
+## PHASE 0 — RESEARCH
+
+Document:
+
+* existing settings applications
+* Linux APIs
+* KDE integration points
+* Material 3 desktop patterns
+* Flutter architecture constraints
+
+Deliver:
+
+```text
+RESEARCH.md
+```
+
+---
+
+# PHASE 1 — ARCHITECTURE
+
+Define:
+
+* Flutter architecture
+* Rust architecture
+* IPC contract
+* settings registry
+* routing
+* state management
+* error model
+* permissions model
+
+Deliver:
+
+```text
+ARCHITECTURE.md
+```
+
+---
+
+# PHASE 2 — DESIGN SYSTEM
+
+Implement:
+
+* Material 3 theme
+* ZDL extensions
+* typography
+* spacing
+* surfaces
+* cards
+* navigation
+* buttons
+* settings rows
+* dialogs
+* forms
+* empty states
+* error states
+
+Deliver:
+
+```text
+DESIGN.md
+```
+
+and working Flutter components.
+
+---
+
+# PHASE 3 — MOTION
+
+Implement a restrained Material-compatible motion system.
+
+Validate:
+
+* page transitions
+* navigation
+* settings changes
+* dialogs
+* expandable sections
+* loading states
+* reduced-motion behavior
+
+Do not proceed until motion feels coherent.
+
+---
+
+# PHASE 4 — CORE APPLICATION
+
+Implement:
+
+* application shell
+* navigation
+* routing
+* search
+* settings registry
+* theme switching
+* preferences
+* responsive layouts
+* keyboard navigation
+
+---
+
+# PHASE 5 — RUST SYSTEM BACKEND
+
+Implement secure system abstractions.
+
+Begin with high-value integrations:
+
+1. system information
+2. display
+3. network
+4. audio
+5. power
+6. Bluetooth
+7. accounts
+
+Expand only after the architecture is stable.
+
+---
+
+# PHASE 6 — FRONTEND
+
+Connect the Material 3 frontend to real system APIs.
+
+Every UI control must correspond to a real backend capability.
+
+---
+
+# PHASE 7 — FEATURE MODULES
+
+Implement settings modules incrementally.
+
+For each module:
+
+```text
+Research
+↓
+Backend API
+↓
+State model
+↓
+UI
+↓
+Error handling
+↓
+Accessibility
+↓
+Tests
+↓
+Performance validation
+```
+
+Do not mark a feature complete until every stage is finished.
+
+---
+
+# PHASE 8 — TESTING
+
+Run the complete test suite.
+
+Validate:
+
+* functionality
+* accessibility
+* system integration
+* failure handling
+* navigation
+* keyboard support
+* themes
+* performance
+
+---
+
+# PHASE 9 — OPTIMIZATION
+
+Profile before optimizing.
+
+Measure:
+
+* startup
+* memory
+* widget rebuilds
+* frame rendering
+* backend latency
+* search latency
+* system API latency
+
+Optimize only measured bottlenecks.
+
+---
+
+# PHASE 10 — PACKAGING
+
+Support appropriate Linux distribution formats.
+
+Consider:
+
+* Debian package
+* AppImage
+* Flatpak
+
+Ensure:
+
+* desktop entry
+* application icon
+* permissions
+* dependencies
+* upgrade behavior
+* uninstall behavior
+
+are correct.
+
+---
+
+# PHASE 11 — DOCUMENTATION
+
+Finalize:
+
+* README
+* architecture documentation
+* developer documentation
+* contribution guide
+* security documentation
+* accessibility documentation
+
+---
+
+# PHASE 12 — RELEASE
+
+Before declaring release:
+
+* build from a clean environment
+* run all tests
+* verify packaging
+* test on supported Kubuntu/Zyntrix configurations
+* verify permissions
+* verify system integrations
+* verify accessibility
+* profile startup and navigation
+* inspect logs for unexpected errors
+
+Only then declare the release candidate complete.
+
+---
+
+# 35. CODING RULES
+
+## NEVER
+
+* use placeholders
+* use fake backend data in production code
+* use pseudo-code
+* silently ignore errors
+* execute arbitrary shell commands
+* run the application as root
+* hard-code system-specific paths
+* hard-code unsupported assumptions
+* duplicate settings metadata
+* create unnecessary abstractions
+* create unnecessary custom widgets
+* replace Material 3 without justification
+* add animations simply because they look impressive
+
+## ALWAYS
+
+* write compilable code
+* use strong typing
+* validate inputs
+* handle errors
+* test important functionality
+* document architectural decisions
+* preserve accessibility
+* profile performance
+* use Material 3 components where appropriate
+* isolate platform-specific functionality
+* keep UI independent from system implementation
+
+---
+
+# 36. DEFINITION OF DONE
+
+A feature is NOT complete merely because its UI exists.
+
+A feature is complete only when:
+
+```text
+UI
++
+Backend
++
+System integration
++
+Error handling
++
+Permissions
++
+Accessibility
++
+Keyboard support
++
+Theme support
++
+Testing
++
+Performance validation
++
+Documentation
+```
+
+are complete.
+
+---
+
+# 37. AGENT WORKING RULES
+
+Before modifying the repository:
+
+1. Inspect the existing project.
+2. Understand the current architecture.
+3. Read existing documentation.
+4. Identify existing reusable components.
+5. Check dependencies.
+6. Check platform constraints.
+7. Avoid unnecessary rewrites.
+
+Before implementing a feature:
+
+1. Define the architecture.
+2. Identify the required Linux APIs.
+3. Define the backend contract.
+4. Define the UI states.
+5. Define error states.
+6. Define accessibility behavior.
+7. Define tests.
+8. Then implement.
+
+Never blindly rewrite functioning code.
+
+---
+
+# 38. OUTPUT BEHAVIOR
+
+Do not dump the entire project into one response.
+
+Work in phases.
+
+At the beginning of each phase provide:
+
+```text
+PHASE
+OBJECTIVES
+FILES AFFECTED
+ARCHITECTURAL DECISIONS
+IMPLEMENTATION PLAN
+ACCEPTANCE CRITERIA
+```
+
+Then implement the phase.
+
+At the end provide:
+
+```text
+COMPLETED
+TEST RESULTS
+KNOWN LIMITATIONS
+PERFORMANCE NOTES
+NEXT PHASE
+```
+
+Do not proceed to the next phase until the current phase satisfies its acceptance criteria.
+
+---
+
+# 39. QUALITY BAR
+
+Continuously evaluate:
+
+### UX
+
+Is the setting easy to discover?
+
+### Architecture
+
+Is the implementation maintainable?
+
+### Security
+
+Is the operation using the minimum required privilege?
+
+### Accessibility
+
+Can the feature be used without a mouse?
+
+### Performance
+
+Have we measured its cost?
+
+### Material 3
+
+Does it correctly use the Material design system?
+
+### Linux
+
+Does it actually integrate with the underlying system?
+
+### Reliability
+
+What happens when the backend fails?
+
+### Maintainability
+
+Will another developer understand this six months from now?
+
+If the answer is no, improve the implementation.
+
+---
+
+# 40. FINAL PRODUCT STANDARD
+
+ZETTINGS should ultimately become:
+
+**A flagship Linux desktop settings application for Zyntrix OS.**
+
+It should combine:
+
+**Flutter's rendering and cross-platform architecture**
+
+with
+
+**Material 3's design system**
+
+and
+
+**Rust's systems-level capabilities**
+
+while integrating deeply with:
+
+**KDE Plasma + Linux + D-Bus + system services.**
+
+The result should feel:
+
+**native, fluid, fast, intelligent, accessible, secure, and unmistakably Zyntrix.**
+
+Do not attempt to imitate another operating system.
+
+Build ZETTINGS as its own product.

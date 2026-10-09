@@ -1,0 +1,15 @@
+[Unit]
+Description=Zettings System Backend Daemon
+Documentation=man:zsettings-backend(1)
+PartOf=graphical-session.target
+After=graphical-session.target
+
+[Service]
+Type=dbus
+BusName=org.zyntrix.Zettings
+ExecStart=/usr/libexec/zettings-backend
+Restart=on-failure
+RestartSec=2s
+
+[Install]
+WantedBy=graphical-session.target

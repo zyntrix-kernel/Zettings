@@ -1,0 +1,4 @@
+[D-BUS Service]
+Name=org.zyntrix.Zettings
+Exec=/usr/libexec/zettings-backend
+SystemdService=zsettings-backend.service
