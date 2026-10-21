@@ -2,7 +2,7 @@
 name = "zettings-backend"
 version = "0.1.0"
 edition = "2024"
-license = "GPL-3.0-or-later"
+license = "MIT"
 description = "Native system settings D-Bus daemon for Zyntrix OS"
 repository = "https://github.com/zyntrix-kernel/Zettings"
 homepage = "https://github.com/zyntrix-kernel/Zettings"
