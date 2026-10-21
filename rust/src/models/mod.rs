@@ -1,171 +1,25 @@
-//! Shared D-Bus data model: bus identity and capability reporting.
+//! Shared D-Bus data model: bus identity, capability reporting, and subsystems.
 
-use serde::{Deserialize, Serialize};
-use zvariant::Type;
+pub mod audio;
+pub mod bluetooth;
+pub mod capability;
+pub mod network;
+pub mod power;
+pub mod system;
+pub mod user;
 
-/// Well-known bus name of the daemon.
-pub const BUS_NAME: &str = "org.zyntrix.Zettings";
-/// Object path served by the daemon.
-pub const OBJECT_PATH: &str = "/org/zyntrix/Zettings";
-/// Interface implemented at [`OBJECT_PATH`].
-pub const INTERFACE: &str = "org.zyntrix.Zettings";
-
-/// Availability strings. Identical to the Dart `ServiceAvailability` names so
-/// the Flutter side maps them without translation.
-pub mod availability {
-    pub const AVAILABLE: &str = "available";
-    pub const UNAVAILABLE: &str = "unavailable";
-    pub const UNSUPPORTED: &str = "unsupported";
-    pub const PERMISSION_DENIED: &str = "permissionDenied";
-    pub const UNKNOWN: &str = "unknown";
-}
-
-/// One probed system capability.
-///
-/// `reason` is a plain string (empty = none) because D-Bus has no `Option`.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
-pub struct Capability {
-    pub name: String,
-    pub availability: String,
-    pub reason: String,
-}
-
-impl Capability {
-    pub fn available(name: impl Into<String>) -> Self {
-        Self {
-            name: name.into(),
-            availability: availability::AVAILABLE.to_string(),
-            reason: String::new(),
-        }
-    }
-
-    pub fn unavailable(
-        name: impl Into<String>,
-        availability: impl Into<String>,
-        reason: impl Into<String>,
-    ) -> Self {
-        Self {
-            name: name.into(),
-            availability: availability.into(),
-            reason: reason.into(),
-        }
-    }
-}
-
-/// Full system snapshot served by `GetSystemInfo`.
-///
-/// Field order is the D-Bus wire order; the Dart parser mirrors it
-/// positionally (see `SystemInfo.fromDbus`). Only append new fields.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
-pub struct SystemInfo {
-    pub os_name: String,
-    pub os_version: String,
-    pub kernel: String,
-    pub hostname: String,
-    pub desktop: String,
-    pub session_type: String,
-    pub cpu_brand: String,
-    pub cpu_count: u32,
-    pub cpu_freq_mhz: u64,
-    pub mem_total_bytes: u64,
-    pub mem_avail_bytes: u64,
-    pub uptime_secs: u64,
-    pub gpus: Vec<GpuInfo>,
-    pub disks: Vec<DiskInfo>,
-}
-
-/// One graphics device.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
-pub struct GpuInfo {
-    pub name: String,
-    pub vendor: String,
-}
-
-/// One mounted filesystem.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
-pub struct DiskInfo {
-    pub mount: String,
-    pub total_bytes: u64,
-    pub avail_bytes: u64,
-    pub fs: String,
-    pub removable: bool,
-}
-
-/// Network status and active connection details.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
-pub struct NetworkStatus {
-    pub wifi_enabled: bool,
-    pub connected: bool,
-    pub active_ssid: String,
-    pub ipv4_address: String,
-    pub interface_name: String,
-    pub signal_strength: u8,
-    pub wifi_networks: Vec<WifiNetwork>,
-}
-
-/// Scanned Wi-Fi access point.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
-pub struct WifiNetwork {
-    pub ssid: String,
-    pub signal_strength: u8,
-    pub secured: bool,
-    pub security_type: String,
-}
-
-/// Bluetooth adapter and peripheral status.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
-pub struct BluetoothStatus {
-    pub enabled: bool,
-    pub adapter_name: String,
-    pub discovering: bool,
-    pub connected_devices_count: u32,
-    pub devices: Vec<BluetoothDevice>,
-}
-
-/// One Bluetooth peripheral device.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
-pub struct BluetoothDevice {
-    pub name: String,
-    pub address: String,
-    pub connected: bool,
-    pub paired: bool,
-    pub battery_percentage: i32,
-    pub device_type: String,
-}
-
-/// System power, battery, and power-profile status.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
-pub struct PowerStatus {
-    pub on_battery: bool,
-    pub battery_percentage: f64,
-    pub charging_state: String,
-    pub time_to_empty_secs: u64,
-    pub active_profile: String,
-    pub available_profiles: Vec<String>,
-}
-
-/// System master audio routing and volume status.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
-pub struct AudioStatus {
-    pub master_volume: f64,
-    pub muted: bool,
-    pub default_sink: String,
-    pub default_source: String,
-}
-
-/// Local system user account.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
-pub struct UserInfo {
-    pub username: String,
-    pub real_name: String,
-    pub is_admin: bool,
-    pub home_dir: String,
-    pub shell: String,
-}
+pub use audio::AudioStatus;
+pub use bluetooth::{BluetoothDevice, BluetoothStatus};
+pub use capability::{BUS_NAME, Capability, INTERFACE, OBJECT_PATH, availability};
+pub use network::{NetworkStatus, WifiNetwork};
+pub use power::PowerStatus;
+pub use system::{DiskInfo, GpuInfo, SystemInfo};
+pub use user::UserInfo;
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use zvariant::Type;
 
     #[test]
     fn capability_json_round_trip() {

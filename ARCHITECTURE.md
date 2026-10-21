@@ -114,10 +114,42 @@ UI subscribes, never polls in a loop.
 ## 8. Rust backend layout
 
 ```text
-rust/src/{main.rs, lib.rs, error.rs, models.rs, ipc.rs, services.rs, services/*.rs}
+rust/src/
+  main.rs                  Daemon entry point (CLI args, tokio runtime bootstrap)
+  lib.rs                   Library exports (services, models, ipc, error)
+  error.rs                 BackendError, ErrorKind typed D-Bus error mapping
+  services.rs              BuiltinService, ServiceRegistry
+  services/
+    system_info.rs         CPU, RAM, Disks, GPUs sysinfo & sysfs collector
+    network.rs             Wi-Fi scanning, interface state
+    bluetooth.rs           BlueZ adapter state, paired peripherals
+    power.rs               UPower battery state, power-profiles-daemon
+    audio.rs               PipeWire / PulseAudio master volume & mute
+    accounts.rs            AccountsService / /etc/passwd user inspection
+  models/
+    mod.rs                 Re-exports and round-trip serialization tests
+    capability.rs          Bus constants, availability tokens, Capability struct
+    system.rs              SystemInfo, GpuInfo, DiskInfo
+    network.rs             NetworkStatus, WifiNetwork
+    bluetooth.rs           BluetoothStatus, BluetoothDevice
+    power.rs               PowerStatus
+    audio.rs               AudioStatus
+    user.rs                UserInfo
+  ipc/
+    mod.rs                 IPC subsystem re-exports and integration tests
+    service.rs             Backend struct & org.zyntrix.Zettings #[interface]
+    proxy.rs               ZettingsProxy client trait
+    validation.rs          Strict bounds checking for audio volume, profiles, Wi-Fi SSID
+
+All files strictly maintain < 10KB size constraints for modularity and maintainability.
 ```
 
-One module per system service, each with unit tests; D-Bus failures are values, not
+## 9. Input validation & security boundary
+
+Validation occurs at both ends of the IPC boundary:
+- **Presentation Layer (`lib/core/utils/validators.dart`):** Performs instant client-side validation on user input (audio volume, display scaling factor, night light temperature, Wi-Fi SSID/passwords, usernames, power profiles).
+- **Daemon Boundary (`rust/src/ipc/validation.rs`):** Performs authoritative server-side validation on all incoming D-Bus parameters. Invalid requests fail immediately with typed `ErrorKind::InvalidInput` before reaching system services.
+- **Privilege Separation:** Non-root execution for daemon query endpoints; PolicyKit actions (`org.zyntrix.zettings.policy`) for privileged system modifications.
 panics. Privileged ops follow validate → authorize (polkit) → perform → verify →
 return actual result.
 

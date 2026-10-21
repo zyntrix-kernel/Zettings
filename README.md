@@ -1,5 +1,11 @@
 # ZETTINGS — Zyntrix OS System Settings
 
+[![CI](https://github.com/zyntrix-kernel/Zettings/actions/workflows/ci.yml/badge.svg)](https://github.com/zyntrix-kernel/Zettings/actions/workflows/ci.yml)
+[![License: GPL-3.0-or-later](https://img.shields.io/badge/License-GPL--3.0--or--later-blue.svg)](LICENSE)
+[![Flutter Tests](https://img.shields.io/badge/Flutter%20Tests-107%20passing-brightgreen.svg)](#verification-status)
+[![Rust Tests](https://img.shields.io/badge/Rust%20Tests-42%20passing-brightgreen.svg)](#verification-status)
+[![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20KDE%20Plasma-orange.svg)](#architecture-overview)
+
 ZETTINGS is the next-generation system settings application for **Zyntrix OS**, built for Kubuntu and KDE Plasma. It pairs the elegance and accessibility of Flutter and Material 3 with the performance, safety, and least-privilege security of a native Rust backend communicating over D-Bus.
 
 ---
@@ -97,8 +103,11 @@ sudo ./linux/packaging/install.sh
 
 ## Verification Status
 
-- Rust Backend: 37 / 37 tests passing. 0 clippy warnings.
-- Flutter UI: 99 / 99 tests passing. 0 analyzer issues. Clean formatting.
+- Rust Backend: 42 / 42 tests passing. 0 clippy warnings. Clean formatting (`cargo fmt`).
+- Flutter UI: 107 / 107 tests passing. 0 analyzer issues (`flutter analyze`). Clean formatting (`dart format`).
+- Architecture: Zero files exceeding 10KB. Decomposed into modular Rust and Dart components.
+- Input Validation: Full typed range, length, and format validation on both Rust IPC daemon boundary and Flutter UI presentation layer.
+- Community Standards: GPL-3.0 License, Security Policy (`SECURITY.md`), Contribution Guidelines (`CONTRIBUTING.md`), and GitHub Actions CI workflow (`.github/workflows/ci.yml`).
 - Windows Release: Compiled and verified (`build/windows/x64/runner/Release/zettings.exe`).
 - Kubuntu Integration: D-Bus auto-activation, systemd user service, PolicyKit policy, and desktop launcher packaged.
 

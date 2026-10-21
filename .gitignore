@@ -58,3 +58,8 @@ dist/
 
 # Agent local caches and external clones
 .agents/
+brag-output/
+brag-output-*/
+production-cinema/
+*.mp4
+skills-lock.json
