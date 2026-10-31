@@ -6,6 +6,7 @@ import 'package:zettings/core/search/search.dart';
 import 'package:zettings/core/services/accounts_service.dart';
 import 'package:zettings/core/services/audio_service.dart';
 import 'package:zettings/core/services/bluetooth_service.dart';
+import 'package:zettings/core/services/linux_system_info_service.dart';
 import 'package:zettings/core/services/mock_system_info_service.dart';
 import 'package:zettings/core/services/network_service.dart';
 import 'package:zettings/core/services/power_service.dart';
@@ -76,7 +77,8 @@ Future<void> main() async {
     ServiceLocator.register<AccountsServiceProvider>(mockAccounts);
     ServiceLocator.register<SystemService>(mockSystem);
   } else {
-    final systemInfo = IpcSystemInfoService(ipc);
+    // System info comes straight from /proc + /sys on Linux — no daemon needed.
+    final systemInfo = LinuxSystemInfoService();
     final network = IpcNetworkService(ipc);
     final bluetooth = IpcBluetoothService(ipc);
     final power = IpcPowerService(ipc);
