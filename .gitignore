@@ -63,3 +63,6 @@ brag-output-*/
 production-cinema/
 *.mp4
 skills-lock.json
+
+# Local dev notes
+prompt.txt
